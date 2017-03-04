@@ -3,10 +3,10 @@
 % x = A t-by-n matrix representing the independant variables.
 % k = A scalar [0,1] representing the sample quantile.
 % [OUTPUT]
-% beta   = The estimated regression coefficients.
-% stderr = The standard errors.
-% tcoeff = The t-Students.
-% pval   = The p-values.
+% beta   = A column vector containing the estimated regression coefficients.
+% stderr = A column vector containing the standard errors.
+% tcoeff = A column vector containing the t-Student coefficients.
+% pval   = A column vector containing the p-values.
 
 function [beta,stderr,tcoeff,pval] = quantile_regression(y,x,k)
 
@@ -66,7 +66,7 @@ function [beta,stderr,tcoeff,pval] = quantile_regression(y,x,k)
     d = diag(dgn);
     
     xt = x';
-    vcq = (xt * x)^(-1) * xt * d * x * (xt * x)^(-1);
+    vcq = ((xt * x) ^ (-1)) * xt * d * x * ((xt * x) ^ (-1));
     dgnvcq = diag(vcq);
 
     stderr = dgnvcq .^ 0.5;

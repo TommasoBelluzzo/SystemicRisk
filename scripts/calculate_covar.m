@@ -3,7 +3,7 @@
 % rdx  = A column vector containing the demeaned firm log returns.
 % varx = A column vector containing firm unconditional VaR.
 % k    = A scalar [0,1] representing the confidence level (optional, default=0.05).
-% sv   = A t-by-n matrix containing the lagged state variables (optional, default=NULL)
+% sv   = A t-by-n matrix containing the lagged state variables (optional, default=[]).
 %        For example:
 %         - Dow Jones U.S. Select Real Estate Securities Index (RESI)
 %         - Volatility Index (VIX)
@@ -12,8 +12,8 @@
 %         - Liquidity Spread (3M FFR minus 3M TBR)
 %         - Yield Spread (10Y TBR minus 3M TBR)
 % [OUTPUT]
-% covar  = The CoVaR values.
-% dcovar = The Delta CoVaR values.
+% covar  = A column vector containing the CoVaR values.
+% dcovar = A column vector containing the Delta CoVaR values.
 
 function [covar,dcovar] = calculate_covar(rdm,rdx,varx,k,sv)
 
@@ -29,6 +29,9 @@ function [covar,dcovar] = calculate_covar(rdm,rdx,varx,k,sv)
 
     if (nargin < 5)
         [beta,~,~,~] = quantile_regression(rdm,rdx,k);
+        covar = (beta(1) + (beta(2) .* varx)) .* -1;
+    else
+        [beta,~,~,~] = quantile_regression(rdm,[rdx sv],k);
         covar = beta(1) + (beta(2) .* varx);
 
         for i = 3:length(beta)
@@ -36,9 +39,6 @@ function [covar,dcovar] = calculate_covar(rdm,rdx,varx,k,sv)
         end
 
         covar = covar .* -1;
-    else
-        [beta,~,~,~] = quantile_regression(rdm,[rdx sv],k);
-        covar = (beta(1) + (beta(2) .* varx)) .* -1;
     end
 
     dcovar = (beta(2) .* (varx - repmat(median(rdx),t,1))) .* -1;
