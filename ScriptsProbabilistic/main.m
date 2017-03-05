@@ -25,16 +25,17 @@ function main(source,destination)
 
         r = [data(:,3) data(:,4)];
         r = r - (ones(length(r),1) * mean(r));
-        rdm = r(:,1);
-        rdx = r(:,2);
         
-        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch([rdm rdx],1,1,1,1);
+        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch(r,1,1,1,1);
         sm = sqrt(s(:,1));
         sx = sqrt(s(:,2));
         pmx = squeeze(p(1,2,:));
         
         bx = pmx .* (sx ./ sm);
         varx = sx * quantile((rdx ./ sx),k);
+
+        rdm = r(:,1);
+        rdx = r(:,2);
 
         if (isempty(sv))
             [~,dcovar] = calculate_covar(rdm,rdx,varx,k);
