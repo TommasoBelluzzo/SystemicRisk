@@ -46,7 +46,7 @@ function main(source,destination)
 
         dx = data(:,1);
         ex = data(:,2);
-        srisk = calculate_srisk(l,lrmes,dx,ex);
+        srisk = calculate_srisk(lrmes,dx,ex,l);
 
         results{i} = [bx (varx .* -1) dcovar mes srisk];
     end
