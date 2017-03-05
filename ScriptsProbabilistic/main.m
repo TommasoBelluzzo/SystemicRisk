@@ -28,7 +28,7 @@ function main(source,destination)
         rdm = r(:,1);
         rdx = r(:,2);
         
-        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjr_garch([rdm rdx],1,1,1,1);
+        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch([rdm rdx],1,1,1,1);
         sm = sqrt(s(:,1));
         sx = sqrt(s(:,2));
         pmx = squeeze(p(1,2,:));
