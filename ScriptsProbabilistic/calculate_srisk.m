@@ -10,5 +10,6 @@
 function srisk = calculate_srisk(lrmes,dx,ex,l)
 
     srisk = (l .* dx) - ((1 - l) .* (1 - lrmes) .* ex);
+    srisk(srisk<0) = 0;
 
 end
