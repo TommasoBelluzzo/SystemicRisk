@@ -2,30 +2,27 @@
 % rdm  = A column vector containing the demeaned market index log returns.
 % rdx  = A column vector containing the demeaned firm log returns.
 % varx = A column vector containing firm unconditional VaR.
-% k    = A scalar [0,1] representing the confidence level (optional, default=0.05).
+% k    = A scalar [0,1] representing the confidence level.
 % sv   = A t-by-n matrix containing the lagged state variables (optional, default=[]).
-%        For example:
+%        Example of state variables to use for S&P500 and U.S. market:
 %         - Dow Jones U.S. Select Real Estate Securities Index (RESI)
 %         - Volatility Index (VIX)
 %         - Variations of 3M TBR
 %         - Credit Spread (BAA CBR minus 10Y TBR)
 %         - Liquidity Spread (3M FFR minus 3M TBR)
 %         - Yield Spread (10Y TBR minus 3M TBR)
+%
 % [OUTPUT]
 % covar  = A column vector containing the CoVaR values.
 % dcovar = A column vector containing the Delta CoVaR values.
 
 function [covar,dcovar] = calculate_covar(rdm,rdx,varx,k,sv)
 
-    if (nargin < 3)
-        error('The function requires at least 3 arguments.');
+    if (nargin < 4)
+        error('The function requires at least 4 arguments.');
     end
 
     t = length(rdm);
-    
-    if (nargin < 4)
-        k = 0.05;
-    end
 
     if (nargin < 5)
         [beta,~,~,~] = quantile_regression(rdm,rdx,k);

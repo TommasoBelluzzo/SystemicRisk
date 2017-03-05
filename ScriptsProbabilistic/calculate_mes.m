@@ -4,20 +4,13 @@
 % rdx  = A column vector containing the demeaned firm log returns.
 % sx   = A column vector containing the volatilities of the firm log returns.
 % pmx  = A column vector containing the DCC coefficients.
-% k    = A scalar [0,1] representing the confidence level (optional, default=0.05).
+% k    = A scalar [0,1] representing the confidence level.
+%
 % [OUTPUT]
 % mes   = A column vector containing the MES values.
 % lrmes = A column vector containing the Long Run MES (LRMES) approximated values.
 
 function [mes,lrmes] = calculate_mes(rdm,sm,rdx,sx,pmx,k)
-
-    if (nargin < 5)
-        error('The function requires at least 5 arguments.');
-    end
-
-    if (nargin < 6)
-        k = 0.05;
-    end
 
     c = quantile(rdm,k);
 
