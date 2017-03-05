@@ -2,6 +2,7 @@
 % y = A column vector representing the dependant variable.
 % x = A t-by-n matrix representing the independant variables.
 % k = A scalar [0,1] representing the sample quantile.
+%
 % [OUTPUT]
 % beta   = A column vector containing the estimated regression coefficients.
 % stderr = A column vector containing the standard errors.

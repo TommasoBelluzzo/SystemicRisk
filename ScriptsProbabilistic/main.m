@@ -9,8 +9,7 @@ function main(source,destination)
     end
 
     firms = get_firms_count(source);
-    k = 0.05;
-    l = 0.08;
+    k = 0.05; l = 0.08;
     rm = get_market_index(source);
     sv = get_state_vars(source);
 
