@@ -1,6 +1,9 @@
 % [INPUT]
-% source      = The file containing the necessary data.
+% source      = The file containing the dataset.
 % destination = The name of the file to which the results are written.
+%
+% [NOTE]
+% The financial time series in the dataset must have been previously validated (NaN, time gaps, etc...).
 
 function main(source,destination)  
 
@@ -20,36 +23,30 @@ function main(source,destination)
         ex = get_firm_capitalization(source,i);
         rx = get_firm_returns(source,i);
 
-        data = [dx ex rm rx sv];
-        data(any(isnan(data),2),:) = [];
-
-        r = [data(:,3) data(:,4)];
+        r = [rm rx];
         r = r - (ones(length(r),1) * mean(r));
-        
+
         [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch(r,1,1,1,1);
         sm = sqrt(s(:,1));
         sx = sqrt(s(:,2));
         pmx = squeeze(p(1,2,:));
         
-        bx = pmx .* (sx ./ sm);
-        varx = sx * quantile((rdx ./ sx),k);
-
         rdm = r(:,1);
         rdx = r(:,2);
+        
+        betax = pmx .* (sx ./ sm);
+        varx = sx * quantile((rdx ./ sx),k);
 
         if (isempty(sv))
             [~,dcovar] = calculate_covar(rdm,rdx,varx,k);
         else
-            [~,dcovar] = calculate_covar(rdm,rdx,varx,k,data(:,5:end));
+            [~,dcovar] = calculate_covar(rdm,rdx,varx,k,sv);
         end
         
         [mes,lrmes] = calculate_mes(rdm,sm,rdx,sx,pmx,k);
-
-        dx = data(:,1);
-        ex = data(:,2);
         srisk = calculate_srisk(lrmes,dx,ex,l);
 
-        results{i} = [bx (varx .* -1) dcovar mes srisk];
+        results{i} = [betax (varx .* -1) dcovar mes srisk];
     end
     
     if (exist(destination, 'file') == 2)
