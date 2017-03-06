@@ -14,14 +14,14 @@ function [mes,lrmes] = calculate_mes(rdm,sm,rdx,sx,pmx,k)
 
     c = quantile(rdm,k);
 
-    um = rdm ./ sm;
     h = 1 * (length(rdm) ^ (-0.2));
+    u = rdm ./ sm;
     
     xden = sqrt(1 - (pmx .^ 2));
-    x = ((rdx ./ sx) - (pmx .* um)) ./ xden;
+    x = ((rdx ./ sx) - (pmx .* u)) ./ xden;
 
-    f = normcdf(((c ./ sm) - um) ./ h);
-    k1 = sum(um .* f) ./ sum(f);
+    f = normcdf(((c ./ sm) - u) ./ h);
+    k1 = sum(u .* f) ./ sum(f);
     k2 = sum(x .* f) ./ sum(f);
 
     mes = ((sx .* pmx .* k1) + (sx .* xden .* k2)) .* -1;
