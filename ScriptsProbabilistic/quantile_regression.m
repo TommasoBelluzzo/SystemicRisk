@@ -56,7 +56,7 @@ function [beta,stderr,tcoeff,pval] = quantile_regression(y,x,k)
         h = (0.9 * min(std(e), (iqre / 1.34))) / (yn ^ 0.2);
     end
 
-	u = e / h;
+    u = e / h;
     uem = exp(-u);
     fhat0 = (1 / (yn * h)) * sum(uem ./ ((1 + uem) .^ 2));
     
