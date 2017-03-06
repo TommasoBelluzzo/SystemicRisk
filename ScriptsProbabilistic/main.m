@@ -3,7 +3,7 @@
 % destination = The name of the file to which the results are written.
 %
 % [NOTE]
-% The financial time series in the dataset must have been previously validated (NaN, time gaps, etc...).
+% The financial time series in the dataset must have been previously validated (illiquid series with too many zeroes have been discarded, rows with NaNs have been removed or filled with interpolation, time gaps have been checked, etc).
 
 function main(source,destination)  
 
