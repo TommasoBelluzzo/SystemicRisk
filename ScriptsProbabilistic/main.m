@@ -11,20 +11,20 @@
 
 function main(src,des)
 
-    if (exist(src, 'file') == 0)
+    if (exist(src,'file') == 0)
         error('The source file does not exist.');
     end
 
     k = 0.05;
     l = 0.08;
 
-    f = get_firms_count(src);
+    firms = get_firms_count(src);
     rm = get_market_index(src);
     sv = get_state_vars(src);
 
-    res = cell(f,1);
+    res = cell(firms,1);
 
-    for i = 1:f     
+    for i = 1:firms     
         dx = get_firm_liabilities(src,i);
         ex = get_firm_capitalization(src,i);
         rx = get_firm_returns(src,i);
@@ -55,7 +55,7 @@ function main(src,des)
         res{i} = [betax (varx .* -1) dcovar mes srisk];
     end
     
-    if (exist(des, 'file') == 2)
+    if (exist(des,'file') == 2)
         delete(des);
     end
     
