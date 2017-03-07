@@ -15,14 +15,14 @@ function main(src,des)
         error('The source file does not exist.');
     end
 
-    firms = get_firms_count(src);
+    f = get_firms_count(src);
     rm = get_market_index(src);
     sv = get_state_vars(src);
     k = 0.05; l = 0.08;
 
-    results = cell(firms,1);
+    res = cell(f,1);
 
-    for i = 1:firms     
+    for i = 1:f     
         dx = get_firm_liabilities(src,i);
         ex = get_firm_capitalization(src,i);
         rx = get_firm_returns(src,i);
@@ -50,13 +50,13 @@ function main(src,des)
         [mes,lrmes] = calculate_mes(rdm,sm,rdx,sx,pmx,k);
         srisk = calculate_srisk(lrmes,dx,ex,l);
 
-        results{i} = [betax (varx .* -1) dcovar mes srisk];
+        res{i} = [betax (varx .* -1) dcovar mes srisk];
     end
     
     if (exist(des, 'file') == 2)
         delete(des);
     end
     
-    write_results(des,results);
+    write_results(des,res);
 
 end
