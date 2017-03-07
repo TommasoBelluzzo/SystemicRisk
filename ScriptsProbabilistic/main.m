@@ -1,6 +1,6 @@
 % [INPUT]
-% source      = The file containing the dataset.
-% destination = The name of the file to which the results are written.
+% src = The file containing the dataset.
+% des = The name of the file to which the results are written.
 %
 % [NOTE]
 % The financial time series in the dataset must have been previously validated:
@@ -9,23 +9,23 @@
 %  - there are enough observations to run consistent calculations;
 %  - etc...
 
-function main(source,destination)  
+function main(src,des)
 
-    if (exist(source, 'file') == 0)
+    if (exist(src, 'file') == 0)
         error('The source file does not exist.');
     end
 
-    firms = get_firms_count(source);
-    rm = get_market_index(source);
-    sv = get_state_vars(source);
+    firms = get_firms_count(src);
+    rm = get_market_index(src);
+    sv = get_state_vars(src);
     k = 0.05; l = 0.08;
 
     results = cell(firms,1);
 
     for i = 1:firms     
-        dx = get_firm_liabilities(source,i);
-        ex = get_firm_capitalization(source,i);
-        rx = get_firm_returns(source,i);
+        dx = get_firm_liabilities(src,i);
+        ex = get_firm_capitalization(src,i);
+        rx = get_firm_returns(src,i);
 
         r = [rm rx];
         r = r - (ones(length(r),1) * mean(r));
@@ -53,10 +53,10 @@ function main(source,destination)
         results{i} = [betax (varx .* -1) dcovar mes srisk];
     end
     
-    if (exist(destination, 'file') == 2)
-        delete(destination);
+    if (exist(des, 'file') == 2)
+        delete(des);
     end
     
-    write_results(destination,results);
+    write_results(des,results);
 
 end
