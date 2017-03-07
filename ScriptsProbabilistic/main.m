@@ -15,10 +15,12 @@ function main(src,des)
         error('The source file does not exist.');
     end
 
+    k = 0.05;
+    l = 0.08;
+
     f = get_firms_count(src);
     rm = get_market_index(src);
     sv = get_state_vars(src);
-    k = 0.05; l = 0.08;
 
     res = cell(f,1);
 
