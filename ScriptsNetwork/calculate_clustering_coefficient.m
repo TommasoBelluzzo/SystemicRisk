@@ -8,7 +8,7 @@
 function [cluc,cluc_nor] = calculate_clustering_coefficient(adjm,degc)
 
     n = length(adjm);
-    n_list = (1:n);
+    n_seq = (1:n);
 
     degc_max = max(degc);
     
@@ -22,7 +22,7 @@ function [cluc,cluc_nor] = calculate_clustering_coefficient(adjm,degc)
             continue;
         end
 
-        node = n_list(logical(adjm(:,i)));
+        node = n_seq(logical(adjm(:,i)));
         cluc_i = sum(sum(adjm(node,node))) / degc_i / (degc_i - 1);
         
         cluc(i) = cluc_i;
