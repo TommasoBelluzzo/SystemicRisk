@@ -30,7 +30,7 @@ function main(file_src,file_des)
         [~,~,~,~,pcae,~] = pca(ret_i);
 
         adjm = calculate_adjacency_matrix(ret_i,sst,rob);
-        [dci,n_io,n_ioo,cloc,degc,eigc,cluc] = calculate_measures(adjm,grp);
+        [dci,n_io,n_ioo,cloc,cluc,degc,eigc] = calculate_measures(adjm,grp);
 
         res{i}.dci = dci;
         res{i}.num_io = n_io;
