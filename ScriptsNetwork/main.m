@@ -15,11 +15,11 @@ function main(file_src,file_des)
         error('The source file does not exist.');
     end
 
-    grp = [5 11 18];
+    grp = [5; 11; 18];
     rob = 1;
     sst = 0.05;
 
-    ret = get_firms_returns(file_src);
+    ret = get_table_slice(read_sheet(file_src,1),1,0,3,0);
     win = get_rolling_windows(ret,262);
     win_len = length(win);
     
