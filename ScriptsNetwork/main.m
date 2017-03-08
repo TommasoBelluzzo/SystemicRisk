@@ -36,9 +36,9 @@ function main(file_src,file_des)
         res{i}.num_io = n_io;
         res{i}.num_ioo = n_ioo;
         res{i}.cloc = cloc;
+        res{i}.cluc = cluc;
         res{i}.degc = degc;
         res{i}.eigc = eigc;
-        res{i}.cluc = cluc;
         res{i}.pcae = pcae;
     end
 
