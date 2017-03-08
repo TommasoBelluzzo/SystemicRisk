@@ -42,10 +42,10 @@ function main(file_src,file_des)
         res{i}.clust = clust;         
     end
 
-	if (exist(file_des,'file') == 2)
+    if (exist(file_des,'file') == 2)
         delete(file_des);
-	end
-    
+    end
+
     write_results(file_des,res);
 
 end
