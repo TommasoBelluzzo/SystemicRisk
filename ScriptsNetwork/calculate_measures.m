@@ -18,7 +18,7 @@
 % [NOTE]
 % If no sector delimiters are specified, n_ioo is returned as 0.
 
-function [dci,n_io,n_ioo,cloc,degc,eigc,clus] = calculate_measures(adjm,grp)
+function [dci,n_io,n_ioo,cloc,degc,eigc,cluc] = calculate_measures(adjm,grp)
 
     n = length(adjm);
 
@@ -75,6 +75,6 @@ function [dci,n_io,n_ioo,cloc,degc,eigc,clus] = calculate_measures(adjm,grp)
     [~,cloc] = calculate_closeness_centrality(adjm);
     [degc_std,degc] = calculate_degree_centrality(adjm);
     [~,eigc] = calculate_eigenvector_centrality(adjm);  
-    clus = calculate_clustering_coefficient(adjm,degc_std);
+    [~,cluc] = calculate_clustering_coefficient(adjm,degc_std);
 
 end

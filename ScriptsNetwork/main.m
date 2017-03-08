@@ -19,7 +19,7 @@ function main(file_src,file_des)
     rob = 1;
     sst = 0.05;
 
-    ret = get_table_slice(read_sheet(file_src,1),1,0,3,0);
+    ret = get_firms_returns(file_src);
     win = get_rolling_windows(ret,262);
     win_len = length(win);
     
@@ -30,7 +30,7 @@ function main(file_src,file_des)
         [~,~,~,~,pcae,~] = pca(ret_i);
 
         adjm = calculate_adjacency_matrix(ret_i,sst,rob);
-        [dci,n_io,n_ioo,cloc,degc,eigc,clus] = calculate_measures(adjm,grp);
+        [dci,n_io,n_ioo,cloc,degc,eigc,cluc] = calculate_measures(adjm,grp);
 
         res{i}.dci = dci;
         res{i}.num_io = n_io;
@@ -38,7 +38,7 @@ function main(file_src,file_des)
         res{i}.cloc = cloc;
         res{i}.degc = degc;
         res{i}.eigc = eigc;
-        res{i}.clus = clus;
+        res{i}.cluc = cluc;
         res{i}.pcae = pcae;
     end
 
