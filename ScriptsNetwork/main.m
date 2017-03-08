@@ -19,8 +19,7 @@ function main(file_src,file_des)
     rob = 1;
     sst = 0.05;
 
-    ret = get_table_slice(read_sheet(file_src,1),1,0,3,0);
-    %ret = get_firms_returns(file_src);
+    ret = get_firms_returns(file_src);
     win = get_rolling_windows(ret,262);
     win_len = length(win);
     
@@ -28,18 +27,19 @@ function main(file_src,file_des)
     
     for i = 1:win_len
         ret_i = win{i,1};
-        
-        adjm = calculate_adjacency_matrix(ret_i,sst,rob);
+        [~,~,~,~,pcae,~] = pca(ret_i);
 
-        [dci,num_io,num_ioo,clo_cen,deg_cen,eig_cen,clust] = calculate_measures(adjm,grp);
+        adjm = calculate_adjacency_matrix(ret_i,sst,rob);
+        [dci,n_io,n_ioo,cloc,degc,eigc,clus] = calculate_measures(adjm,grp);
 
         res{i}.dci = dci;
-        res{i}.num_io = num_io;
-        res{i}.num_ioo = num_ioo;
-        res{i}.clo_cen = clo_cen;
-        res{i}.deg_cen = deg_cen;   
-        res{i}.eig_cen = eig_cen; 
-        res{i}.clust = clust;         
+        res{i}.num_io = n_io;
+        res{i}.num_ioo = n_ioo;
+        res{i}.cloc = cloc;
+        res{i}.degc = degc;
+        res{i}.eigc = eigc;
+        res{i}.clus = clus;
+        res{i}.pcae = pcae;
     end
 
     if (exist(file_des,'file') == 2)
