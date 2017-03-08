@@ -14,7 +14,7 @@ function [cloc,cloc_nor] = calculate_closeness_centrality(adjm)
     cloc = zeros(n,1);
 
     for i = 1:n
-        cloc(i) = sum(2 .^ -simple_dijkstra(adjm,i));
+        cloc(i) = sum(2 .^ -dijkstra_shortest_path(adjm,i));
     end
 
     cloc_nor = cloc ./ (n - 1);

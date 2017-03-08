@@ -1,6 +1,6 @@
 % [INPUT]
 % ret_in   = A column vector containing input firm log returns.
-% ret_out  = A column vector containing output firm log returns.
+% ret_out  = A column vector containing output firms log returns.
 %
 % [OUTPUT]
 % pval     = A column vector containing the p-values.
