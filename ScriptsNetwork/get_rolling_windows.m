@@ -18,11 +18,11 @@ function win = get_rolling_windows(ret,bw)
         return;
     end
 
-    lim = t - bw + 1;
-    win = cell(lim,1);
+	lim = t - bw + 1;
+	win = cell(lim,1);
 
-    for i = 1:lim
+	for i = 1:lim
         win{i} = ret(i:bw+i-1,:);
-    end
+	end
 
 end
