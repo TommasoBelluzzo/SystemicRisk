@@ -22,9 +22,9 @@ function [dci,num_io,num_ioo,clo_cen,deg_cen,eig_cen,clust] = calculate_measures
 
     n = length(adjm);
 
-	rel_cur = sum(sum(adjm));
-	rel_max = (n ^ 2) - n;
-	dci = rel_cur / rel_max;
+    rel_cur = sum(sum(adjm));
+    rel_max = (n ^ 2) - n;
+    dci = rel_cur / rel_max;
 
     num_in = zeros(n,1);
     num_out = zeros(n,1);
@@ -71,7 +71,7 @@ function [dci,num_io,num_ioo,clo_cen,deg_cen,eig_cen,clust] = calculate_measures
     
     [~,clo_cen] = calculate_closeness_centrality(adjm);
     [deg_cen_std,deg_cen] = calculate_degree_centrality(adjm);
-	eig_cen = calculate_eigenvector_centrality(adjm);  
-	clust = calculate_clustering_coefficient(adjm,deg_cen_std);
+    eig_cen = calculate_eigenvector_centrality(adjm);  
+    clust = calculate_clustering_coefficient(adjm,deg_cen_std);
 
 end
