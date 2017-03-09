@@ -1,49 +1,50 @@
 % [INPUT]
-% y = A column vector representing the dependant variable.
-% x = A t-by-n matrix representing the independant variables.
-% k = A scalar [0,1] representing the sample quantile.
+% y    = A column vector representing the dependant variable.
+% x    = A t-by-n matrix representing the independant variables.
+% k    = A scalar [0,1] representing the sample quantile.
 %
 % [OUTPUT]
-% beta   = A column vector containing the estimated regression coefficients.
-% stderr = A column vector containing the standard errors.
-% tcoeff = A column vector containing the t-Student coefficients.
-% pval   = A column vector containing the p-values.
+% beta = A column vector containing the estimated regression coefficients.
+% serr = A column vector containing the standard errors.
+% tcoe = A column vector containing the t-Student coefficients.
+% pval = A column vector containing the p-values.
 
-function [beta,stderr,tcoeff,pval] = quantile_regression(y,x,k)
+function [beta,serr,tcoe,pval] = quantile_regression(y,x,k)
 
-    yn = length(y);
+    t = length(y);
     [xn,xm] = size(x);
 
     x = [ones(xn,1) x];
     xm = xm + 1;
-    xstar = x;
+    xs = x;
 
     beta = ones(xm,1);
-    diff = 1; iter = 0;
 
-    while ((iter < 1000) && (diff > 1e-6))
-        xstart = xstar';
-        
-        b0 = beta;
-        beta = ((xstart * x) \ xstart) * y;
+    diff = 1;
+    iter = 0;
 
-        res = y - (x * beta);
-        res(abs(res)<0.000001) = 0.000001;
-        res(res<0) = k * res(res<0);
-        res(res>0) = (1 - k) * res(res>0);
-        res = abs(res);
+    while ((diff > 1e-6) && (iter < 1000))
+        xst = xs';
+        beta_0 = beta;
 
-        z=[];
+        beta = ((xst * x) \ xst) * y;
+
+        rsd = y - (x * beta);
+        rsd(abs(rsd)<0.000001) = 0.000001;
+        rsd(rsd<0) = k * rsd(rsd<0);
+        rsd(rsd>0) = (1 - k) * rsd(rsd>0);
+        rsd = abs(rsd);
+
+        z = zeros(xn,xm);
 
         for i = 1:xm 
-            z0 = x(:,i) ./ res;
-            z = [z z0];
+            z(:,i) = x(:,i) ./ rsd;
         end
 
-        xstar = z;
-        b1 = beta;
+        xs = z;
+        beta_1 = beta;
         
-        diff = max(abs(b1 - b0));
+        diff = max(abs(beta_1 - beta_0));
         iter = iter + 1;
     end
 
@@ -51,27 +52,24 @@ function [beta,stderr,tcoeff,pval] = quantile_regression(y,x,k)
     iqre = iqr(e);
 
     if (k == 0.5)
-        h = (0.9 * std(e)) / (yn ^ 0.2);
+        h = (0.9 * std(e)) / (t ^ 0.2);
     else
-        h = (0.9 * min(std(e), (iqre / 1.34))) / (yn ^ 0.2);
+        h = (0.9 * min(std(e),(iqre / 1.34))) / (t ^ 0.2);
     end
-
-    u = e / h;
-    uem = exp(-u);
-    fhat0 = (1 / (yn * h)) * sum(uem ./ ((1 + uem) .^ 2));
     
-    d(yn,yn) = 0;
+    u = exp(-(e / h));
+    f_hat = (1 / (t * h)) * sum(u ./ ((1 + u) .^ 2));
+    
+    d(t,t) = 0;
     dgn = diag(d);
-    dgn(e<=0) = ((1 - k) / fhat0) ^ 2;
-    dgn(e>0) = (k / fhat0) ^ 2;
+    dgn(e<=0) = ((1 - k) / f_hat) ^ 2;
+    dgn(e>0) = (k / f_hat) ^ 2;
     d = diag(dgn);
     
     xt = x';
-    vcq = ((xt * x) ^ (-1)) * xt * d * x * ((xt * x) ^ (-1));
-    dgnvcq = diag(vcq);
 
-    stderr = dgnvcq .^ 0.5;
-    tcoeff = beta ./ stderr;
-    pval = 2 * (1 - tcdf(abs(tcoeff), (yn - xm)));
+    serr = diag(((xt * x) ^ -1) * xt * d * x * ((xt * x) ^ -1)) .^ 0.5;
+    tcoe = beta ./ serr;
+    pval = 2 * (1 - tcdf(abs(tcoe),(t - xm)));
 
 end
