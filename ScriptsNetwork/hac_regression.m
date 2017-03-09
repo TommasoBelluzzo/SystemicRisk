@@ -9,24 +9,24 @@
 
 function [beta,v_hat] = hac_regression(y,x,ratio)
 
-    n = length(y);
+    t = length(y);
 
     beta = regress(y,x);
     rsd = y - (x * beta);
 
     h = diag(rsd) * x;
-    l = round(ratio * n);
-    q_hat = (x' * x) / n;
-    o_hat = (h' * h) / n;
+    l = round(ratio * t);
+    q_hat = (x' * x) / t;
+    o_hat = (h' * h) / t;
 
     for i = 1:l-1
         otmp = 0;
 
-        for j = 1:n-i
+        for j = 1:t-i
             otmp = otmp + h(j,:)' * h(j+i,:);
         end
 
-        otmp = otmp / (n - i);
+        otmp = otmp / (t - i);
         o_hat = o_hat + (((l - i) / l) * (otmp + otmp'));
     end
 
