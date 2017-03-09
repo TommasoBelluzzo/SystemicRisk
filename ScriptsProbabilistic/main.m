@@ -1,6 +1,6 @@
 % [INPUT]
-% src = The file containing the dataset.
-% des = The name of the file to which the results are written.
+% file_src = The file containing the dataset.
+% file_des = The name of the file to which the results are written.
 %
 % [NOTE]
 % The financial time series in the dataset must have been previously validated:
@@ -9,56 +9,53 @@
 %  - there are enough observations to run consistent calculations;
 %  - etc...
 
-function main(src,des)
+function main(file_src,file_des)
 
-    if (exist(src,'file') == 0)
+    if (exist(file_src,'file') == 0)
         error('The source file does not exist.');
     end
 
     k = 0.05;
     l = 0.08;
 
-    firms = get_firms_count(src);
-    rm = get_market_index(src);
-    sv = get_state_vars(src);
+    n = get_firms_count(file_src);
+    svars = get_state_variables(file_src);
 
-    res = cell(firms,1);
+    ret_m = get_market_index_returns(file_src);
+    rdem_m = ret_m - mean(ret_m);
+    
+    res = cell(n,1);
 
-    for i = 1:firms     
-        dx = get_firm_liabilities(src,i);
-        ex = get_firm_capitalization(src,i);
-        rx = get_firm_returns(src,i);
+    for i = 1:n     
+        tl_x = get_firm_total_liabilities(file_src,i);
+        mc_x = get_firm_market_capitalization(file_src,i);
+        ret_x = get_firm_returns(file_src,i);
+        rdem_x = ret_x - mean(ret_x);
 
-        r = [rm rx];
-        r = r - (ones(length(r),1) * mean(r));
-
-        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch(r,1,1,1,1);
-        sm = sqrt(s(:,1));
-        sx = sqrt(s(:,2));
-        pmx = squeeze(p(1,2,:));
+        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch([rdem_m rdem_x],1,1,1,1);
+        s_m = sqrt(s(:,1));
+        s_x = sqrt(s(:,2));
+        rho = squeeze(p(1,2,:));
         
-        rdm = r(:,1);
-        rdx = r(:,2);
-        
-        betax = pmx .* (sx ./ sm);
-        varx = sx * quantile((rdx ./ sx),k);
+        b_x = rho .* (s_x ./ s_m);
+        var_x = s_x * quantile((rdem_x ./ s_x),k);
 
-        if (isempty(sv))
-            [~,dcovar] = calculate_covar(rdm,rdx,varx,k);
+        if (isempty(svars))
+            [~,dcovar] = calculate_covar(rdem_m,rdem_x,var_x,k);
         else
-            [~,dcovar] = calculate_covar(rdm,rdx,varx,k,sv);
+            [~,dcovar] = calculate_covar(rdem_m,rdem_x,var_x,k,svars);
         end
         
-        [mes,lrmes] = calculate_mes(rdm,sm,rdx,sx,pmx,k);
-        srisk = calculate_srisk(lrmes,dx,ex,l);
+        [mes,lrmes] = calculate_mes(rdem_m,s_m,rdem_x,s_x,rho,k);
+        srisk = calculate_srisk(lrmes,tl_x,mc_x,l);
 
-        res{i} = [betax (varx .* -1) dcovar mes srisk];
+        res{i} = [b_x (var_x .* -1) dcovar mes srisk];
     end
     
-    if (exist(des,'file') == 2)
-        delete(des);
+    if (exist(file_des,'file') == 2)
+        delete(file_des);
     end
     
-    write_results(des,res);
+    write_results(file_des,res);
 
 end
