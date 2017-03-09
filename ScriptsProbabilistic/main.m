@@ -32,10 +32,10 @@ function main(file_src,file_des)
         ret_x = get_firm_returns(file_src,i);
         rdem_x = ret_x - mean(ret_x);
 
-        [~,~,~,p,~,~,~,~,~,~,~,s] = dcc_gjrgarch([rdem_m rdem_x],1,1,1,1);
-        s_m = sqrt(s(:,1));
-        s_x = sqrt(s(:,2));
-        rho = squeeze(p(1,2,:));
+        [~,~,~,r,~,~,~,~,~,~,~,s2] = dcc_gjrgarch([rdem_m rdem_x],1,1,1,1);
+        s_m = sqrt(s2(:,1));
+        s_x = sqrt(s2(:,2));
+        rho = squeeze(r(1,2,:));
         
         b_x = rho .* (s_x ./ s_m);
         var_x = s_x * quantile((rdem_x ./ s_x),k);
