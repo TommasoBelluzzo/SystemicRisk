@@ -9,19 +9,7 @@ It can be used to calculate the following systemic risk indicators:
 
 ## Documentation
 
-IO functions (like `get_firm_returns`, `get_state_variables`, `write_result`, etc...) have not been included in the project, so you have to implement them on your own. Keep in mind that
-
-
-
-% The financial time series in the dataset must have been previously validated:
-%  - illiquid series with too many zeroes have been discarded;
-%  - rows with NaNs have been removed or filled with interpolation;
-%  - there are enough observations to run consistent calculations;
-%  - etc...
-
-
-
-
+IO functions (like `get_firm_returns`, `get_state_variables`, `write_result`, etc...) have not been included in the project, so you have to implement them on your own if you want to use it. You have to take care of dataset validation and your IO functions must preprocess the financial time series in order to provide correctly formatted data.
 
 ## Contributions
 
