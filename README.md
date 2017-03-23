@@ -9,9 +9,7 @@ It can be used to calculate the following systemic risk indicators:
 
 ## Documentation
 
-IO functions like 'write_results'
-
-
+IO functions (like `get_firm_returns`, `get_state_variables`, `write_result`, etc...) have not been included in the project, so you have to implement them on your own.
 
 ## Contributions
 
