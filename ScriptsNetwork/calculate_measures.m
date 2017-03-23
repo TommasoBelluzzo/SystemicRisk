@@ -4,16 +4,16 @@
 %         For example, for the vector [2 7] there will be 3 different sectors:
 %          - sector 1 with firms 1,2
 %          - sector 2 with firms 3,4,5,6
-%          - sector 3 with firms 7,8,…,n
+%          - sector 3 with firms 7,8,â€¦,n
 %
 % [OUTPUT]
 % dci   = A scalar representing the Dynamic Causality Index value.
 % n_io  = A scalar representing the total number of in and out connections.
 % n_ioo = A scalar representing the total number of in and out connections between different financial sectors.
 % cloc  = A column vector containing the normalized closeness centrality of each node.
+% cluc  = A column vector containing the normalized clustering coefficient of each node.
 % degc  = A column vector containing the normalized degree centrality of each node.
 % eigc  = A column vector containing the normalized eigenvector centrality of each node.
-% clus  = A column vector containing the normalized clustering coefficient of each node.
 %
 % [NOTE]
 % If no sector delimiters are specified, n_ioo is returned as 0.
