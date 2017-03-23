@@ -5,6 +5,7 @@
 % [NOTE]
 % The financial time series in the dataset must have been previously validated:
 %  - illiquid series with too many zeroes have been discarded;
+%  - outliers have been detected and removed;
 %  - rows with NaNs have been removed or filled with interpolation;
 %  - there are enough observations to run consistent calculations;
 %  - etc...
