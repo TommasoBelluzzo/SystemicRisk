@@ -3,11 +3,11 @@
 % file_des = The name of the file to which the results are written.
 %
 % [NOTE]
-% The financial time series in the dataset must have been previously validated:
+% The financial time series in the dataset must have been previously validated and preprocessed:
+%  - there are enough observations to run consistent calculations;
 %  - illiquid series with too many zeroes have been discarded;
 %  - outliers have been detected and removed;
 %  - rows with NaNs have been removed or filled with interpolation;
-%  - there are enough observations to run consistent calculations;
 %  - etc...
 
 function main(file_src,file_des)
