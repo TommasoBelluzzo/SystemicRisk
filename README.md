@@ -11,7 +11,7 @@ It can be used to calculate the following systemic risk indicators:
 
 
 
-## Contributing
+## Contributions
 
-If you want to start a discussion, just open an issue.
-Contributions are welcome, fork and create pull requests as needed.
+If you want to start a discussion about the project, just open an issue.
+Contributions are more than welcome, fork and create pull requests as needed.
