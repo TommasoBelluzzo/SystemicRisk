@@ -50,7 +50,7 @@ function [p,s] = dcc_gjrgarch(data,dcc_q,dcc_p,arch_q,garch_p)
         rsd(:,i) = data_i ./ sqrt(gjr_s);
     end
 
-	opt = optimset('fmincon');
+    opt = optimset('fmincon');
     opt = optimset(opt,'Algorithm','sqp');
     opt = optimset(opt,'Display','off');
     opt = optimset(opt,'Diagnostics','off');
@@ -129,7 +129,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
     qt = zeros(k,k,mt);
     qt(:,:,1:m) = q_bar_rep;
 
-	for i = m1:mt
+    for i = m1:mt
         qt(:,:,i) = q_bar_om;
 
         for j = 1:dcc_q
@@ -145,7 +145,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
         qt_i_sd = sqrt(diag(qt_i));
 
         pt(:,:,i) = qt_i ./ (qt_i_sd * qt_i_sd');
-	end
+    end
 
     p = pt(:,:,(m1:mt));
 
@@ -282,7 +282,7 @@ function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
         s(i) = ((1 - (al_sum + (0.5 * ga_sum) + be_sum)) * data_var) + al_i + ga_i + be_i;
     end
     
-	s = s(m1:t);
+    s = s(m1:t);
     x = 0.5 * ((sum(log(s)) + sum((data(m1:t) .^ 2) ./ s)) + ((t - m) * log(2 * pi)));
 
 end
