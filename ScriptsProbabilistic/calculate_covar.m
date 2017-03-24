@@ -1,7 +1,7 @@
 % [INPUT]
 % r0_m   = A column vector containing the demeaned market index log returns.
 % r0_x   = A column vector containing the demeaned firm log returns.
-% s_x    = A column vector containing the firm unconditional VaR.
+% s_x    = A column vector containing the volatilities of the firm log returns.
 % k      = A scalar [0,1] representing the confidence level.
 % svars  = A t-by-n matrix containing the lagged state variables (optional, default=[]).
 %          Example of state variables to use for S&P500 and U.S. market:
