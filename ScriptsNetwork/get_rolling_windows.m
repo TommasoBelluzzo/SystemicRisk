@@ -10,7 +10,7 @@
 
 function win = get_rolling_windows(ret,bw)
 
-    t = length(ret);
+    t = size(ret,1);
     
     if (bw >= t)
         win = cell(1,1);
