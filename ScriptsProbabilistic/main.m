@@ -49,7 +49,7 @@ function main(file_src,file_des)
         [mes,lrmes] = calculate_mes(rdem_m,s_m,rdem_x,s_x,p_mx,k);
         srisk = calculate_srisk(lrmes,tl_x,mc_x,l);
 
-        res{i} = [(var_x .* -1) dcovar mes srisk];
+        res{i} = [dcovar mes srisk];
     end
     
     if (exist(file_des,'file') == 2)
