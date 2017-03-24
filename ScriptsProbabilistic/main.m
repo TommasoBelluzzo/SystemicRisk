@@ -23,7 +23,7 @@ function main(file_src,file_des)
     svars = get_state_variables(file_src);
 
     ret_m = get_market_index_returns(file_src);
-    r0_m = ret_m - mean(ret_m);
+    ret0_m = ret_m - mean(ret_m);
     
     res = cell(n,1);
 
@@ -31,20 +31,20 @@ function main(file_src,file_des)
         tl_x = get_firm_total_liabilities(file_src,i);
         mc_x = get_firm_market_capitalization(file_src,i);
         ret_x = get_firm_returns(file_src,i);
-        r0_x = ret_x - mean(ret_x);
+        ret0_x = ret_x - mean(ret_x);
 
-        [p,s] = dcc_gjrgarch([r0_m r0_x],1,1,1,1);
+        [p,s] = dcc_gjrgarch([ret0_m ret0_x],1,1,1,1);
         s_m = sqrt(s(:,1));
         s_x = sqrt(s(:,2));
         p_mx = squeeze(p(1,2,:));
 
         if (isempty(svars))
-            [~,dcovar] = calculate_covar(r0_m,r0_x,var_x,k);
+            [~,dcovar] = calculate_covar(ret0_m,ret0_x,var_x,k);
         else
-            [~,dcovar] = calculate_covar(r0_m,r0_x,var_x,k,svars);
+            [~,dcovar] = calculate_covar(ret0_m,ret0_x,var_x,k,svars);
         end
         
-        [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,p_mx,k);
+        [mes,lrmes] = calculate_mes(ret0_m,s_m,ret0_x,s_x,p_mx,k);
         srisk = calculate_srisk(lrmes,tl_x,mc_x,l);
 
         res{i} = [dcovar mes srisk];
