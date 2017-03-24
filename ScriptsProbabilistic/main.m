@@ -38,8 +38,6 @@ function main(file_src,file_des)
         s_x = sqrt(s(:,2));
         p_mx = squeeze(p(1,2,:));
 
-        var_x = s_x * quantile((rdem_x ./ s_x),k);
-
         if (isempty(svars))
             [~,dcovar] = calculate_covar(rdem_m,rdem_x,var_x,k);
         else
