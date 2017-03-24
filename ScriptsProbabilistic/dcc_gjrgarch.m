@@ -1,5 +1,5 @@
 % [INPUT]
-% data    = A t-by-n matrix containing the demeaned log returns.
+% data    = A t-by-n matrix containing the demeaned time series.
 % dcc_q   = A scalar representing the lag of the innovation term in the DCC estimator.
 % dcc_p   = A scalar representing the lag of the lagged correlation matrices in the DCC estimator.
 % arch_q  = Two possible types:
