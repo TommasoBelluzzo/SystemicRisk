@@ -21,7 +21,7 @@ function main(file_src,file_des)
     sst = 0.05;
 
     ret = get_firms_returns(file_src);
-    win = get_rolling_windows(ret,262);
+    win = get_rolling_windows(ret,252);
     win_len = length(win);
     
     res = cell(win_len,1);
