@@ -1,6 +1,6 @@
 # Systemic Risk
 
-I created this project for my Master of Science thesis at Università Cattolica del Sacro Cuore (Milan, Italy) in 2015.
+I created this project in 2015 for my Master of Science thesis at Università Cattolica del Sacro Cuore (Milan, Italy).
 It can be used to calculate the following systemic risk indicators:
 * ΔCoVaR (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
 * MES (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
