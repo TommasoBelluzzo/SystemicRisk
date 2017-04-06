@@ -8,9 +8,13 @@ It can calculate and analyse the following systemic risk indicators:
 * Network Measures proposed by Billio et al. (2011);
 * SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
 
-## Documentation
+## Notes
 
-IO functions (like `get_firm_returns`, `get_state_variables`, `write_result`, etc...) have not been included in the project, so you have to implement them on your own if you want to use it. After all, many different approaches and data providers can be used to achieve the same result. You have to take care of dataset validation and your IO functions must preprocess the financial time series in order to provide correctly formatted data.
+The dataset file must be structured like the one included in the root directory of this project (`dataset.xlsx`). The financial time series must have been previously validated and preprocessed:
+* there are enough observations to run consistent calculations;
+* - illiquid series with too many zeroes have been discarded;
+* - outliers have been detected and removed; % - rows with NaNs have been removed or filled with interpolation;
+* - etc...
 
 ## Contributions
 
