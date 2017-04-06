@@ -12,9 +12,9 @@ It can calculate and analyse the following systemic risk indicators:
 
 The dataset file must be structured like the one included in the root directory of this project (`dataset.xlsx`). The financial time series must have been previously validated and preprocessed:
 * there are enough observations to run consistent calculations;
-* - illiquid series with too many zeroes have been discarded;
-* - outliers have been detected and removed; % - rows with NaNs have been removed or filled with interpolation;
-* - etc...
+* illiquid series with too many zeroes have been discarded (unless necessary);
+* outliers have been detected and removed; % - rows with NaNs have been removed or filled with interpolation;
+* etc...
 
 ## Contributions
 
