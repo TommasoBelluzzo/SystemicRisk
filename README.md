@@ -10,7 +10,7 @@ It can calculate and analyse the following systemic risk indicators:
 
 ## Notes
 
-The dataset file must be structured like the one included in the root directory of this project (`dataset.xlsx`). The financial time series must have been previously validated and preprocessed so that:
+The dataset file must be a valid Excel spreadsheet located in the root directory and structured exactly like the default one (`dataset.xlsx`). The financial time series must have been previously validated and preprocessed so that:
 * there are enough observations to run consistent calculations;
 * illiquid series with too many zeroes have been discarded (unless necessary);
 * outliers have been detected and removed;
