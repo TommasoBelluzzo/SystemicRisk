@@ -27,7 +27,7 @@ function [var,covar,dcovar] = calculate_covar(varargin)
         ip.addRequired('ret0_x',@(x)validateattributes(x,{'double','single'},{'vector','finite','nonempty','nonnan','real'}));
         ip.addRequired('s_x',@(x)validateattributes(x,{'double','single'},{'vector','finite','nonempty','nonnan','real'}));
         ip.addOptional('a',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.01,'<=',0.10}));
-        ip.addOptional('svars',[],@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
+        ip.addOptional('svars',[],@(x)validateattributes(x,{'numeric'},{'2d','finite','nonnan','real'}));
     end
 
     ip.parse(varargin{:});
