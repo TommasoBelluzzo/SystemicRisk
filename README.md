@@ -11,11 +11,8 @@ It can calculate and analyse the following systemic risk indicators:
 ## Notes
 
 The dataset file must be a valid Excel spreadsheet located in the root directory and structured exactly like the default one (`dataset.xlsx`). For what concerns the financial time series:
-* they must have been previously validated and preprocessed so that:
-  * there are enough observations to run consistent calculations;
-  * illiquid series with too many zeroes have been discarded (unless necessary);
-  * outliers have been detected and removed;
-  * rows with NaNs have been removed or filled with interpolation;
+* they must contain enough observations to run consistent calculations;
+* they must have been previously validated and preprocessed discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling them with interpolation;
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate average probabilistic measures;
 * state variables (optional) must contain a supplementar observation at the beginning because the script must apply a one-day lag following the CoVaR/ΔCoVaR methodology;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology.
