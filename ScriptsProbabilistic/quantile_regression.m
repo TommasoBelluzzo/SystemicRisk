@@ -1,7 +1,7 @@
 % [INPUT]
 % y    = A numeric vector representing the dependant variable.
 % x    = A numeric t-by-n matrix representing the independant variables.
-% k    = A float [0,1] representing the sample quantile.
+% k    = A float representing the sample quantile.
 %
 % [OUTPUT]
 % beta = A vector of floats containing the estimated regression coefficients.
