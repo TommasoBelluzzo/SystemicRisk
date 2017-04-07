@@ -1,6 +1,6 @@
 % [INPUT]
 % y    = A numeric vector representing the dependant variable.
-% x    = A numeric t-by-n matrix representing the independant variables.
+% x    = A numeric t-by-n matrix with each column representing an independant variable.
 % k    = A float representing the sample quantile.
 %
 % [OUTPUT]
