@@ -2,7 +2,7 @@
 % ret0_m = A vector of floats containing the demeaned market index log returns.
 % ret0_x = A vector of floats containing the demeaned firm log returns.
 % s_x    = A vector of floats containing the volatilities of the firm log returns.
-% a      = A float [0.01,0.10] representing the complement to 1 of the confidence level (optional, default=0.05).
+% a      = A float representing the complement to 1 of the confidence level (optional, default=0.05).
 % svars  = A numeric t-by-n matrix containing the lagged state variables (optional, default=[]).
 %          Example of state variables to use for S&P500 and U.S. market:
 %           - Dow Jones U.S. Select Real Estate Securities Index (RESI)
