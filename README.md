@@ -15,6 +15,7 @@ The dataset file must be a valid Excel spreadsheet located in the root directory
 * illiquid series with too many zeroes have been discarded (unless necessary);
 * outliers have been detected and removed;
 * rows with NaNs have been removed or filled with interpolation;
+* keeping a daily frequency, the values of total liabilities must be rolled forward by three months in order to simulate the difficulty of renegotiating debt in case of financial distress;
 * etc...
 
 ## Contributions
