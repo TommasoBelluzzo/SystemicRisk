@@ -2,10 +2,10 @@
 % data    = A numeric t-by-n matrix containing the input data.
 % dcc_q   = An integer representing the lag of the innovation term in the DCC estimator (optional, default=1).
 % dcc_p   = An integer representing the lag of the lagged correlation matrices in the DCC estimator (optional, default=1).
-% arch_q  = Optional argument (default=1) with two possible types:
+% arch_q  = Optional argument (default=1) with two possible value types:
 %            - An integer representing the lag of the innovation terms in the ARCH estimator.
 %            - A vector of integers, of length n, containing the lag of each innovation term in the ARCH estimator.
-% garch_p = Optional argument (default=1) with two possible types:
+% garch_p = Optional argument (default=1) with two possible value types:
 %            - An integer representing the lag of the innovation terms in the GARCH estimator.
 %            - A vector of integers, of length n, containing the lag of each innovation term in the GARCH estimator.
 %
