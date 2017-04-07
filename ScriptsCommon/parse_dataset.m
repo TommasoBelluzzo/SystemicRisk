@@ -38,11 +38,11 @@ function data = parse_dataset_internal(file_src)
         error('The dataset does not contain all the required time series.');
     end
     
-    if (shts_len > 4)
+    if (shts_len > 5)
         error('The dataset contains unnecessary time series.');
     end
     
-    shts_val = {'Returns' 'Market Capitalization' 'Total Liabilities' 'State Variables'};
+    shts_val = {'Returns' 'Market Capitalization' 'Total Liabilities' 'State Variables' 'Groups'};
     
     for i = 1:shts_len
         if (~strcmp(shts(i),shts_val(i)))
@@ -54,7 +54,7 @@ function data = parse_dataset_internal(file_src)
     vars = rets.Properties.VariableNames;
     
     dates_str = rets{:,1};
-    dates_num = datenum(dates_str,'dd/mm/yyyy');
+	dates_num = datenum(dates_str,'dd/mm/yyyy');
     frms = length(vars) - 2;
     name_idx = vars{2};
     name_frms = vars(3:end);
