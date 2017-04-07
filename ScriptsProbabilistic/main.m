@@ -80,12 +80,7 @@ function main_internal(file_src,file_des,k,l,anl)
 
             beta = p_mx .* (s_x ./ s_m);
             
-            if (isempty(data.SVars))
-                [var,covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,data.A);
-            else
-                [var,covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,data.A,data.SVars);
-            end
-
+            [var,covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,data.A,data.SVars);
             [mes,lrmes] = calculate_mes(ret0_m,s_m,ret0_x,s_x,p_mx,data.A);
             srisk = calculate_srisk(lrmes,data.TLias(:,i),data.MCaps(:,i),l);
 
