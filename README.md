@@ -15,9 +15,8 @@ The dataset file must be a valid Excel spreadsheet located in the root directory
 * illiquid series with too many zeroes have been discarded (unless necessary);
 * outliers have been detected and removed;
 * rows with NaNs have been removed or filled with interpolation;
-
-* in relation to SRISK methodology:
-  * keeping a daily frequency, the values of total liabilities must be rolled forward by at least three months in order to simulate the difficulty of renegotiating debt in case of financial distress;
+* in relation to CoVaR/ΔCoVaR methodology, the time series of state variables must contain a supplementar observation at the beginning because the script must apply a one-day lag;
+* in relation to SRISK methodology, keeping a daily frequency, the values of total liabilities must be rolled forward by at least three months in order to simulate the difficulty of renegotiating debt in case of financial distress;
 
 
 
