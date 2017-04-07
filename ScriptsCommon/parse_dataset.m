@@ -54,7 +54,7 @@ function data = parse_dataset_internal(file_src)
     vars = rets.Properties.VariableNames;
     
     dates_str = rets{:,1};
-	dates_num = datenum(dates_str,'dd/mm/yyyy');
+    dates_num = datenum(dates_str,'dd/mm/yyyy');
     frms = length(vars) - 2;
     name_idx = vars{2};
     name_frms = vars(3:end);
