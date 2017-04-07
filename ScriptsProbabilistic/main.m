@@ -1,8 +1,8 @@
 % [INPUT]
 % file_src = A string representing the name of the Excel spreadsheet containing the dataset (optional, default='dataset.xlsx').
 % file_des = A string representing the name of the Excel spreadsheet to which the results are written, eventually replacing the previous ones (optional, default='results.xlsx').
-% k        = A float [0.90,0.99] representing the confidence level used to calculate various measures (optional, default=0.95).
-% l        = A float [0.05,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
+% k        = A float representing the confidence level used to calculate various measures (optional, default=0.95).
+% l        = A float representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
 % anl      = A boolean that indicates whether to analyse the results (optional, default=false).
 %
 % [NOTES]
