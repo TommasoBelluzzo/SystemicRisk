@@ -1,9 +1,9 @@
 % [INPUT]
-% ret0_m = A column vector containing the demeaned market index log returns.
-% ret0_x = A column vector containing the demeaned firm log returns.
-% s_x    = A column vector containing the volatilities of the firm log returns.
-% k      = A scalar [0,1] representing the confidence level.
-% svars  = A t-by-n matrix containing the lagged state variables (optional, default=[]).
+% ret0_m = A vector of floats containing the demeaned market index log returns.
+% ret0_x = A vector of floats containing the demeaned firm log returns.
+% s_x    = A vector of floats containing the volatilities of the firm log returns.
+% a      = A float [0.01,0.10] representing the complement to 1 of the confidence level (optional, default=0.05).
+% svars  = A numeric t-by-n matrix containing the lagged state variables (optional, default=[]).
 %          Example of state variables to use for S&P500 and U.S. market:
 %           - Dow Jones U.S. Select Real Estate Securities Index (RESI)
 %           - Volatility Index (VIX)
@@ -13,21 +13,42 @@
 %           - Yield Spread (10Y TBR minus 3M TBR)
 %
 % [OUTPUT]
-% covar  = A column vector containing the CoVaR values.
-% dcovar = A column vector containing the Delta CoVaR values.
+% var    = A vector of floats containing the firm unconditional VaR.
+% covar  = A vector of floats containing the firm CoVaR.
+% dcovar = A vector of floats containing the firm Delta CoVaR.
 
-function [covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,k,svars)
+function [var,covar,dcovar] = calculate_covar(varargin)
+
+    persistent ip;
+
+    if (isempty(ip))
+        ip = inputParser();
+        ip.addRequired('ret0_m',@(x)validateattributes(x,{'double','single'},{'vector','finite','nonempty','nonnan','real'}));
+        ip.addRequired('ret0_x',@(x)validateattributes(x,{'double','single'},{'vector','finite','nonempty','nonnan','real'}));
+        ip.addRequired('s_x',@(x)validateattributes(x,{'double','single'},{'vector','finite','nonempty','nonnan','real'}));
+        ip.addOptional('a',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.01,'<=',0.10}));
+        ip.addOptional('svars',[],@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
+    end
+
+    ip.parse(varargin{:});
+    ip_res = ip.Results;
+
+    [var,covar,dcovar] = calculate_covar_internal(ip_res.ret0_m,ip_res.ret0_x,ip_res.s_x,ip_res.a,ip_res.svars);
+
+end
+
+function [var,covar,dcovar] = calculate_covar_internal(ret0_m,ret0_x,s_x,a,svars)
 
     t = length(ret0_m);
 
-    var_x = s_x * quantile((ret0_x ./ s_x),k);
+    var = s_x * quantile((ret0_x ./ s_x),a);
 
-    if (nargin < 5)
-        [beta,~,~,~] = quantile_regression(ret0_m,ret0_x,k);
-        covar = (beta(1) + (beta(2) .* var_x)) .* -1;
+    if (isempty(svars))
+        [beta,~,~,~] = quantile_regression(ret0_m,ret0_x,a);
+        covar = (beta(1) + (beta(2) .* var)) .* -1;
     else
-        [beta,~,~,~] = quantile_regression(ret0_m,[ret0_x svars],k);
-        covar = beta(1) + (beta(2) .* var_x);
+        [beta,~,~,~] = quantile_regression(ret0_m,[ret0_x svars],a);
+        covar = beta(1) + (beta(2) .* var);
 
         svars_cnt = size(svars,2);
         
@@ -38,6 +59,11 @@ function [covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,k,svars)
         covar = covar .* -1;
     end
 
-    dcovar = (beta(2) .* (var_x - repmat(median(ret0_x),t,1))) .* -1;
+    if (nargout > 2)
+        dcovar = (beta(2) .* (var - repmat(median(ret0_x),t,1))) .* -1;
+        var = var .* -1;
+    else
+        var = var .* -1;
+    end
 
 end

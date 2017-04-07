@@ -1,22 +1,42 @@
 % [INPUT]
-% data    = A t-by-n matrix containing the demeaned time series.
-% dcc_q   = A scalar representing the lag of the innovation term in the DCC estimator.
-% dcc_p   = A scalar representing the lag of the lagged correlation matrices in the DCC estimator.
-% arch_q  = Two possible types:
-%            - A scalar representing the lag of the innovation terms in the ARCH estimator.
-%            - A column vector of length n containing the lag of each innovation term in the ARCH estimator.
-% garch_p = Two possible types:
-%            - A scalar representing the lag of the innovation terms in the GARCH estimator.
-%            - A column vector of length n containing the lag of each innovation term in the GARCH estimator.
+% data    = A numeric t-by-n matrix containing the input data.
+% dcc_q   = An integer representing the lag of the innovation term in the DCC estimator (optional, default=1).
+% dcc_p   = An integer representing the lag of the lagged correlation matrices in the DCC estimator (optional, default=1).
+% arch_q  = Optional argument (default=1) with two possible types:
+%            - An integer representing the lag of the innovation terms in the ARCH estimator.
+%            - A vector of integers, of length n, containing the lag of each innovation term in the ARCH estimator.
+% garch_p = Optional argument (default=1) with two possible types:
+%            - An integer representing the lag of the innovation terms in the GARCH estimator.
+%            - A vector of integers, of length n, containing the lag of each innovation term in the GARCH estimator.
 %
 % [OUTPUT]
-% p       = An n-by-n-by-t matrix containing the DCC coefficients.
-% s       = A t-by-n matrix containing the conditional variances.
+% p       = An n-by-n-by-t matrix of floats containing the DCC coefficients.
+% s       = A t-by-n matrix of floats containing the conditional variances.
 %
-% [CREDITS]
-% Kevin Sheppard, the author of the original code.
+% [NOTES]
+% Credit goes to Kevin Sheppard, the author of the original code.
 
-function [p,s] = dcc_gjrgarch(data,dcc_q,dcc_p,arch_q,garch_p)
+function [p,s] = dcc_gjrgarch(varargin)
+
+    persistent ip;
+
+    if (isempty(ip))
+        ip = inputParser();
+        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
+        ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
+        ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
+        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'numeric'},{'vector','real','finite','>=',1}));
+        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'numeric'},{'vector','real','finite','>=',1}));
+    end
+
+    ip.parse(varargin{:});
+    ip_res = ip.Results;
+
+    [p,s] = dcc_gjrgarch_internal(ip_res.data,ip_res.dcc_q,ip_res.dcc_p,ip_res.arch_q,ip_res.garch_p);
+
+end
+
+function [p,s] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
 
     [t,k] = size(data);
 
@@ -37,8 +57,10 @@ function [p,s] = dcc_gjrgarch(data,dcc_q,dcc_p,arch_q,garch_p)
     opt = optimset(opt,'MaxIter',opt_lim);  
     opt = optimset(opt,'MaxSQPIter',1000);
     opt = optimset(opt,'TolFun',1e-006);
-    
+
     gjr = cell(k,1);
+    gjr_params = 0;
+
     rsd = zeros(t,k);
 
     parfor i = 1:k
@@ -46,6 +68,8 @@ function [p,s] = dcc_gjrgarch(data,dcc_q,dcc_p,arch_q,garch_p)
 
         [gjr_param,gjr_s] = gjrgarch(data_i,arch_q(i),garch_p(i),opt);
 
+        gjr_params = gjr_params + length(gjr_param);
+        
         gjr{i} = struct('param',gjr_param,'s',gjr_s);
         rsd(:,i) = data_i ./ sqrt(gjr_s);
     end
@@ -57,14 +81,20 @@ function [p,s] = dcc_gjrgarch(data,dcc_q,dcc_p,arch_q,garch_p)
     opt = optimset(opt,'LargeScale','off');
 
     dcc_param = dcc(dcc_q,dcc_p,rsd,opt);
-
-    param = [];
+    
+    param = NaN(gjr_params,1);
+    param_off = 1;
+    
     s = zeros(t,k);
 
     for i = 1:k
         gjr_i = gjr{i};
+        gjr_i_param = gjr_i.param;
 
-        param = [param; gjr_i.param];
+        param2_off_nxt = param_off + length(gjr_i_param);
+        param(param_off:param2_off_nxt-1,1) = gjr_i_param;
+        param_off = param2_off_nxt;
+        
         s(:,i) = gjr_i.s;
     end
 
@@ -86,7 +116,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
         qq_i = q_i + q_i;
         qqp_i = qq_i + p_i;
         m_i = max(q_i,p_i);
-        
+
         al_i = param(idx:idx+q_i-1);
         al_i_sum = sum(al_i);
         ga_i = param(idx+q_i:idx+qq_i-1);
@@ -113,15 +143,15 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
     m = max(dcc_q,dcc_p);
     m1 = m + 1;
     mt = m + t;
-    
+
     al = param(idx:idx+dcc_q-1);
     be = param(idx+dcc_q:idx+dcc_q+dcc_p-1);
     om = 1 - sum(al) - sum(be);
-    
+
     q_bar = cov(rsd);
     q_bar_om = q_bar * om;
     q_bar_rep = repmat(q_bar,[1 1 m]);
-    
+
     rsd = [ones(m,k); rsd];
 
     pt = zeros(k,k,mt);
@@ -165,9 +195,9 @@ function param = dcc(dcc_q,dcc_p,rsd,opt)
     lb = zeros(size(x0)) + opt_2tc;
     ub = [];
     nlc = [];
-    
+
     cache = [m; m1];
-    
+
     param = fmincon(@dcc_likelihood,x0,a,b,a_eq,b_eq,lb,ub,nlc,opt,dcc_q,dcc_p,rsd,cache);
 
 end
@@ -187,7 +217,7 @@ function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
     q_bar_om = q_bar * om;
 
     rsd = [zeros(m,k); rsd];
-    
+
     qt = zeros(k,k,mt);
     qt(:,:,1:m) = repmat(q_bar,[1 1 m]);
 
@@ -195,7 +225,7 @@ function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
 
     for i = m1:mt
         rsd_i = rsd(i,:);
-        
+
         qt(:,:,i) = q_bar_om;
 
         for j = 1:dcc_q
@@ -229,13 +259,13 @@ function [param,s] = gjrgarch(data,arch_q,garch_p,opt)
     al = (0.05 * ones(arch_q,1)) / arch_q;
     ga = (0.05 * ones(arch_q,1)) / arch_q;
     be = (0.75 * ones(garch_p,1)) / garch_p;
-    
+
     x0 = [al; ga; be];
     a = [-eye(qqp); ones(1,arch_q) (0.5 * ones(1,arch_q)) ones(1,garch_p)];
     b = [(zeros(qqp,1) + opt_2tc); (1 - opt_2tc)];
     a_eq = [];
     b_eq = [];
-	lb = zeros(1,qqp) + opt_2tc;     
+    lb = zeros(1,qqp) + opt_2tc;     
     ub = [];
     nlc = [];
 
@@ -245,14 +275,14 @@ function [param,s] = gjrgarch(data,arch_q,garch_p,opt)
     [t,k] = size(data);
 
     cache = [t; k; data_dev; data_var; q2; m; m1];
-    
+
     param = fmincon(@gjrgarch_likelihood,x0,a,b,a_eq,b_eq,lb,ub,nlc,opt,data,arch_q,garch_p,cache);
     [~,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache);
 
 end
 
 function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
-    
+
     t = cache(1);
     k = cache(2);
     data_dev = cache(3);
@@ -267,7 +297,7 @@ function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
     ga_sum = sum(ga);
     be = param(q2+1:q2+garch_p);
     be_sum = sum(be);
-    
+
     s = zeros(t,k);
     s(1:m,1) = data_dev ^ 2;
 
@@ -281,7 +311,7 @@ function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
 
         s(i) = ((1 - (al_sum + (0.5 * ga_sum) + be_sum)) * data_var) + al_i + ga_i + be_i;
     end
-    
+
     s = s(m1:t);
     x = 0.5 * ((sum(log(s)) + sum((data(m1:t) .^ 2) ./ s)) + ((t - m) * log(2 * pi)));
 
