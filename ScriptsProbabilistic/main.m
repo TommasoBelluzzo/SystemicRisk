@@ -26,7 +26,7 @@ function main(varargin)
     
     [path,~,~] = fileparts(pwd);
     [~,name,ext] = fileparts(ip_res.file_src);
-	file_src = fullfile(path,[name ext]);
+    file_src = fullfile(path,[name ext]);
 
     [~,name,ext] = fileparts(ip_res.file_des);
     
@@ -121,6 +121,7 @@ function main_internal(file_src,file_des,k,l,anl)
         
         if (anl)        
             data.DatesLim = [data.DatesNum(1) data.DatesNum(end)];
+
             plot_index(data);
             plot_averages(data);
             plot_correlations(data);
@@ -152,12 +153,12 @@ function write_results(file_des,data)
     writetable(avgs,file_des,'FileType','spreadsheet','Sheet',5,'WriteRowNames',true);    
 
     exc = actxserver('Excel.Application');
-	exc_wbs = exc.Workbooks.Open(file_des,0,false);
+    exc_wbs = exc.Workbooks.Open(file_des,0,false);
     exc_wbs.Sheets.Item(1).Name = 'CoVaR';
     exc_wbs.Sheets.Item(2).Name = 'DCoVaR';
     exc_wbs.Sheets.Item(3).Name = 'MES';
     exc_wbs.Sheets.Item(4).Name = 'SRISK';
-	exc_wbs.Sheets.Item(5).Name = 'Averages';   
+    exc_wbs.Sheets.Item(5).Name = 'Averages';   
     exc_wbs.Save();
     exc_wbs.Close();
     exc.Quit();
@@ -174,10 +175,10 @@ function plot_index(data)
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.RetIdx,'-b');
     datetick(sub_1,'x','yyyy','KeepLimits');
-    title(sub_1,'Log Returns');
-	xlabel(sub_1,'Time');
-	ylabel(sub_1,'Returns');
+    xlabel(sub_1,'Time');
+    ylabel(sub_1,'Returns');
     set(sub_1,'XLim',data.DatesLim,'YLim',[(min(data.RetIdx) - 0.01) (max(data.RetIdx) + 0.01)]);
+    title(sub_1,'Log Returns');
     
     sub_2 = subplot(2,1,2);
     hist = histogram(sub_2,data.RetIdx,50,'FaceAlpha',0.25,'Normalization','pdf');
@@ -189,9 +190,9 @@ function plot_index(data)
         plot(sub_2,x,f,'-b','LineWidth',1.5);
     hold off;
     strs = {sprintf('Observations: %d',size(data.RetIdx,1)) sprintf('Kurtosis: %.4f',kurtosis(data.RetIdx)) sprintf('Mean: %.4f',mean(data.RetIdx)) sprintf('Median: %.4f',median(data.RetIdx)) sprintf('Skewness: %.4f',skewness(data.RetIdx)) sprintf('Standard Deviation: %.4f',std(data.RetIdx))};
-	annotation('TextBox',(get(sub_2,'Position') - [0 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
-    title(sub_2,'P&L Distribution');
+    annotation('TextBox',(get(sub_2,'Position') - [0 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     set(sub_2,'XLim',[(edg_min - (edg_min * 0.1)) (edg_max - (edg_max * 0.1))]);
+    title(sub_2,'P&L Distribution');
 
     suptitle(tit);
     movegui(fig,'center');
@@ -211,30 +212,30 @@ function plot_averages(data)
     sub_1 = subplot(2,2,1);
     plot(sub_1,data.DatesNum,avgs(:,1));
     datetick(sub_1,'x','yyyy');
-    title(sub_1,'CoVaR');
     xlabel(sub_1,'Time');
     ylabel(sub_1,'Billions of Dollars');
+    title(sub_1,'CoVaR');
     
     sub_2 = subplot(2,2,2);
     plot(sub_2,data.DatesNum,avgs(:,2));
     datetick(sub_2,'x','yyyy','KeepLimits');
-    title(sub_2,'Delta CoVaR');
     xlabel(sub_2,'Time');
     ylabel(sub_2,'Billions of Dollars');
+    title(sub_2,'Delta CoVaR');
 
     sub_3 = subplot(2,2,3);
     plot(sub_3,data.DatesNum,avgs(:,3));
     datetick(sub_3,'x','yyyy','KeepLimits');
-    title(sub_3,'MES');
     xlabel(sub_3,'Time');
     ylabel(sub_3,'Billions of Dollars');
+    title(sub_3,'MES');
     
     sub_4 = subplot(2,2,4);
     plot(sub_4,data.DatesNum,avgs(:,4));
     datetick(sub_4,'x','yyyy','KeepLimits');
-    title(sub_4,'SRISK');
     xlabel(sub_4,'Time');
     ylabel(sub_4,'Billions of Dollars');
+    title(sub_4,'SRISK');
 
     set([sub_1 sub_2 sub_3 sub_4],'XLim',data.DatesLim,'YLim',y_lim);
 
