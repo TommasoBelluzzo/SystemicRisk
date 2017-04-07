@@ -56,21 +56,21 @@ function main_internal(file_src,file_des,k,l,anl)
     data.MES = NaN(data.Obs,data.Frms);
     data.SRISK = NaN(data.Obs,data.Frms);
    
-    ret0_m = data.RetIdx - mean(data.RetIdx);
+    ret0_m = data.IdxRet - mean(data.IdxRet);
     
     bar = waitbar(0,'Calculating firms measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
     setappdata(bar,'stop',false);
     
     try
         for i = 1:data.Frms
-            waitbar(((i - 1) / data.Frms),bar,sprintf('Calculating measures for %s and %s...',data.NameIdx,data.NameFrms{i}));
+            waitbar(((i - 1) / data.Frms),bar,sprintf('Calculating measures for %s and %s...',data.IdxNam,data.FrmsNam{i}));
 
             if (getappdata(bar,'stop'))
                 delete(bar);
                 return;
             end
 
-            ret_x = data.RetFrms(:,i);
+            ret_x = data.FrmsRet(:,i);
             ret0_x = ret_x - mean(ret_x);
 
             [p,s] = dcc_gjrgarch([ret0_m ret0_x]);
@@ -80,9 +80,9 @@ function main_internal(file_src,file_des,k,l,anl)
 
             beta = p_mx .* (s_x ./ s_m);
             
-            [var,covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,data.A,data.SVars);
+            [var,covar,dcovar] = calculate_covar(ret0_m,ret0_x,s_x,data.A,data.StVarsLag);
             [mes,lrmes] = calculate_mes(ret0_m,s_m,ret0_x,s_x,p_mx,data.A);
-            srisk = calculate_srisk(lrmes,data.TLias(:,i),data.MCaps(:,i),l);
+            srisk = calculate_srisk(lrmes,data.FrmsLia(:,i),data.FrmsCap(:,i),l);
 
             data.Beta(:,i) = beta;
             data.VaR(:,i) = var;
@@ -99,8 +99,8 @@ function main_internal(file_src,file_des,k,l,anl)
             waitbar((i / data.Frms),bar);
         end
 
-        mcaps_sum = sum(data.MCaps,2);
-        mcaps_wei = data.MCapsLag ./ repmat(sum(data.MCapsLag,2),1,data.Frms);
+        mcaps_sum = sum(data.FrmsCap,2);
+        mcaps_wei = data.FrmsCapLag ./ repmat(sum(data.FrmsCapLag,2),1,data.Frms);
         beta_avg = sum(data.Beta .* mcaps_wei,2) .* mcaps_sum;
         var_avg = sum(data.VaR .* mcaps_wei,2) .* mcaps_sum;
         covar_avg = sum(data.CoVaR .* mcaps_wei,2) .* mcaps_sum;
@@ -135,10 +135,10 @@ function write_results(file_des,data)
     end
 
     dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
-    covar = [dates_str array2table(data.CoVaR,'VariableNames',data.NameFrms)];
-    dcovar = [dates_str array2table(data.DCoVaR,'VariableNames',data.NameFrms)];
-    mes = [dates_str array2table(data.MES,'VariableNames',data.NameFrms)];
-    srisk = [dates_str array2table(data.SRISK,'VariableNames',data.NameFrms)];
+    covar = [dates_str array2table(data.CoVaR,'VariableNames',data.FrmsNam)];
+    dcovar = [dates_str array2table(data.DCoVaR,'VariableNames',data.FrmsNam)];
+    mes = [dates_str array2table(data.MES,'VariableNames',data.FrmsNam)];
+    srisk = [dates_str array2table(data.SRISK,'VariableNames',data.FrmsNam)];
     avgs = [dates_str array2table(data.Avgs(:,3:end),'VariableNames',{'CoVaR' 'DCoVaR' 'MES' 'SRISK'})];
     
     writetable(covar,file_des,'FileType','spreadsheet','Sheet',1,'WriteRowNames',true);
@@ -162,29 +162,29 @@ end
 
 function plot_index(data)
 
-    tit = ['Market Index (' data.NameIdx ')'];
+    tit = ['Market Index (' data.IdxNam ')'];
 
     fig = figure();
     set(fig,'Name',tit,'Units','normalized','Position',[100 100 0.6 0.6]);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.RetIdx,'-b');
+    plot(sub_1,data.DatesNum,data.IdxRet,'-b');
     datetick(sub_1,'x','yyyy','KeepLimits');
     xlabel(sub_1,'Time');
     ylabel(sub_1,'Returns');
-    set(sub_1,'XLim',data.DatesLim,'YLim',[(min(data.RetIdx) - 0.01) (max(data.RetIdx) + 0.01)]);
+    set(sub_1,'XLim',data.DatesLim,'YLim',[(min(data.IdxRet) - 0.01) (max(data.IdxRet) + 0.01)]);
     title(sub_1,'Log Returns');
     
     sub_2 = subplot(2,1,2);
-    hist = histogram(sub_2,data.RetIdx,50,'FaceAlpha',0.25,'Normalization','pdf');
+    hist = histogram(sub_2,data.IdxRet,50,'FaceAlpha',0.25,'Normalization','pdf');
     hold on;
         edg = get(hist,'BinEdges');
         edg_max = max(edg);
         edg_min = min(edg);
-        [f,x] = ksdensity(data.RetIdx);
+        [f,x] = ksdensity(data.IdxRet);
         plot(sub_2,x,f,'-b','LineWidth',1.5);
     hold off;
-    strs = {sprintf('Observations: %d',size(data.RetIdx,1)) sprintf('Kurtosis: %.4f',kurtosis(data.RetIdx)) sprintf('Mean: %.4f',mean(data.RetIdx)) sprintf('Median: %.4f',median(data.RetIdx)) sprintf('Skewness: %.4f',skewness(data.RetIdx)) sprintf('Standard Deviation: %.4f',std(data.RetIdx))};
+    strs = {sprintf('Observations: %d',size(data.IdxRet,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IdxRet)) sprintf('Mean: %.4f',mean(data.IdxRet)) sprintf('Median: %.4f',median(data.IdxRet)) sprintf('Skewness: %.4f',skewness(data.IdxRet)) sprintf('Standard Deviation: %.4f',std(data.IdxRet))};
     annotation('TextBox',(get(sub_2,'Position') - [0 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     set(sub_2,'XLim',[(edg_min - (edg_min * 0.1)) (edg_max - (edg_max * 0.1))]);
     title(sub_2,'P&L Distribution');
