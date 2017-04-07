@@ -2,7 +2,7 @@
 % lrmes = A vector of floats containing the Long Run MES values.
 % tl_x  = A numeric vector containing the firm total liabilities.
 % mc_x  = A numeric vector containing the firm market capitalization.
-% l     = A float [0.05,0.20] representing the capital adequacy ratio (optional, default=0.08).
+% l     = A float representing the capital adequacy ratio (optional, default=0.08).
 %
 % [OUTPUT]
 % srisk = A vector of floats containing the SRISK values.
