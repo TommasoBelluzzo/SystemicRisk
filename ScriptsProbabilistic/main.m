@@ -45,17 +45,8 @@ function main_internal(file_src,file_des,k,l,anl)
     addpath('../ScriptsCommon');
     data = parse_dataset(file_src);
     rmpath('../ScriptsCommon');
+	data = update_data(data,k,l);
 
-    data.A = 1 - k;
-    data.K = k;
-    data.L = l;
-    data.Beta = NaN(data.Obs,data.Frms);
-    data.VaR = NaN(data.Obs,data.Frms);
-    data.CoVaR = NaN(data.Obs,data.Frms);
-    data.DCoVaR = NaN(data.Obs,data.Frms);
-    data.MES = NaN(data.Obs,data.Frms);
-    data.SRISK = NaN(data.Obs,data.Frms);
-   
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
     bar = waitbar(0,'Calculating firms measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
@@ -128,6 +119,25 @@ function main_internal(file_src,file_des,k,l,anl)
 
 end
 
+function data = update_data(data,k,l)
+
+	k_lbl = sprintf('%.0f%%',(k * 100));
+	l_lbl = sprintf('%.0f%%',(l * 100));
+    
+    data.A = 1 - k;
+    data.K = k;
+    data.L = l;
+    data.Lbls = {'Beta' ['VaR (' k_lbl ')'] ['CoVaR (' k_lbl ')'] ['DCoVaR (' k_lbl ')'] ['MES (' k_lbl ')'] ['SRISK (' l_lbl ')'] 'Averages'};
+    data.LblsSim = {'Beta' 'VaR' 'CoVaR' 'DCoVaR' 'MES' 'SRISK' 'Averages'};    
+    data.Beta = NaN(data.Obs,data.Frms);
+    data.VaR = NaN(data.Obs,data.Frms);
+    data.CoVaR = NaN(data.Obs,data.Frms);
+    data.DCoVaR = NaN(data.Obs,data.Frms);
+    data.MES = NaN(data.Obs,data.Frms);
+    data.SRISK = NaN(data.Obs,data.Frms);
+
+end
+
 function write_results(file_des,data)
 
     if (exist(file_des,'file') == 2)
@@ -139,8 +149,8 @@ function write_results(file_des,data)
     dcovar = [dates_str array2table(data.DCoVaR,'VariableNames',data.FrmsNam)];
     mes = [dates_str array2table(data.MES,'VariableNames',data.FrmsNam)];
     srisk = [dates_str array2table(data.SRISK,'VariableNames',data.FrmsNam)];
-    avgs = [dates_str array2table(data.Avgs(:,3:end),'VariableNames',{'CoVaR' 'DCoVaR' 'MES' 'SRISK'})];
-    
+    avgs = [dates_str array2table(data.Avgs(:,3:end),'VariableNames',data.LblsSim(3:end-1))];
+
     writetable(covar,file_des,'FileType','spreadsheet','Sheet',1,'WriteRowNames',true);
     writetable(dcovar,file_des,'FileType','spreadsheet','Sheet',2,'WriteRowNames',true);
     writetable(mes,file_des,'FileType','spreadsheet','Sheet',3,'WriteRowNames',true);
@@ -149,11 +159,11 @@ function write_results(file_des,data)
 
     exc = actxserver('Excel.Application');
     exc_wbs = exc.Workbooks.Open(file_des,0,false);
-    exc_wbs.Sheets.Item(1).Name = 'CoVaR';
-    exc_wbs.Sheets.Item(2).Name = 'DCoVaR';
-    exc_wbs.Sheets.Item(3).Name = 'MES';
-    exc_wbs.Sheets.Item(4).Name = 'SRISK';
-    exc_wbs.Sheets.Item(5).Name = 'Averages';   
+    
+    for i = 1:5
+        exc_wbs.Sheets.Item(i).Name = data.Lbls{i+2};
+    end
+  
     exc_wbs.Save();
     exc_wbs.Close();
     exc.Quit();
@@ -197,45 +207,32 @@ end
 function plot_averages(data)
 
     avgs = data.Avgs(:,3:end) ./ 1e6;
+    avgs_len = size(avgs,2);
+    
+    subs = NaN(avgs_len,1);
+    
     x_max = max(max(avgs));
     x_min = min(min(avgs));
     y_lim = [(x_min - (x_min * 0.1)) (x_max - (x_max * 0.1))];
-    
+
     fig = figure();
     set(fig,'Name','Averages','Units','normalized','Position',[100 100 0.6 0.6]);
 
-    sub_1 = subplot(2,2,1);
-    plot(sub_1,data.DatesNum,avgs(:,1));
-    datetick(sub_1,'x','yyyy');
-    xlabel(sub_1,'Time');
-    ylabel(sub_1,'Billions of Dollars');
-    title(sub_1,'CoVaR');
-    
-    sub_2 = subplot(2,2,2);
-    plot(sub_2,data.DatesNum,avgs(:,2));
-    datetick(sub_2,'x','yyyy','KeepLimits');
-    xlabel(sub_2,'Time');
-    ylabel(sub_2,'Billions of Dollars');
-    title(sub_2,'Delta CoVaR');
+    for i = 1:avgs_len
+        sub = subplot(2,2,i);
+        plot(sub,data.DatesNum,avgs(:,i));
+        datetick(sub,'x','yyyy');
+        xlabel(sub,'Time');
+        ylabel(sub,'Billions of Dollars');
+        title(sub,data.Lbls(i+2));
+        
+        subs(i) = sub;
+    end
 
-    sub_3 = subplot(2,2,3);
-    plot(sub_3,data.DatesNum,avgs(:,3));
-    datetick(sub_3,'x','yyyy','KeepLimits');
-    xlabel(sub_3,'Time');
-    ylabel(sub_3,'Billions of Dollars');
-    title(sub_3,'MES');
-    
-    sub_4 = subplot(2,2,4);
-    plot(sub_4,data.DatesNum,avgs(:,4));
-    datetick(sub_4,'x','yyyy','KeepLimits');
-    xlabel(sub_4,'Time');
-    ylabel(sub_4,'Billions of Dollars');
-    title(sub_4,'SRISK');
+    set(subs,'XLim',data.DatesLim,'YLim',y_lim);
 
-    set([sub_1 sub_2 sub_3 sub_4],'XLim',data.DatesLim,'YLim',y_lim);
-
-    y_lbls = arrayfun(@(x) sprintf('%.0f%',x),(get(gca,'YTick') .* 100),'UniformOutput',false);
-    set([sub_1 sub_2 sub_3 sub_4],'YTickLabel',y_lbls);
+    y_lbls = arrayfun(@(x) sprintf('%.0f',x),(get(gca,'YTick') .* 100),'UniformOutput',false);
+    set(subs,'YTickLabel',y_lbls);
     
     suptitle('Averages');
     movegui(fig,'center');
@@ -244,8 +241,8 @@ end
 
 function plot_correlations(data)
 
-    meas = {'Beta' 'VaR' 'CoVaR' 'DCoVaR' 'MES' 'SRISK'};
-
+    meas = data.LblsSim(1:end-1);
+    
     [rho,pval] = corr(data.Avgs);
     m = mean(data.Avgs);
     s = std(data.Avgs);
