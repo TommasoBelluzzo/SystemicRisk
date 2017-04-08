@@ -45,7 +45,7 @@ function main_internal(file_src,file_des,k,l,anl)
     addpath('../ScriptsCommon');
     data = parse_dataset(file_src);
     rmpath('../ScriptsCommon');
-	data = update_data(data,k,l);
+    data = update_data(data,k,l);
 
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
@@ -121,8 +121,8 @@ end
 
 function data = update_data(data,k,l)
 
-	k_lbl = sprintf('%.0f%%',(k * 100));
-	l_lbl = sprintf('%.0f%%',(l * 100));
+    k_lbl = sprintf('%.0f%%',(k * 100));
+    l_lbl = sprintf('%.0f%%',(l * 100));
     
     data.A = 1 - k;
     data.K = k;
@@ -241,7 +241,7 @@ end
 
 function plot_correlations(data)
 
-    meas = data.LblsSim(1:end-1);
+    lbls = data.LblsSim(1:end-1);
     
     [rho,pval] = corr(data.Avgs);
     m = mean(data.Avgs);
@@ -253,7 +253,7 @@ function plot_correlations(data)
     fig = figure();
     set(fig,'Name','Correlation Matrix','Units','normalized','Position',[100 100 0.6 0.6]);
 
-    [h,axes,big_ax] = gplotmatrix(data.Avgs,[],[],[],'o',2,[],'hist',meas,meas);
+    [h,axes,big_ax] = gplotmatrix(data.Avgs,[],[],[],'o',2,[],'hist',lbls,lbls);
     set(h(logical(eye(6))),'FaceColor',[0.678 0.922 1]);
 
     x_lbls = get(axes,'XLabel');
