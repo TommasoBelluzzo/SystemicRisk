@@ -69,15 +69,15 @@ function main_net_internal(data,res,sst,rob,anl)
             win_i_nor(isnan(win_i_nor)) = 0;
 
             adjm = calculate_adjacency_matrix(win_i,data.SST,data.Rob);
-            [dci,n_io,n_ioo,cloc,cluc,degc,eigc] = calculate_measures(adjm,data.GrpsDel);
+            [dci,n_io,n_ioo,clo_cen,clu_cen,deg_cen,eig_cen] = calculate_measures(adjm,data.GrpsDel);
             [pca_coe,pca_sco,~,~,pca_exp] = pca(win_i_nor,'Economy',false);
 
             data.AdjMats{win_off} = adjm;
-            data.CloCen(win_off,:) = cloc;
-            data.CluCoe(win_off,:) = cluc;
+            data.CloCen(win_off,:) = clo_cen;
+            data.CluCoe(win_off,:) = clu_cen;
             data.DCI(win_off) = dci;
-            data.DegCen(win_off,:) = degc;
-            data.EigCen(win_off,:) = eigc;
+            data.DegCen(win_off,:) = deg_cen;
+            data.EigCen(win_off,:) = eig_cen;
             data.NumIO(win_off) = n_io;
             data.NumIOO(win_off) = n_ioo;
             data.PCACoe{win_off} = pca_coe;
@@ -165,7 +165,7 @@ function write_results(res,data)
     end
 
     frms = data.FrmsNam';
-    sep = repmat({' '},data.Frms,1);
+	sep = repmat({' '},data.Frms,1);
     
     ind = cell2table([data.DatesStr num2cell(data.DCI) num2cell(data.NumIO) num2cell(data.NumIOO)],'VariableNames',{'Date' 'DCI' 'NumIO' 'NumIOO'});
 
@@ -184,15 +184,15 @@ function write_results(res,data)
     writetable(pca_1,res,'FileType','spreadsheet','Sheet',3,'WriteRowNames',true); 
     writetable(pca_2,res,'FileType','spreadsheet','Sheet',4,'WriteRowNames',false);
     
-    exc = actxserver('Excel.Application');
-    exc_wbs = exc.Workbooks.Open(res,0,false);
+	exc = actxserver('Excel.Application');
+	exc_wbs = exc.Workbooks.Open(res,0,false);
     exc_wbs.Sheets.Item(1).Name = 'Indices';
     exc_wbs.Sheets.Item(2).Name = 'Network Averages';
     exc_wbs.Sheets.Item(3).Name = 'PCA Average Coefficients';
     exc_wbs.Sheets.Item(4).Name = 'PCA Average Scores';
-    exc_wbs.Save();
-    exc_wbs.Close();
-    exc.Quit();
+	exc_wbs.Save();
+	exc_wbs.Close();
+	exc.Quit();
 
 end
 
@@ -219,7 +219,7 @@ function plot_indices(data)
         end
     hold off;
     datetick(sub_2,'x','yyyy','KeepLimits');
-    legend(sub_2,[ar_1 ar_2],'Num IO','Num IOO','Location','northwest');
+	legend(sub_2,[ar_1 ar_2],'Num IO','Num IOO','Location','northwest');
     title('In & Out Connections');
 
     set([sub_1 sub_2],'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'XTickLabelRotation',45);
@@ -375,7 +375,7 @@ function plot_pca(data)
     cols_sig = sign(coe(idx + (0:coe_rows:((coe_cols-1)*coe_rows))));
 
     coe = bsxfun(@times,coe,cols_sig);
-    sco = bsxfun(@times,(coe_max_len .* (sco ./ max(abs(sco(:))))),cols_sig);
+	sco = bsxfun(@times,(coe_max_len .* (sco ./ max(abs(sco(:))))),cols_sig);
     
     ar_beg = zeros(coe_rows,1);
     ar_end = NaN(coe_rows,1);
@@ -386,7 +386,7 @@ function plot_pca(data)
     ar_end = NaN(sco_rows,1);
     x_pts = [sco(:,1) ar_end]';
     y_pts = [sco(:,2) ar_end]';
-    z_pts = [sco(:,3) ar_end]';
+	z_pts = [sco(:,3) ar_end]';
 
     lim_hi = 1.1 * max(abs(coe(:)));
     lim_lo = -lim_hi;
@@ -404,24 +404,24 @@ function plot_pca(data)
     line(x_pts,y_pts,z_pts,'Color','r','LineStyle','none','Marker','.');
     view(sub_1,coe_cols);
     grid on;
-    line([lim_lo lim_hi NaN 0 0 NaN 0 0],[0 0 NaN lim_lo lim_hi NaN 0 0],[0 0 NaN 0 0 NaN lim_lo lim_hi],'Color','k');
+	line([lim_lo lim_hi NaN 0 0 NaN 0 0],[0 0 NaN lim_lo lim_hi NaN 0 0],[0 0 NaN 0 0 NaN lim_lo lim_hi],'Color','k');
     axis tight;
     xlabel(sub_1,'PC 1');
     ylabel(sub_1,'PC 2');
-    zlabel(sub_1,'PC 3');
+	zlabel(sub_1,'PC 3');
     title('Coefficients & Scores');
 
     sub_2 = subplot(1,2,2);
     ar_1 = area(sub_2,data.DatesNum,data.PCAExpSum(:,1),'FaceColor',[0.7 0.7 0.7]);
     hold on;
-    ar_2 = area(sub_2,data.DatesNum,data.PCAExpSum(:,2),'FaceColor','g');
-    ar_3 = area(sub_2,data.DatesNum,data.PCAExpSum(:,3),'FaceColor','b');
-    ar_4 = area(sub_2,data.DatesNum,data.PCAExpSum(:,4),'FaceColor','r');
+        ar_2 = area(sub_2,data.DatesNum,data.PCAExpSum(:,2),'FaceColor','g');
+        ar_3 = area(sub_2,data.DatesNum,data.PCAExpSum(:,3),'FaceColor','b');
+        ar_4 = area(sub_2,data.DatesNum,data.PCAExpSum(:,4),'FaceColor','r');
     hold off;
     datetick('x','yyyy','KeepLimits');
     set([ar_1 ar_2 ar_3 ar_4],'EdgeColor','none');
     set(sub_2,'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'YLim',[y_tcks(1) y_tcks(end)],'YTick',y_tcks,'YTickLabel',y_lbls);
-    legend(sub_2,sprintf('PC 4-%d',data.Frms),'PC 3','PC 2','PC 1','Location','southeast');
+	legend(sub_2,sprintf('PC 4-%d',data.Frms),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
     suptitle(tit);

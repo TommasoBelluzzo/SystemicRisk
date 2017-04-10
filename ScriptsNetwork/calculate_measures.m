@@ -1,24 +1,24 @@
 % [INPUT]
-% adjm  = A numeric n-by-n matrix representing the adjacency matrix of the network.
-% grps  = A vector whose values represent the delimiters betweeen the different firm sectors.
-%         For example, for the vector [2 7] there will be 3 different sectors:
-%          - sector 1 with firms 1,2
-%          - sector 2 with firms 3,4,5,6
-%          - sector 3 with firms 7,8,...,n
+% adjm    = A numeric n-by-n matrix representing the adjacency matrix of the network.
+% grps    = A vector whose values represent the delimiters betweeen the different firm sectors.
+%           For example, for the vector [2 7] there will be 3 different sectors:
+%            - sector 1 with firms 1,2
+%            - sector 2 with firms 3,4,5,6
+%            - sector 3 with firms 7,8,...,n
 %
 % [OUTPUT]
-% dci   = A float representing the Dynamic Causality Index value.
-% n_io  = An integer representing the total number of in and out connections.
-% n_ioo = An integer representing the total number of in and out connections between the different sectors (if no groups are specified a NaN is returned).
-% cloc  = A vector of floats containing the normalized closeness centrality of each node.
-% cluc  = A vector of floats containing the normalized clustering coefficient of each node.
-% degc  = A vector of floats containing the normalized degree centrality of each node.
-% eigc  = A vector of floats containing the normalized eigenvector centrality of each node.
+% dci     = A float representing the Dynamic Causality Index value.
+% n_io    = An integer representing the total number of in and out connections.
+% n_ioo   = An integer representing the total number of in and out connections between the different sectors (if no groups are specified a NaN is returned).
+% clo_cen = A vector of floats containing the normalized closeness centrality of each node.
+% clu_cen = A vector of floats containing the normalized clustering coefficient of each node.
+% deg_cen = A vector of floats containing the normalized degree centrality of each node.
+% eig_cen = A vector of floats containing the normalized eigenvector centrality of each node.
 %
 % [NOTE]
 % If no sector delimiters are specified, n_ioo is returned as 0.
 
-function [dci,n_io,n_ioo,degc,cloc,cluc,eigc] = calculate_measures(adjm,grps)
+function [dci,n_io,n_ioo,deg_cen,clo_cen,clu_cen,eig_cen] = calculate_measures(adjm,grps)
 
     n = length(adjm);
 
@@ -76,19 +76,19 @@ function [dci,n_io,n_ioo,degc,cloc,cluc,eigc] = calculate_measures(adjm,grps)
         adjm_len = length(adjm);
         adjm_seq = 1:adjm_len;
     
-        [degc_std,degc] = calculate_degree_centrality(adjm,adjm_len,adjm_seq);
+        [degc_std,deg_cen] = calculate_degree_centrality(adjm,adjm_len,adjm_seq);
     end
     
     if (nargout >= 5)
-        [~,cloc] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq);
+        [~,clo_cen] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq);
     end
     
     if (nargout >= 6)
-        [~,cluc] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,degc_std);
+        [~,clu_cen] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,degc_std);
     end
     
     if (nargout >= 7)
-        [~,eigc] = calculate_eigenvector_centrality(adjm,adjm_len);
+        [~,eig_cen] = calculate_eigenvector_centrality(adjm,adjm_len);
     end
 
 end
