@@ -1,5 +1,5 @@
 % [INPUT]
-% lrmes = A vector of floats containing the Long Run MES values.
+% lrmes = A vector of floats containing the LRMES values.
 % tl_x  = A numeric vector containing the firm total liabilities.
 % mc_x  = A numeric vector containing the firm market capitalization.
 % l     = A float [0.05,0.20] representing the capital adequacy ratio (optional, default=0.08).
@@ -29,6 +29,6 @@ end
 function srisk = calculate_srisk_internal(lrmes,tl_x,mc_x,l)
 
     srisk = (l .* tl_x) - ((1 - l) .* (1 - lrmes) .* mc_x);
-    srisk(srisk<0) = 0;
+    srisk(srisk < 0) = 0;
 
 end
