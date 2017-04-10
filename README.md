@@ -7,6 +7,8 @@ It can calculate and analyse the following systemic risk indicators:
 * MES (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
 * Network Measures proposed by Billio et al. (2011);
 * SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
+For more information about the models, visit:
+https://vlab.stern.nyu.edu/doc?topic=vlab
 
 ## Notes
 
