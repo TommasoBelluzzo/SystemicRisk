@@ -8,10 +8,6 @@ It can calculate and analyse the following systemic risk indicators:
 * Network Measures proposed by Billio et al. (2011);
 * SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
 
-For more information about the models, visit:
-
-https://vlab.stern.nyu.edu/doc?topic=vlab
-
 ## Notes
 
 The dataset file must be a valid Excel spreadsheet located in the root directory and structured exactly like the default one (`dataset.xlsx`). For what concerns the financial time series:
