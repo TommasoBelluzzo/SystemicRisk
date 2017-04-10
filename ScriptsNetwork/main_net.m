@@ -392,7 +392,7 @@ function plot_pca(data)
     lim_lo = -lim_hi;
     
     y_tcks = 0:10:100;
-    y_lbls = arrayfun(@(x) sprintf('%d%%',x),y_tcks,'UniformOutput',false);
+    y_lbls = arrayfun(@(x)sprintf('%d%%',x),y_tcks,'UniformOutput',false);
     
     fig = figure();
     set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);

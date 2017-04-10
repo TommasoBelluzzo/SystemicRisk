@@ -72,24 +72,13 @@ function [dci,n_io,n_ioo,deg_cen,clo_cen,clu_cen,eig_cen] = calculate_measures(a
         n_ioo = sum(n_ifo) + sum(n_oto);
     end
     
-    if (nargout >= 4)
-        adjm_len = length(adjm);
-        adjm_seq = 1:adjm_len;
+    adjm_len = length(adjm);
+    adjm_seq = 1:adjm_len;
     
-        [degc_std,deg_cen] = calculate_degree_centrality(adjm,adjm_len,adjm_seq);
-    end
-    
-    if (nargout >= 5)
-        [~,clo_cen] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq);
-    end
-    
-    if (nargout >= 6)
-        [~,clu_cen] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,degc_std);
-    end
-    
-    if (nargout >= 7)
-        [~,eig_cen] = calculate_eigenvector_centrality(adjm,adjm_len);
-    end
+    [deg_cen_std,deg_cen] = calculate_degree_centrality(adjm,adjm_len,adjm_seq);
+    [~,clo_cen] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq);
+    [~,clu_cen] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,deg_cen_std);
+    [~,eig_cen] = calculate_eigenvector_centrality(adjm,adjm_len);
 
 end
 
