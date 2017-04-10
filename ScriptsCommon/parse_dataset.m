@@ -43,14 +43,33 @@ function data = parse_dataset_internal(file)
     end
     
     file_shts = strtrim(file_shts);
-    shts_val = {'Returns' 'Market Capitalization' 'Total Liabilities' 'State Variables' 'Groups'};
     
-    for i = 1:shts_len
-        if (~strcmp(file_shts(i),shts_val(i)))
+    if (~isequal(file_shts(1:3),{'Returns' 'Market Capitalization' 'Total Liabilities'}))
+        error('The dataset contains invalid time series (wrong names or order).');
+    end
+    
+    stvars_off = -1;
+    grps_off = -1;
+    
+    if (shts_len == 4)
+        file_shts_4 = file_shts{4};
+        
+        if (strcmp(file_shts_4,'State Variables'))
+            stvars_off = 4;
+        elseif (strcmp(file_shts_4,'Groups'))
+            grps_off = 4;
+        else
             error('The dataset contains invalid time series (wrong names or order).');
         end
+    elseif (shts_len == 5)
+        if (~isequal(file_shts(4:5),{'State Variables' 'Groups'}))
+            error('The dataset contains invalid time series (wrong names or order).');
+        end
+        
+        stvars_off = 4;
+        grps_off = 5;
     end
-
+    
     rets = readtable(file,'FileType','spreadsheet','Sheet',1);
     vars = strtrim(rets.Properties.VariableNames);
     
@@ -95,21 +114,21 @@ function data = parse_dataset_internal(file)
         error('The time series of total liabilities do not match the time series of log returns.');
     end
 
-    if (shts_len >= 4)
-        stvars = readtable(file,'FileType','spreadsheet','Sheet',4);
+    if (stvars_off ~= -1)
+        stvars = readtable(file,'FileType','spreadsheet','Sheet',stvars_off);
         stvars.Date = [];
 
         stvars_lag = stvars{1:end-1,:};
-        
+
         if (size(stvars_lag,1) ~= t)
             error('The number of observations of state variables does not match the number of observations of log returns.');
         end
     else
         stvars_lag = [];
     end
-
-    if (shts_len == 5)
-        grps = readtable(file,'FileType','spreadsheet','Sheet',5);
+        
+    if (grps_off ~= -1)
+        grps = readtable(file,'FileType','spreadsheet','Sheet',grps_off);
         [grps_rows,grps_cols] = size(grps);
 
         if (grps_rows < 2)
@@ -125,15 +144,15 @@ function data = parse_dataset_internal(file)
         end
 
         grps_del = grps{:,1};
-        
+
         if (grps_del(1) < 1)
             error('The first group delimiter in the Groups worksheet must be greater than or equal to 1.');
         end
-        
+
         if (grps_del(end-1) >= frms)
             error('The penultimate group delimiter in the Groups worksheet must less than the number of firms.');
         end
-        
+
         if (~isnan(grps_del(end)))
             error('The last group delimiter in the Groups worksheet must be a NaN.');
         end
@@ -144,7 +163,7 @@ function data = parse_dataset_internal(file)
         grps_del = [];
         grps_nam = [];     
     end
-    
+
     data = struct();
     data.DatesNum = dates_num;
     data.DatesStr = dates_str;
