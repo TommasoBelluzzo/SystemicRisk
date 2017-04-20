@@ -299,7 +299,7 @@ function plot_network(data)
                 end
             end
 
-            legend(sub,lins,data.GrpsNam,'Location','southeast');
+            legend(sub,lins,data.GrpsNam,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
         end
 
         axis(sub,[-1 1 -1 1]);
