@@ -5,14 +5,15 @@ clearvars;
 clc;
 
 [path,~,~] = fileparts(mfilename('fullpath'));
-
 paths = genpath(path);
+
 addpath(paths);
 
-data = parse_dataset('dataset.xlsx');
+data = parse_dataset(fullfile(path,'\Datasets\Short.xlsx'));
 
-main_pro(data,fullfile(path,'results_pro.xlsx'),0.95,0.40,0.08,true);
-main_net(data,fullfile(pwd,'results_net.xlsx'),0.05,true,true);
+main_pro(data,fullfile(path,'\Results\ResultsPRO.xlsx'),0.95,0.40,0.08,true);
+pause(5);
+main_net(data,fullfile(path,'\Results\ResultsNET.xlsx'),0.05,true,true);
 
 save('data.mat','data');
 
