@@ -200,8 +200,11 @@ function plot_indices(data)
 
     tit = 'Measures of Connectedness';
 
-    fig = figure();
-    set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name',tit,'Units','normalized');
+    
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
@@ -225,7 +228,6 @@ function plot_indices(data)
     set([sub_1 sub_2],'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'XTickLabelRotation',45);
     
     suptitle(tit);
-    movegui(fig,'center');
 
 end
 
@@ -270,9 +272,12 @@ function plot_network(data)
     x = [xy(i,1) xy(j,1)]';
     y = [xy(i,2) xy(j,2)]';
 
-    fig = figure();
-    set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name',tit,'Units','normalized');
 
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
+    
     sub = subplot(100,1,10:100);
     
     hold on
@@ -310,7 +315,6 @@ function plot_network(data)
     set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
 
     suptitle(tit);
-    movegui(fig,'center');
 
 end
 
@@ -330,9 +334,12 @@ function plot_centralities(data)
     [eigc_sor,ord] = sort(data.EigCenAvg);
     eigc_nam = data.FrmsNam(ord);    
 
-    fig = figure();
-    set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name',tit,'Units','normalized');
 
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
+    
     sub_1 = subplot(2,2,1);
     bar(sub_1,seq,cloc_sor,'FaceColor',[0.678 0.922 1]);
     set(sub_1,'XTickLabel',cloc_nam);
@@ -356,7 +363,6 @@ function plot_centralities(data)
     set([sub_1 sub_2 sub_3 sub_4],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',90);
     
     suptitle(tit);
-    movegui(fig,'center');
 
 end
 
@@ -394,8 +400,11 @@ function plot_pca(data)
     y_tcks = 0:10:100;
     y_lbls = arrayfun(@(x)sprintf('%d%%',x),y_tcks,'UniformOutput',false);
     
-    fig = figure();
-    set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name',tit,'Units','normalized');
+    
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
     sub_1 = subplot(1,2,1);
     lin_1 = line(x_ar(1:2,:),y_ar(1:2,:),z_ar(1:2,:),'LineStyle','-','Marker','none');
@@ -425,6 +434,5 @@ function plot_pca(data)
     title('Explained Variance');
 
     suptitle(tit);
-    movegui(fig,'center');
 
 end
