@@ -178,8 +178,11 @@ function plot_index(data)
 
     tit = ['Market Index (' data.IdxNam ')'];
 
-    fig = figure();
-    set(fig,'Name',tit,'Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name',tit,'Units','normalized');
+    
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.IdxRet,'-b');
@@ -204,7 +207,6 @@ function plot_index(data)
     title(sub_2,'P&L Distribution');
 
     suptitle(tit);
-    movegui(fig,'center');
 
 end
 
@@ -212,16 +214,22 @@ function plot_averages(data)
 
     avgs = data.Avgs(:,3:end) ./ 1e6;
     avgs_len = size(avgs,2);
+
+    x_max = max(max(avgs));
+    x_max_sign = sign(x_max);
+    x_min = min(min(avgs));
+    x_min_sign = sign(x_min);
+
+    y_lim = [((abs(x_min) * 1.1) * x_min_sign) ((abs(x_max) * 1.1) * x_max_sign)];
+
+    fig = figure('Name','Averages','Units','normalized');
     
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
+
     subs = NaN(avgs_len,1);
     
-    x_max = max(max(avgs));
-    x_min = min(min(avgs));
-    y_lim = [(x_min - (x_min * 0.1)) (x_max - (x_max * 0.1))];
-
-    fig = figure();
-    set(fig,'Name','Averages','Units','normalized','Position',[100 100 1 1]);
-
     for i = 1:avgs_len
         sub = subplot(2,2,i);
         plot(sub,data.DatesNum,avgs(:,i));
@@ -239,7 +247,6 @@ function plot_averages(data)
     set(subs,'YTickLabel',y_lbls);
     
     suptitle('Averages');
-    movegui(fig,'center');
 
 end
 
@@ -254,11 +261,18 @@ function plot_correlations(data)
     z = bsxfun(@rdivide,z,s);
     z_lims = [nanmin(z(:)) nanmax(z(:))];
 
-    fig = figure();
-    set(fig,'Name','Correlation Matrix','Units','normalized','Position',[100 100 1 1]);
+    fig = figure('Name','Correlation Matrix','Units','normalized');
+    
+    pause(0.01);
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
+    pause(0.01);
+    set(0,'CurrentFigure',fig);
     [h,axes,big_ax] = gplotmatrix(data.Avgs,[],[],[],'o',2,[],'hist',meas,meas);
     set(h(logical(eye(6))),'FaceColor',[0.678 0.922 1]);
+    
+    drawnow();
 
     x_lbls = get(axes,'XLabel');
     y_lbls = get(axes,'YLabel');
@@ -294,6 +308,5 @@ function plot_correlations(data)
     end
 
     annotation('TextBox',[0 0 1 1],'String','Correlation Matrix','EdgeColor','none','FontName','Helvetica','FontSize',14,'HorizontalAlignment','center');
-    movegui(fig,'center');
 
 end
