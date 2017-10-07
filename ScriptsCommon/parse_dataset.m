@@ -76,7 +76,7 @@ function data = parse_dataset_internal(file)
         error('The first column of the ''Returns'' table must be called ''Date'' and must contain the time series dates.');
     end
     
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,size(opts.VariableNames,2)-1)]);
+    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
     opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
     rets = readtable(file,opts);
 
@@ -112,7 +112,7 @@ function data = parse_dataset_internal(file)
         error('The first column of the ''Market Capitalization'' table must be called ''Date'' and must contain the time series dates.');
     end
     
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,size(opts.VariableNames,2)-1)]);
+    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
     opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
 
     frms_cap = readtable(file,opts);
@@ -137,7 +137,7 @@ function data = parse_dataset_internal(file)
         error('The first column of the ''Total Liabilities'' table must be called ''Date'' and must contain the time series dates.');
     end
     
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,size(opts.VariableNames,2)-1)]);
+    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
     opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
     
     frms_lia = readtable(file,opts);
@@ -163,7 +163,7 @@ function data = parse_dataset_internal(file)
             error('The first column of the ''State Variables'' table must be called ''Date'' and must contain the time series dates.');
         end
         
-        opts = setvartype(opts,[{'datetime'} repmat({'double'},1,size(opts.VariableNames,2)-1)]);
+        opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
         opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
         
         stvars = readtable(file,opts);
