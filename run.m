@@ -1,8 +1,8 @@
-warning off all;
+warning('off','all');
 
-close all;
-clearvars;
-clc;
+close('all');
+clearvars();
+clc();
 
 [path,~,~] = fileparts(mfilename('fullpath'));
 paths = genpath(path);
