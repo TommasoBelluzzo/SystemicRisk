@@ -9,7 +9,7 @@ paths = genpath(path);
 
 addpath(paths);
 
-data = parse_dataset(fullfile(path,'\Datasets\Short.xlsx'));
+data = parse_dataset(fullfile(path,'\Datasets\Dataset.xlsx'));
 
 main_pro(data,fullfile(path,'\Results\ResultsPRO.xlsx'),0.95,0.40,0.08,true);
 pause(5);
