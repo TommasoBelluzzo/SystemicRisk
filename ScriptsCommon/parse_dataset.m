@@ -77,7 +77,7 @@ function data = parse_dataset_internal(file)
     end
     
     opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
+    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
     rets = readtable(file,opts);
 
     if (any(ismissing(rets)))
@@ -113,7 +113,7 @@ function data = parse_dataset_internal(file)
     end
     
     opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
+    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
 
     frms_cap = readtable(file,opts);
     
@@ -138,7 +138,7 @@ function data = parse_dataset_internal(file)
     end
     
     opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
+    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
     
     frms_lia = readtable(file,opts);
     
@@ -164,7 +164,7 @@ function data = parse_dataset_internal(file)
         end
         
         opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-        opts = setvaropts(opts,'Date','InputFormat','dd/mm/yyyy');
+        opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
         
         stvars = readtable(file,opts);
         
