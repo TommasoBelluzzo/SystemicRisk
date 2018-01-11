@@ -70,15 +70,7 @@ function data = parse_dataset_internal(file)
         grps_off = 5;
     end
     
-    opts = detectImportOptions(file,'Sheet',1);
-    
-    if (~strcmp(opts.VariableNames(1),'Date'))
-        error('The first column of the ''Returns'' table must be called ''Date'' and must contain the time series dates.');
-    end
-    
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
-    rets = readtable(file,opts);
+    rets = parse_table(file,1,'Returns');
 
     if (any(ismissing(rets)))
         error('The ''Returns'' table contains invalid or missing values.');
@@ -105,17 +97,8 @@ function data = parse_dataset_internal(file)
     if (t < 252)
         error('The dataset must consider at least 252 observations in order to run consistent calculations.');
     end
-    
-    opts = detectImportOptions(file,'Sheet',2);
-    
-    if (~strcmp(opts.VariableNames(1),'Date'))
-        error('The first column of the ''Market Capitalization'' table must be called ''Date'' and must contain the time series dates.');
-    end
-    
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
 
-    frms_cap = readtable(file,opts);
+    frms_cap = parse_table(file,2,'Market Capitalization');
     
     if (any(ismissing(frms_cap)))
         error('The ''Market Capitalization'' table contains invalid or missing values.');
@@ -130,17 +113,8 @@ function data = parse_dataset_internal(file)
     if (~isequal(frms_cap.Properties.VariableNames,frms_nam))
         error('The ''Returns'' table and the ''Market Capitalization'' table are mismatching.');
     end
-
-    opts = detectImportOptions(file,'Sheet',3);
     
-    if (~strcmp(opts.VariableNames(1),'Date'))
-        error('The first column of the ''Total Liabilities'' table must be called ''Date'' and must contain the time series dates.');
-    end
-    
-    opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-    opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
-    
-    frms_lia = readtable(file,opts);
+    frms_lia = parse_table(file,3,'Total Liabilities');
     
     if (any(ismissing(frms_lia)))
         error('The ''Total Liabilities'' table contains invalid or missing values.');
@@ -157,16 +131,7 @@ function data = parse_dataset_internal(file)
     end
 
     if (stvars_off ~= -1)
-        opts = detectImportOptions(file,'Sheet',stvars_off);
-        
-        if (~strcmp(opts.VariableNames(1),'Date'))
-            error('The first column of the ''State Variables'' table must be called ''Date'' and must contain the time series dates.');
-        end
-        
-        opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
-        opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
-        
-        stvars = readtable(file,opts);
+        stvars = parse_table(file,stvars_off,'State Variables');
         
         if (any(ismissing(stvars)))
             error('The ''State Variables'' table contains invalid or missing values.');
@@ -183,9 +148,7 @@ function data = parse_dataset_internal(file)
     end
         
     if (grps_off ~= -1)
-        opts = detectImportOptions(file,'Sheet',grps_off);
-        opts = setvartype(opts,{'double' 'char'});
-        grps = readtable(file,opts);
+        grps = parse_table(file,grps_off,'Groups');
         
         if (~isequal(grps.Properties.VariableNames,{'Delimiter' 'Name'}))
             error('The ''Groups'' table contains invalid (wrong name) or misplaced (wrong order) columns.');
@@ -232,5 +195,48 @@ function data = parse_dataset_internal(file)
     data.IdxRet = idx_ret;
     data.Obs = t;
     data.StVarsLag = stvars_lag;
+
+end
+
+function res = parse_table(file,sht,name)
+
+    if (verLessThan('Matlab','9.1'))
+        res = readtable(file,'Sheet',sht);
+
+        if (strcmp(name,'Groups'))
+            res_vars = varfun(@class,res,'OutputFormat','cell');
+            
+            if (~strcmp(res_vars{1},'double') || ~strcmp(res_vars{2},'cell'))
+                error(['The ''' name ''' table contains invalid or missing values.']);
+            end
+        else
+            if (~strcmp(res.Properties.VariableNames(1),'Date'))
+                error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the time series dates.']);
+            end
+            
+            res.Date = datetime(res.Date,'InputFormat','dd/MM/yyyy');
+            
+            res_vars = varfun(@class,res,'OutputFormat','cell');
+            
+            if (~all(strcmp(res_vars(2:end),'double')))
+                error(['The ''' name ''' table contains invalid or missing values.']);
+            end
+        end
+    else
+        opts = detectImportOptions(file,'Sheet',sht);
+
+        if (strcmp(name,'Groups'))
+            opts = setvartype(opts,{'double' 'char'});
+        else
+            if (~strcmp(opts.VariableNames(1),'Date'))
+                error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the time series dates.']);
+            end
+
+            opts = setvartype(opts,[{'datetime'} repmat({'double'},1,numel(opts.VariableNames)-1)]);
+            opts = setvaropts(opts,'Date','InputFormat','dd/MM/yyyy');
+        end
+
+        res = readtable(file,opts);
+    end
 
 end
