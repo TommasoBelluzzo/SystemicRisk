@@ -84,9 +84,9 @@ function beta = quantile_regression(y,x,k)
         beta = ((xst * x) \ xst) * y;
 
         rsd = y - (x * beta);
-        rsd(abs(rsd)<0.000001) = 0.000001;
-        rsd(rsd<0) = k * rsd(rsd<0);
-        rsd(rsd>0) = (1 - k) * rsd(rsd>0);
+        rsd(abs(rsd) < 0.000001) = 0.000001;
+        rsd(rsd < 0) = k * rsd(rsd < 0);
+        rsd(rsd > 0) = (1 - k) * rsd(rsd > 0);
         rsd = abs(rsd);
 
         z = zeros(xn,xm);
