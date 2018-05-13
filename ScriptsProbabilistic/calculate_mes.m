@@ -56,6 +56,9 @@ function [mes,lrmes] = calculate_mes_internal(ret0_m,s_m,ret0_x,s_x,beta_x,p_mx,
     k2 = sum(x .* f) ./ sum(f);
 
     mes = (s_x .* p_mx .* k1) + (s_x .* x_den .* k2);
-    lrmes = 1 - exp(log(1 - d) .* beta_x);
+
+    if (nargout == 2)
+        lrmes = 1 - exp(log(1 - d) .* beta_x);
+    end
 
 end
