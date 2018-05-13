@@ -31,7 +31,13 @@ function [mes,lrmes] = calculate_mes(varargin)
     ip.parse(varargin{:});
     ip_res = ip.Results;
 
-    [mes,lrmes] = calculate_mes_internal(ip_res.ret0_m,ip_res.s_m,ip_res.ret0_x,ip_res.s_x,ip_res.beta_x,ip_res.p_mx,ip_res.a,ip_res.d);
+    nargoutchk(1,2);
+
+    if (nargout == 2)
+        [mes,lrmes] = calculate_mes_internal(ip_res.ret0_m,ip_res.s_m,ip_res.ret0_x,ip_res.s_x,ip_res.beta_x,ip_res.p_mx,ip_res.a,ip_res.d);
+    else
+        [mes,~] = calculate_mes_internal(ip_res.ret0_m,ip_res.s_m,ip_res.ret0_x,ip_res.s_x,ip_res.beta_x,ip_res.p_mx,ip_res.a,ip_res.d);
+    end
 
 end
 
