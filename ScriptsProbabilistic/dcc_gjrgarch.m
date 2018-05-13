@@ -32,6 +32,8 @@ function [p,s] = dcc_gjrgarch(varargin)
     ip.parse(varargin{:});
     ip_res = ip.Results;
 
+    nargoutchk(2,2);
+
     [p,s] = dcc_gjrgarch_internal(ip_res.data,ip_res.dcc_q,ip_res.dcc_p,ip_res.arch_q,ip_res.garch_p);
 
 end
