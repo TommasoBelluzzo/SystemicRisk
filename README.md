@@ -16,8 +16,3 @@ The dataset file must be a valid Excel spreadsheet located in the root directory
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
 * state variables (optional) must contain a supplementar observation at the beginning because the script must apply a one-day lag following the CoVaR/ΔCoVaR methodology.
-
-## Contributions
-
-If you want to start a discussion about the project, just open an issue.
-Contributions are more than welcome, fork and create pull requests as needed.
