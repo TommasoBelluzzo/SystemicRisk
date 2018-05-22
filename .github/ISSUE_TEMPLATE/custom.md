@@ -1,7 +1,5 @@
 ---
-name: Custom Template
-about: Describe this issue template's purpose here.
+NAME: Custom Template
+ABOUT: Describe the purpose of this template here.
 
 ---
-
-
