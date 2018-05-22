@@ -1,6 +1,6 @@
 % [INPUT]
 % data = A numeric t-by-n matrix containing the network data.
-% sst  = A float representing he statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% sst  = A float representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % rob  = A boolean indicating whether to use robust p-values (optional, default=true).
 %
 % [OUTPUT]
