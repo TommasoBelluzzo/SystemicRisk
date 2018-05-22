@@ -2,6 +2,8 @@
 name: Bug Report
 about: Provide a general summary of the issue.
 
+---
+
 ## Expected Behavior
 
 ## Current Behavior
@@ -13,5 +15,3 @@ about: Provide a general summary of the issue.
 ## Environment
 * Application Version:
 * Operating System:
-
----
