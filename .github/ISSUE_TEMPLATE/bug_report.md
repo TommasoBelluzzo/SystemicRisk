@@ -4,8 +4,10 @@
 
 ## Current Behavior
 
-## Your Environment (Bugs Only)
+## Steps to Reproduce
+
+## Possible Solution
+
+## Environment
 * Application Version:
 * Operating System:
-* Steps to Reproduce:
-* Possible Solution:
