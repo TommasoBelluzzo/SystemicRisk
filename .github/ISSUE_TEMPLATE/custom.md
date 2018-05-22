@@ -1,6 +1,6 @@
 ---
-NAME: Custom Template
-ABOUT: Describe the purpose of this template here.
+Name: Custom Template
+About: Describe the purpose of this template here.
 
 ---
 
