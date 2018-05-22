@@ -1,4 +1,6 @@
-<!--- Provide a general summary of the issue above. -->
+---
+name: Bug Report
+about: Provide a general summary of the issue.
 
 ## Expected Behavior
 
@@ -11,3 +13,5 @@
 ## Environment
 * Application Version:
 * Operating System:
+
+---
