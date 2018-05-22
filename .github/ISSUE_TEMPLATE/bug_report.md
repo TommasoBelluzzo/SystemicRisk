@@ -10,8 +10,8 @@ about: Provide a general summary of the issue.
 
 ## Steps to Reproduce
 
-## Possible Solution
-
 ## Environment
 * Application Version:
 * Operating System:
+
+## Possible Solution
