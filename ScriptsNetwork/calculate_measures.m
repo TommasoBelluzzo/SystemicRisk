@@ -15,8 +15,8 @@
 % deg_cen = A vector of floats containing the normalized degree centrality of each node.
 % eig_cen = A vector of floats containing the normalized eigenvector centrality of each node.
 %
-% [NOTE]
-% If no sector delimiters are specified, n_ioo is returned as 0.
+% [NOTES]
+% If no sector delimiters are specified, n_ioo is equal to 0.
 
 function [dci,n_io,n_ioo,deg_cen,clo_cen,clu_cen,eig_cen] = calculate_measures(adjm,grps)
 
