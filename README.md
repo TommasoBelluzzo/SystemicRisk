@@ -1,6 +1,6 @@
 # Systemic Risk
 
-This framework can calculate and analyse the following systemic risk indicators:
+This script can calculate and analyse the following systemic risk indicators:
 * CoVaR (Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
 * ΔCoVaR (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
 * MES (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
