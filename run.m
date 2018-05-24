@@ -6,7 +6,6 @@ clc();
 
 [path,~,~] = fileparts(mfilename('fullpath'));
 paths = genpath(path);
-
 addpath(paths);
 
 data = parse_dataset(fullfile(path,'\Datasets\Example.xlsx'));
