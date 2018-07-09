@@ -4,16 +4,25 @@ close('all');
 clearvars();
 clc();
 
-[path,~,~] = fileparts(mfilename('fullpath'));
-paths = genpath(path);
-addpath(paths);
+[path_base,~,~] = fileparts(mfilename('fullpath'));
 
-data = parse_dataset(fullfile(path,'\Datasets\Example.xlsx'));
+if (~endsWith(path_base,filesep()))
+    path_base = [path_base filesep()];
+end
 
-main_pro(data,fullfile(path,'\Results\ResultsPRO.xlsx'),0.95,0.40,0.08,true);
-pause(5);
-main_net(data,fullfile(path,'\Results\ResultsNET.xlsx'),0.05,true,true);
+paths_base = genpath(path_base);
+addpath(paths_base);
+
+path_dset = strrep('Datasets\Example.xlsx','\',filesep());
+path_rpro = strrep('Results\ResultsPRO.xlsx','\',filesep());
+path_rnet = strrep('Results\ResultsNET.xlsx','\',filesep());
+
+data = parse_dataset(fullfile(path_base,path_dset));
+
+main_pro(data,fullfile(path_base,path_rpro),0.95,0.40,0.08,true);
+pause(2);
+main_net(data,fullfile(path_base,path_rnet),0.05,true,true);
 
 save('data.mat','data');
 
-rmpath(paths);
+rmpath(paths_base);
