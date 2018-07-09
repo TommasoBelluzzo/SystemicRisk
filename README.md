@@ -7,6 +7,18 @@ This script can calculate and analyse the following systemic risk indicators:
 * Network Measures proposed by Billio et al. (2011);
 * SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
 
+## Dependancies
+
+The following products and toolboxes are required in order to execute the script:
+* Computer Vision System Toolbox
+* Curve Fitting Toolbox
+* MATLAB Distributed Computing Server
+* Optimization Toolbox
+* Parallel Computing Toolbox
+* Simulink Control Design
+* Statistics and Machine Learning Toolbox
+* System Identification Toolbox'
+
 ## Notes
 
 The dataset file must be a valid Excel spreadsheet located in the root directory and structured as the default one (`Datasets/Example.xlsx`). For what concerns the financial time series:
