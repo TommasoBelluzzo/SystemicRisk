@@ -93,7 +93,7 @@ function main_pro_internal(data,res,k,d,l,anl)
         
         delete(bar);
         
-        if (anl)        
+        if (anl)
             plot_index(data);
             plot_averages(data);
             plot_correlations(data);
@@ -143,6 +143,12 @@ function data = finalize_data(data)
 end
 
 function write_results(res,data)
+
+    [res_path,~,~] = fileparts(res);
+
+    if (exist(res_path,'dir') ~= 7)
+        mkdir(res_path);
+    end
 
     if (exist(res,'file') == 2)
         delete(res);
