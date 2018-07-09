@@ -160,6 +160,12 @@ end
 
 function write_results(res,data)
 
+    [res_path,~,~] = fileparts(res);
+
+    if (exist(res_path,'dir') ~= 7)
+        mkdir(res_path);
+    end
+
     if (exist(res,'file') == 2)
         delete(res);
     end
