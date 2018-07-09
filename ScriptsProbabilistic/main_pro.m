@@ -40,7 +40,7 @@ end
 
 function main_pro_internal(data,res,k,d,l,anl)
 
-	data = initialize_data(data,k,d,l);
+    data = initialize_data(data,k,d,l);
 
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
