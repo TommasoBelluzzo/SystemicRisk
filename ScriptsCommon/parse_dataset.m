@@ -28,7 +28,7 @@ function data = parse_dataset_internal(file)
 
     [file_stat,file_shts,file_fmt] = xlsfinfo(file);
 
-    if (isempty(file_stat) || ~strcmp(file_fmt,'xlOpenXMLWorkbook'))
+    if (isempty(file_stat) || (ispc() && ~strcmp(file_fmt,'xlOpenXMLWorkbook')))
         error('The dataset file is not a valid Excel spreadsheet.');
     end
 
