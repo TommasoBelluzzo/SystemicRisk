@@ -9,6 +9,8 @@ This script can calculate and analyse the following systemic risk indicators:
 
 ## Dependancies
 
+The minimum Matlab version required is R2014a.
+
 The following products and toolboxes are required in order to execute the script:
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
