@@ -7,11 +7,9 @@ This script can calculate and analyse the following systemic risk indicators:
 * Network Measures proposed by Billio et al. (2011);
 * SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
 
-## Dependancies
+## Requirements
 
-The minimum Matlab version required is R2014a.
-
-The following products and toolboxes are required in order to execute the script:
+The minimum Matlab version required is R2014a. In addition, the following products and toolboxes are required in order to properly execute the script:
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
 * MATLAB Distributed Computing Server
