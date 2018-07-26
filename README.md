@@ -1,15 +1,15 @@
 # Systemic Risk
 
 This script can calculate and analyse the following systemic risk indicators:
-* CoVaR (Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
-* ΔCoVaR (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
-* MES (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
-* Network Measures proposed by Billio et al. (2011);
-* SRISK (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
+* `CoVaR` (Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
+* `ΔCoVaR` (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
+* `MES` (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
+* `Network Measures` proposed by Billio et al. (2011);
+* `SRISK` (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
 
 ## Requirements
 
-The minimum Matlab version required is R2014a. In addition, the following products and toolboxes are required in order to properly execute the script:
+The minimum Matlab version required is `R2014a`. In addition, the following `products and toolboxes` are required in order to properly execute the script:
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
 * MATLAB Distributed Computing Server
