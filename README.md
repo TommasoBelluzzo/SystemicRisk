@@ -21,7 +21,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Notes
 
-The dataset file must be a valid Excel spreadsheet located in the root directory and structured as the default one (`Datasets/Example.xlsx`). For what concerns the financial time series:
+The dataset file must be a valid Excel spreadsheet structured like the default one (`Datasets/Example.xlsx`). For what concerns the financial time series:
 * they must contain enough observations to run consistent calculations;
 * they must have been previously validated and preprocessed discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling the gaps with interpolation;
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
