@@ -9,7 +9,7 @@ This script can calculate and analyse the following systemic risk indicators:
 
 ## Requirements
 
-The minimum Matlab version required is `R2014a`. In addition, the following `products and toolboxes` are required in order to properly execute the script:
+The minimum Matlab version required is `R2014a`. In addition, the following products and toolboxes are necessary in order to properly execute the script:
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
 * MATLAB Distributed Computing Server
