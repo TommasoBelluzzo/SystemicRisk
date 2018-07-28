@@ -10,18 +10,18 @@
 
 function win = get_rolling_windows(varargin)
 
-    persistent ip;
+    persistent p;
 
-    if (isempty(ip))
-        ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty'}));
-        ip.addRequired('bw',@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',2}));
+    if (isempty(p))
+        p = inputParser();
+        p.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty'}));
+        p.addRequired('bw',@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',2}));
     end
 
-    ip.parse(varargin{:});
-    ip_res = ip.Results;
+    p.parse(varargin{:});
+    res = p.Results;
     
-    win = get_rolling_windows_internal(ip_res.data,ip_res.bw);
+    win = get_rolling_windows_internal(res.data,res.bw);
 
 end
 

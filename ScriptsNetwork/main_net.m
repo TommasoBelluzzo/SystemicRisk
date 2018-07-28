@@ -10,29 +10,27 @@
 
 function main_net(varargin)
 
-    persistent ip;
+    persistent p;
 
-    if (isempty(ip))
-        ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('res',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
-        ip.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
-        ip.addOptional('anl',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
+    if (isempty(p))
+        p = inputParser();
+        p.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        p.addRequired('res',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        p.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
+        p.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        p.addOptional('anl',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
-    ip.parse(varargin{:});
-    
-    ip_res = ip.Results;
-    res = ip_res.res;
+    p.parse(varargin{:});
+    res = p.Results;
 
-    [path,name,ext] = fileparts(res);
+    [path,name,ext] = fileparts(res.res);
 
     if (~strcmp(ext,'.xlsx'))
         res = fullfile(path,[name ext '.xlsx']);
     end
     
-    main_net_internal(ip_res.data,res,ip_res.sst,ip_res.rob,ip_res.anl);
+    main_net_internal(res.data,res.res,res.sst,res.rob,res.anl);
 
 end
 
@@ -45,13 +43,13 @@ function main_net_internal(data,res,sst,rob,anl)
     win_dif = data.Obs - win_len;
 
     bar = waitbar(0,'Calculating network measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
-    setappdata(bar,'stop',false);
+    setappdata(bar,'Stop',false);
     
     try
         for i = 1:win_len
             waitbar(((i - 1) / win_len),bar,sprintf('Calculating network measures for window %d of %d...',i,win_len));
             
-            if (getappdata(bar,'stop'))
+            if (getappdata(bar,'Stop'))
                 delete(bar);
                 return;
             end
@@ -84,7 +82,7 @@ function main_net_internal(data,res,sst,rob,anl)
             data.PCAExp{win_off} = pca_exp;
             data.PCASco{win_off} = pca_sco;
 
-            if (getappdata(bar,'stop'))
+            if (getappdata(bar,'Stop'))
                 delete(bar);
                 return;
             end
@@ -204,18 +202,15 @@ end
 
 function plot_indices(data)
 
-    tit = 'Measures of Connectedness';
-
-    fig = figure('Name',tit,'Units','normalized');
-    
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    fig = figure('Name','Measures of Connectedness','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
     datetick(sub_1,'x','yyyy','KeepLimits');
-    title('Dynamic Causality Index');
+    t1 = title(sub_1,'Dynamic Causality Index');
+    set(t1,'Units','normalized');
+    t1_pos = get(t1,'Position');
+    set(t1,'Position',[0.4783 t1_pos(2) t1_pos(3)]);
 
     sub_2 = subplot(2,1,2);
     ar_1 = area(sub_2,data.DatesNum,data.NumIO,'EdgeColor','none','FaceColor','b');
@@ -229,17 +224,25 @@ function plot_indices(data)
     hold off;
     datetick(sub_2,'x','yyyy','KeepLimits');
     legend(sub_2,[ar_1 ar_2],'Num IO','Num IOO','Location','northwest');
-    title('In & Out Connections');
+    t2 = title(sub_2,'In & Out Connections');
+    set(t2,'Units','normalized');
+    t2_pos = get(t2,'Position');
+    set(t2,'Position',[0.4783 t2_pos(2) t2_pos(3)]);
 
     set([sub_1 sub_2],'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'XTickLabelRotation',45);
-    
-    suptitle(tit);
+
+    t = figure_title('Measures of Connectedness');
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end
 
 function plot_network(data)
-
-    tit = 'Network Graph';
 
     if (data.Grps == 0)
         grps_col = repmat(lines(1),data.Frms,1);
@@ -278,12 +281,8 @@ function plot_network(data)
     x = [xy(i,1) xy(j,1)]';
     y = [xy(i,2) xy(j,2)]';
 
-    fig = figure('Name',tit,'Units','normalized');
+    fig = figure('Name','Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
-    
     sub = subplot(100,1,10:100);
     
     hold on
@@ -320,14 +319,19 @@ function plot_network(data)
     txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam, 'FontSize',10);
     set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
 
-    suptitle(tit);
+    t = figure_title('Network Graph');
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+    
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end
 
 function plot_centralities(data)
 
-    tit = 'Average Centrality Coefficients';
-    
     seq = 1:data.Frms;
     seq_lim = [0 (data.Frms + 1)];
     
@@ -340,12 +344,8 @@ function plot_centralities(data)
     [eigc_sor,ord] = sort(data.EigCenAvg);
     eigc_nam = data.FrmsNam(ord);    
 
-    fig = figure('Name',tit,'Units','normalized');
+    fig = figure('Name','Average Centrality Coefficients','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
-    
     sub_1 = subplot(2,2,1);
     bar(sub_1,seq,cloc_sor,'FaceColor',[0.678 0.922 1]);
     set(sub_1,'XTickLabel',cloc_nam);
@@ -367,15 +367,20 @@ function plot_centralities(data)
     title('Eigenvector Centrality');
     
     set([sub_1 sub_2 sub_3 sub_4],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',90);
+
+    t = figure_title('Average Centrality Coefficients');
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
     
-    suptitle(tit);
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end
 
 function plot_pca(data)
 
-    tit = 'Principal Component Analysis';
-    
     coe = data.PCACoeAvg(:,1:3);
     [coe_rows,coe_cols] = size(coe);
 
@@ -406,11 +411,7 @@ function plot_pca(data)
     y_tcks = 0:10:100;
     y_lbls = arrayfun(@(x)sprintf('%d%%',x),y_tcks,'UniformOutput',false);
     
-    fig = figure('Name',tit,'Units','normalized');
-    
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    fig = figure('Name','Principal Component Analysis','Units','normalized');
 
     sub_1 = subplot(1,2,1);
     lin_1 = line(x_ar(1:2,:),y_ar(1:2,:),z_ar(1:2,:),'LineStyle','-','Marker','none');
@@ -439,6 +440,13 @@ function plot_pca(data)
     legend(sub_2,sprintf('PC 4-%d',data.Frms),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
-    suptitle(tit);
+    t = figure_title('Principal Component Analysis');
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+    
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end

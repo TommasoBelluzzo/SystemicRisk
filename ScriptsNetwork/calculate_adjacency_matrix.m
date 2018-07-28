@@ -8,19 +8,19 @@
 
 function adjm = calculate_adjacency_matrix(varargin)
 
-    persistent ip;
+    persistent p;
 
-    if (isempty(ip))
-        ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
-        ip.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
-        ip.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+    if (isempty(p))
+        p = inputParser();
+        p.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
+        p.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
+        p.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
-    ip.parse(varargin{:});
-    ip_res = ip.Results;
+    p.parse(varargin{:});
+    res = p.Results;
     
-    adjm = calculate_adjacency_matrix_internal(ip_res.data,ip_res.sst,ip_res.rob);
+    adjm = calculate_adjacency_matrix_internal(res.data,res.sst,res.rob);
 
 end
 
