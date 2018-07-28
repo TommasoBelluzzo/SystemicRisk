@@ -45,13 +45,13 @@ function main_pro_internal(data,res,k,d,l,anl)
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
     bar = waitbar(0,'Calculating probabilistc measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
-    setappdata(bar,'stop',false);
+    setappdata(bar,'Stop',false);
     
     try
         for i = 1:data.Frms
             waitbar(((i - 1) / data.Frms),bar,sprintf('Calculating probabilistc measures for %s and %s...',data.IdxNam,data.FrmsNam{i}));
 
-            if (getappdata(bar,'stop'))
+            if (getappdata(bar,'Stop'))
                 delete(bar);
                 return;
             end
@@ -78,7 +78,7 @@ function main_pro_internal(data,res,k,d,l,anl)
             data.MES(:,i) = -1 .* mes;
             data.SRISK(:,i) = srisk;
 
-            if (getappdata(bar,'stop'))
+            if (getappdata(bar,'Stop'))
                 delete(bar);
                 return;
             end
@@ -182,13 +182,7 @@ end
 
 function plot_index(data)
 
-    tit = ['Market Index (' data.IdxNam ')'];
-
-    fig = figure('Name',tit,'Units','normalized');
-    
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    fig = figure('Name',['Market Index (' data.IdxNam ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.IdxRet,'-b');
@@ -196,7 +190,10 @@ function plot_index(data)
     xlabel(sub_1,'Time');
     ylabel(sub_1,'Returns');
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(data.IdxRet) - 0.01) (max(data.IdxRet) + 0.01)]);
-    title(sub_1,'Log Returns');
+    t1 = title(sub_1,'Log Returns');
+    set(t1,'Units','normalized');
+    t1_pos = get(t1,'Position');
+    set(t1,'Position',[0.4783 t1_pos(2) t1_pos(3)]);
     
     sub_2 = subplot(2,1,2);
     hist = histogram(sub_2,data.IdxRet,50,'FaceAlpha',0.25,'Normalization','pdf');
@@ -211,8 +208,19 @@ function plot_index(data)
     annotation('TextBox',(get(sub_2,'Position') - [0 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     set(sub_2,'XLim',[(edg_min - (edg_min * 0.1)) (edg_max - (edg_max * 0.1))]);
     title(sub_2,'P&L Distribution');
+    t2 = title(sub_2,'P&L Distribution');
+    set(t2,'Units','normalized');
+    t2_pos = get(t2,'Position');
+    set(t2,'Position',[0.4783 t2_pos(2) t2_pos(3)]);
 
-    suptitle(tit);
+    t = figure_title(['Market Index (' data.IdxNam ')']);
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+    
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end
 
@@ -228,11 +236,7 @@ function plot_averages(data)
 
     y_lim = [((abs(x_min) * 1.1) * x_min_sign) ((abs(x_max) * 1.1) * x_max_sign)];
 
-    fig = figure('Name','Averages','Units','normalized');
-    
-    pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    fig = figure('Name','Averages','Units','normalized','Position',[100 100 0.85 0.85]);
 
     subs = NaN(avgs_len,1);
     
@@ -252,7 +256,14 @@ function plot_averages(data)
     y_lbls = arrayfun(@(x)sprintf('%.0f',x),(get(gca,'YTick') .* 100),'UniformOutput',false);
     set(subs,'YTickLabel',y_lbls);
     
-    suptitle('Averages');
+    t = figure_title('Averages');
+    t_pos = get(t,'Position');
+    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+
+    pause(0.01);
+
+    jfr = get(fig,'JavaFrame');
+    set(jfr,'Maximized',true);
 
 end
 
