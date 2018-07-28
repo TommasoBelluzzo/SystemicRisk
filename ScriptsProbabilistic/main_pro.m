@@ -44,7 +44,7 @@ function main_pro_internal(data,res,k,d,l,anl)
 
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
-    bar = waitbar(0,'Calculating probabilistc measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
+    bar = waitbar(0,'Calculating probabilistc measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
     
     try
