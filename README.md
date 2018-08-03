@@ -1,11 +1,11 @@
 # Systemic Risk
 
 This script calculates and analyses the following systemic risk indicators:
-* `CoVaR` (Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
-* `ΔCoVaR` (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009);
-* `MES` (Marginal Expected Shortfall) proposed by Acharya et al. (2010);
-* `Network Measures` proposed by Billio et al. (2011);
-* `SRISK` (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014).
+* `CoVaR` (Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009)
+* `ΔCoVaR` (Delta Conditional Value-at-Risk) proposed by Adrian & Brunnermeier (2009)
+* `MES` (Marginal Expected Shortfall) proposed by Acharya et al. (2010)
+* `Network Measures` proposed by Billio et al. (2011)
+* `SRISK` (Conditional Capital Shortfall Index) proposed by Brownlees & Engle (2014)
 
 ## Requirements
 
@@ -27,4 +27,4 @@ The dataset file must be a valid Excel spreadsheet structured like the default o
 * in accordance with all the systemic risk indicators, returns must expressed on a logarithmic scale;
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
-* state variables (optional) must contain a supplementar observation at the beginning because a one-day lagged version is required in order to follow the CoVaR/ΔCoVaR methodology
+* state variables (optional) must contain a supplementar observation at the beginning because a one-day lagged version is required in order to follow the CoVaR/ΔCoVaR methodology.
