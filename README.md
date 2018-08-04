@@ -22,7 +22,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 ## Notes
 
 The dataset file must be a valid Excel spreadsheet structured like the default one (`Datasets/Example.xlsx`). For what concerns the financial time series:
-* they must contain enough observations to run consistent calculations (a minimum of 1000 observations is recommended);
+* they must contain enough observations to run consistent calculations (a minimum of 252 observations for at least 5 firms is recommended);
 * they must have been previously validated and preprocessed by discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling the gaps with interpolation approach;
 * returns must expressed on a logarithmic scale, in accordance with all the systemic risk indicators;
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
