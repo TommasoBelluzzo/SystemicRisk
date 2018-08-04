@@ -28,6 +28,5 @@ The dataset file must be a valid Excel spreadsheet structured like the default o
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
 * state variables and groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary;
-* state variables must contain a supplementar observation at the beginning because a one-day lagged version is required in order to follow the CoVaR/ΔCoVaR methodology, and the default dataset defines the following ones:
-  * 
+* state variables, if defined, must contain a supplementar observation at the beginning because a one-day lagged version is required in order to follow the CoVaR/ΔCoVaR methodology.
 
