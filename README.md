@@ -17,7 +17,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 * Parallel Computing Toolbox
 * Simulink Control Design
 * Statistics and Machine Learning Toolbox
-* System Identification Toolbox'
+* System Identification Toolbox
 
 ## Notes
 
