@@ -71,6 +71,16 @@ function data = parse_dataset_internal(file)
     end
     
     rets = parse_table(file,1,'Returns');
+    
+    if (width(rets ) < 5)
+        error('The dataset must must contain at least the following series: observations dates, benchmark returns and the returns of three firms to analyze.');
+    end
+    
+    t = height(rets);
+
+    if (t < 252)
+        error('The dataset must contain at least 252 observations in order to run consistent calculations.');
+    end
 
     if (any(ismissing(rets)))
         error('The ''Returns'' table contains invalid or missing values.');
@@ -87,19 +97,9 @@ function data = parse_dataset_internal(file)
     frms = numel(rets.Properties.VariableNames) - 1;
     frms_nam = rets.Properties.VariableNames(2:end);
     frms_ret = rets{:,2:end};
-    
-    if (frms < 5)
-        error('The dataset must consider at least 5 firms in order to run consistent calculations.');
-    end
-
-    t = size(rets,1);
-
-    if (t < 252)
-        error('The dataset must consider at least 252 observations in order to run consistent calculations.');
-    end
 
     frms_cap = parse_table(file,2,'Market Capitalization');
-    
+
     if (any(ismissing(frms_cap)))
         error('The ''Market Capitalization'' table contains invalid or missing values.');
     end
@@ -107,7 +107,7 @@ function data = parse_dataset_internal(file)
     if ((datenum(frms_cap.Date(1)) >=  dates_beg) || (datenum(frms_cap.Date(end)) ~=  dates_end) || ((size(frms_cap,1) - 1) ~= t))
         error('The ''Returns'' table and the ''Market Capitalization'' table are mismatching.');
     end
-    
+
     frms_cap.Date = [];
     
     if (~isequal(frms_cap.Properties.VariableNames,frms_nam))
@@ -202,6 +202,10 @@ function res = parse_table(file,sht,name)
 
     if (verLessThan('Matlab','9.1'))
         res = readtable(file,'Sheet',sht);
+        
+        if (any(~isempty(regexp(res.Properties.VariableNames,'^Var\d+','once'))))
+            error(['The ''' name ''' table contains unnamed columns.']);
+        end
 
         if (strcmp(name,'Groups'))
             res_vars = varfun(@class,res,'OutputFormat','cell');
@@ -224,6 +228,10 @@ function res = parse_table(file,sht,name)
         end
     else
         opts = detectImportOptions(file,'Sheet',sht);
+        
+        if (any(~isempty(regexp(opts.VariableNames,'^Var\d+$','once'))))
+            error(['The ''' name ''' table contains unnamed columns.']);
+        end
 
         if (strcmp(name,'Groups'))
             opts = setvartype(opts,{'double' 'char'});
