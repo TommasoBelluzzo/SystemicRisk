@@ -203,7 +203,7 @@ function res = parse_table(file,sht,name)
     if (verLessThan('Matlab','9.1'))
         res = readtable(file,'Sheet',sht);
         
-        if (~all(cellfun(@isempty,regexp(res.Properties.VariableNames,'^Var\d+','once'))))
+        if (~all(cellfun(@isempty,regexp(res.Properties.VariableNames,'^Var\d+$','once'))))
             error(['The ''' name ''' table contains unnamed columns.']);
         end
 
@@ -229,7 +229,7 @@ function res = parse_table(file,sht,name)
     else
         opts = detectImportOptions(file,'Sheet',sht);
         
-        if (~all(cellfun(@isempty,regexp(opts.VariableNames,'^Var\d+','once'))))
+        if (~all(cellfun(@isempty,regexp(opts.VariableNames,'^Var\d+$','once'))))
             error(['The ''' name ''' table contains unnamed columns.']);
         end
 
