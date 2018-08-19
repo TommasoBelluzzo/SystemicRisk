@@ -105,13 +105,13 @@ function data = parse_dataset_internal(file)
     end
 
     if ((datenum(frms_cap.Date(1)) >=  dates_beg) || (datenum(frms_cap.Date(end)) ~=  dates_end) || ((size(frms_cap,1) - 1) ~= t))
-        error('The ''Returns'' table and the ''Market Capitalization'' table are mismatching.');
+        error('The ''Returns'' table and the ''Market Capitalization'' table observation dates are mismatching.');
     end
 
     frms_cap.Date = [];
     
     if (~isequal(frms_cap.Properties.VariableNames,frms_nam))
-        error('The ''Returns'' table and the ''Market Capitalization'' table are mismatching.');
+        error('The ''Returns'' table and the ''Market Capitalization'' table firms are mismatching.');
     end
     
     frms_lia = parse_table(file,3,'Total Liabilities');
@@ -121,13 +121,13 @@ function data = parse_dataset_internal(file)
     end
 
     if ((datenum(frms_lia.Date(1)) ~=  dates_beg) || (datenum(frms_lia.Date(end)) ~=  dates_end) || (size(frms_lia,1) ~= t))
-        error('The ''Returns'' table and the ''Total Liabilities'' table are mismatching.');
+        error('The ''Returns'' table and the ''Total Liabilities'' table observation dates are mismatching.');
     end
 
     frms_lia.Date = [];
     
     if (~isequal(frms_lia.Properties.VariableNames,frms_nam))
-        error('The ''Returns'' table and the ''Total Liabilities'' table are mismatching.');
+        error('The ''Returns'' table and the ''Total Liabilities'' table firms are mismatching.');
     end
 
     if (stvars_off ~= -1)
@@ -138,7 +138,7 @@ function data = parse_dataset_internal(file)
         end
         
         if ((datenum(stvars.Date(1)) >=  dates_beg) || (datenum(stvars.Date(end)) ~=  dates_end) || ((size(stvars,1) - 1) ~= t))
-            error('The ''Returns'' table and the ''State Variables'' table are mismatching.');
+            error('The ''Returns'' table and the ''State Variables'' table observation dates are mismatching.');
         end
 
         stvars.Date = [];
