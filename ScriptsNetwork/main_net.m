@@ -316,7 +316,7 @@ function plot_network(data)
         axis equal off;
     hold off
 
-    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam, 'FontSize',10);
+    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam,'Clipping','on','FontSize',10);
     set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
 
     t = figure_title('Network Graph');
