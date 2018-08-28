@@ -56,7 +56,7 @@ function t = figure_title_internal(str)
         fig_pos = get(h_cur,'Position');
         h_pos(i,:) = fig_pos;
 
-        if (~strcmp(get(h_cur,'Tag'),'suptitle'))
+        if (~strcmp(get(h_cur,'Tag'),'FigureTitle'))
             fig_y = fig_pos(2);
             fig_hei = fig_pos(4);
             
@@ -91,8 +91,8 @@ function t = figure_title_internal(str)
         delete(tit);
     end
 
-    axes('Position',[0 1 1 1],'Tag','suptitle','Visible','off');
-    t_int = text(0.50,-0.05,str,'HorizontalAlignment','center','FontSize',fig_fts);
+    axes('Position',[0 1 1 1],'Tag','FigureTitle','Visible','off');
+    t_int = text(0.50,-0.05,str,'FontSize',fig_fts,'HorizontalAlignment','center');
 
     set(fig,'NextPlot',np);
 
