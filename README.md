@@ -21,7 +21,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Usage
 
-1. Create a properly structured database (see paragraph below).
+1. Create a properly structured database (see the paragraph below).
 1. Edit the `run.m` script following your needs.
 1. Execute the `run.m` script.
 
