@@ -19,6 +19,16 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 * Statistics and Machine Learning Toolbox
 * System Identification Toolbox
 
+## Usage
+
+1. Create a properly structured database (see paragraph below).
+1. Edit the `run.m` script following your needs.
+1. Execute the `run.m` script.
+
+## Dataset
+
+The dataset file must be a valid Excel spreadsheet structured like the default one (`Datasets/Example.xlsx`).
+
 ## Notes
 
 The dataset file must be a valid Excel spreadsheet structured like the default one (`Datasets/Example.xlsx`). For what concerns the financial time series:
