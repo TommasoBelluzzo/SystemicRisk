@@ -27,7 +27,43 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Dataset
 
-The dataset file must be a valid Excel spreadsheet structured like the default one (`Datasets/Example.xlsx`).
+Any dataset must be structured like the default one included in any release of the framework (`Datasets/Example.xlsx`). The latter, based on the US financial sector, defines the following entities:
+
+#### Benchmark: S&P 500
+
+#### Financial Institutions (20):
+* **Group 1: Insurance Companies (5)**
+  * American International Group Inc. (AIG)
+  * The Allstate Corp. (ALL)
+  * Berkshire Hathaway Inc. (BRK)
+  * MetLife Inc. (MET)
+  * Prudential Financial Inc. (PRU)
+* **Group 2: Investment Banks (6)**
+  * Bank of America Corp. (BAC)
+  * Citigroup Inc. (C)
+  * The Goldman Sachs Group Inc. (GS)
+  * J.P. Morgan Chase & Co. (JPM)
+  * Lehman Brothers Holdings Inc. (LEH)
+  * Morgan Stanley (MS) 
+* **Group 3: Commercial Banks (7)**
+  * American Express Co. (AXP)
+  * Bank of New York Mellon Corp. (BK)
+  * Capital One Financial Corp. (COF)
+  * PNC Financial Services Inc. (PNC)
+  * State Street Corp. (STT)
+  * US Bancorp (USB)
+  * Wells Fargo & Co. (WFC)
+* **Group 4: Government-sponsored Enterprises (2)**
+  * American International Group Inc. (AIG)
+  * The Allstate Corp. (ALL)
+
+#### State Variables (6):
+* **RESI:** the DJ US Select RESI as a proxy of real estate returns.
+* **VIX:** the implied volatility index.
+* **TBN3M:** the 3M treasury bill rate.
+* **CRESPR:** the change in the credit spread (the BAA corporate bond rate minus the 10Y treasury bill rate).
+* **LIQSPR:** the change in the liquidity spread (the 3M treasury bill rate minus the federal funds rate).
+* **YIESPR:** the change in the yield spread (the 10Y treasury bond rate minus the 3M treasury bond rate).
 
 For what concerns the financial time series:
 * they must contain enough observations to run consistent calculations (a minimum of 252 observations for at least 5 firms is recommended);
