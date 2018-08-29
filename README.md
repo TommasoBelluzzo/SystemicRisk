@@ -74,3 +74,6 @@ For what concerns the financial time series:
 * state variables and groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary;
 * state variables, if defined, must contain a supplementar observation at the beginning because a one-day lagged version is required in order to follow the CoVaR/ΔCoVaR methodology.
 
+## Screenshots
+
+![Probabilistic Measures](https://i.imgur.com/S5P9yL6.png)
