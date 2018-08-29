@@ -42,7 +42,7 @@ function main_net_internal(data,res,sst,rob,anl)
     win_len = length(win);
     win_dif = data.Obs - win_len;
 
-    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn','setappdata(gcbf,''stop'',true)');
+    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
     
     try
