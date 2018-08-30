@@ -5,9 +5,6 @@
 % d    = A float representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
 % l    = A float representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
 % anl  = A boolean that indicates whether to analyse the results (optional, default=false).
-%
-% [NOTES]
-% This function produces no outputs, its purpose is to save the results into an Excel spreadsheet and, optionally, analyse them.
 
 function main_pro(varargin)
 
