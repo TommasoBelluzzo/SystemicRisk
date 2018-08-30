@@ -4,9 +4,6 @@
 % sst  = A float representing he statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % rob  = A boolean indicating whether to use robust p-values (optional, default=true).
 % anl  = A boolean that indicates whether to analyse the results (optional, default=false).
-%
-% [NOTES]
-% This function produces no outputs, its purpose is to save the results into an Excel spreadsheet and, optionally, analyse them.
 
 function main_net(varargin)
 
