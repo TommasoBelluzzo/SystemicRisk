@@ -285,7 +285,7 @@ function plot_network(data)
 
     sub = subplot(100,1,10:100);
     
-    hold on
+    hold on;
         for i = 1:size(x,2)
             idx = ismember(xy,[x(1,i) y(1,i)],'rows');
             plot(sub,x(:,i),y(:,i),'Color',grps_col(idx,:));
@@ -314,9 +314,9 @@ function plot_network(data)
 
         axis(sub,[-1 1 -1 1]);
         axis equal off;
-    hold off
+    hold off;
 
-    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam,'Clipping','on','FontSize',10);
+    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam,'FontSize',10);
     set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
 
     t = figure_title('Network Graph');
