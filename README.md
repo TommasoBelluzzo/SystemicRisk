@@ -77,3 +77,7 @@ For what concerns the financial time series:
 ## Screenshots
 
 ![Probabilistic Measures](https://i.imgur.com/1Q1SQd2.png)
+
+![Network Measures](https://i.imgur.com/NuSHgBO.png)
+
+![Network Graph](https://i.imgur.com/fpEVHPf.png)
