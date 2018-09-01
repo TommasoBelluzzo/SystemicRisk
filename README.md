@@ -62,8 +62,8 @@ Every dataset must be structured like the default one included in any release of
 #### State Variables (6):
 * **RESI:** the DJ US Select RESI as a proxy of real estate returns.
 * **VIX:** the implied volatility index.
-* **TBN3M:** the 3M treasury bill rate.
-* **CRESPR:** the change in the credit spread (the BAA corporate bond rate minus the 10Y treasury bill rate).
+* **TBR3M:** the 3M treasury bill rate.
+* **CRESPR:** the change in the credit spread (the BAA corporate bond rate minus the 10Y treasury bond rate).
 * **LIQSPR:** the change in the liquidity spread (the 3M treasury bill rate minus the federal funds rate).
 * **YIESPR:** the change in the yield spread (the 10Y treasury bond rate minus the 3M treasury bond rate).
 
