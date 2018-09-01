@@ -69,7 +69,7 @@ Every dataset must be structured like the default one included in any release of
 
 For what concerns the financial time series:
 * they must contain enough observations to run consistent calculations (a minimum of 252 observations for at least 5 firms is required);
-* they must have been previously validated and preprocessed by discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling the gaps with interpolation approach;
+* they must have been previously validated and preprocessed by discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling the gaps with an interpolation approach;
 * returns must expressed on a logarithmic scale, in accordance with all the systemic risk indicators;
 * market capitalizations must contain a supplementar observation at the beginning because a one-day lagged version is used in order to calculate weighted averages of probabilistic measures;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
