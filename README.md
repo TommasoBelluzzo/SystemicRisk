@@ -29,7 +29,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Dataset
 
-Every dataset must be structured like the default one included in any release of the framework (`Datasets/Example.xlsx`). The latter, based on the US financial sector, defines the following entities:
+Every dataset must be structured like the default one included in every release of the framework (`Datasets/Example.xlsx`). The latter, based on the US financial sector, defines the following entities:
 
 #### Benchmark: S&P 500
 
