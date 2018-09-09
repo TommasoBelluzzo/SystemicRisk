@@ -56,8 +56,8 @@ Every dataset must be structured like the default one included in every release 
   * US Bancorp (USB)
   * Wells Fargo & Co. (WFC)
 * **Group 4: Government-sponsored Enterprises (2)**
-  * American International Group Inc. (AIG)
-  * The Allstate Corp. (ALL)
+  * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
+  * Federal National Mortgage Association / Fannie Mae (FNMA)
 
 #### State Variables (6):
 * **RESI:** the DJ US Select RESI as a proxy of real estate returns.
