@@ -202,7 +202,7 @@ function plot_index(data)
         plot(sub_2,x,f,'-b','LineWidth',1.5);
     hold off;
     strs = {sprintf('Observations: %d',size(data.IdxRet,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IdxRet)) sprintf('Mean: %.4f',mean(data.IdxRet)) sprintf('Median: %.4f',median(data.IdxRet)) sprintf('Skewness: %.4f',skewness(data.IdxRet)) sprintf('Standard Deviation: %.4f',std(data.IdxRet))};
-    annotation('TextBox',(get(sub_2,'Position') - [0 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
+    annotation('TextBox',(get(sub_2,'Position') - [0.03 0.03 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     set(sub_2,'XLim',[(edg_min - (edg_min * 0.1)) (edg_max - (edg_max * 0.1))]);
     title(sub_2,'P&L Distribution');
     t2 = title(sub_2,'P&L Distribution');

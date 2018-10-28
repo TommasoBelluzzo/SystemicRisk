@@ -44,18 +44,22 @@ end
 function [mes,lrmes] = calculate_mes_internal(ret0_m,s_m,ret0_x,s_x,beta_x,p_mx,a,d)
 
     c = quantile(ret0_m,a);
-    h = 1 * (length(ret0_m) ^ (-0.2));
-    u = ret0_m ./ s_m;
+    z = sqrt(1 - (p_mx .^ 2));
 
-    x_den = sqrt(1 - (p_mx .^ 2));
-    x_num = (ret0_x ./ s_x) - (p_mx .* u);
-    x = x_num ./ x_den;
+    u = ret0_m ./ s_m;
+    x = ((ret0_x ./ s_x) - (p_mx .* u)) ./ z;
+
+    ret0_n = 4 / (3 * length(ret0_m));
+    ret0_s = min([std(ret0_m) (iqr(ret0_m) / 1.349)]);
+    h = ret0_s * (ret0_n ^ (-0.2));
 
     f = normcdf(((c ./ s_m) - u) ./ h);
-    k1 = sum(u .* f) ./ sum(f);
-    k2 = sum(x .* f) ./ sum(f);
+    f_sum = sum(f);
 
-    mes = (s_x .* p_mx .* k1) + (s_x .* x_den .* k2);
+    k1 = sum(u .* f) ./ f_sum;
+    k2 = sum(x .* f) ./ f_sum;
+
+    mes = (s_x .* p_mx .* k1) + (s_x .* z .* k2);
 
     if (nargout == 2)
         lrmes = 1 - exp(log(1 - d) .* beta_x);
