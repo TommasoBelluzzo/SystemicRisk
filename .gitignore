@@ -1,3 +1,11 @@
+# Code Generation Folders
+codegen/
+slprj/
+sccprj/
+
+# Help Folders
+helpsearch*/
+
 # Autosave Files
 *.asv
 *.autosave
@@ -13,11 +21,3 @@ octave-workspace
 # Packaged Files
 *.mlappinstall
 *.mltbx
-
-# Helpsearch Folders
-helpsearch*/
-
-# Code Generation Folders
-codegen/
-slprj/
-sccprj/
