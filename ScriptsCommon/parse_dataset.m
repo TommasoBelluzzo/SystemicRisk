@@ -36,9 +36,7 @@ function data = parse_dataset_internal(file)
     
     if (shts_len < 3)
         error('The dataset does not contain all the required sheets.');
-    end
-    
-    if (shts_len > 5)
+    elseif (shts_len > 5)
         error('The dataset contains unnecessary sheets.');
     end
     
