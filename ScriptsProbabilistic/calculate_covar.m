@@ -4,13 +4,6 @@
 % var_x  = A vector of floats containing the firm unconditional VaR.
 % a      = A float [0.01,0.10] representing the complement to 1 of the confidence level (optional, default=0.05).
 % svars  = A numeric t-by-n matrix containing the lagged state variables (optional, default=[]).
-%          Example of state variables to use for S&P500 and U.S. market:
-%           - Dow Jones U.S. Select Real Estate Securities Index (RESI)
-%           - Volatility Index (VIX)
-%           - Variations of 3M TBR
-%           - Credit Spread (BAA CBR minus 10Y TBR)
-%           - Liquidity Spread (3M FFR minus 3M TBR)
-%           - Yield Spread (10Y TBR minus 3M TBR)
 %
 % [OUTPUT]
 % covar  = A vector of floats containing the firm CoVaR.
