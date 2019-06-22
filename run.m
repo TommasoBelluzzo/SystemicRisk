@@ -3,6 +3,7 @@ warning('off','all');
 close('all');
 clearvars();
 clc();
+delete(allchild(0));
 
 [path_base,~,~] = fileparts(mfilename('fullpath'));
 

@@ -185,15 +185,20 @@ function write_results(res,data)
     writetable(pca_1,res,'FileType','spreadsheet','Sheet',3,'WriteRowNames',true); 
     writetable(pca_2,res,'FileType','spreadsheet','Sheet',4,'WriteRowNames',false);
     
-    exc = actxserver('Excel.Application');
-    exc_wbs = exc.Workbooks.Open(res,0,false);
-    exc_wbs.Sheets.Item(1).Name = 'Indices';
-    exc_wbs.Sheets.Item(2).Name = 'Network Averages';
-    exc_wbs.Sheets.Item(3).Name = 'PCA Average Coefficients';
-    exc_wbs.Sheets.Item(4).Name = 'PCA Average Scores';
-    exc_wbs.Save();
-    exc_wbs.Close();
-    exc.Quit();
+    if (ispc())
+        try
+            exc = actxserver('Excel.Application');
+            exc_wbs = exc.Workbooks.Open(res,0,false);
+            exc_wbs.Sheets.Item(1).Name = 'Indices';
+            exc_wbs.Sheets.Item(2).Name = 'Network Averages';
+            exc_wbs.Sheets.Item(3).Name = 'PCA Average Coefficients';
+            exc_wbs.Sheets.Item(4).Name = 'PCA Average Scores';
+            exc_wbs.Save();
+            exc_wbs.Close();
+            exc.Quit();
+        catch
+        end
+    end
 
 end
 

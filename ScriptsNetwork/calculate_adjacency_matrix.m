@@ -33,7 +33,7 @@ function adjm = calculate_adjacency_matrix_internal(data,sst,rob)
     for i = ij_seq
         data_in = data(:,i);
 
-        parfor j = ij_seq
+        for j = ij_seq
             if (i == j)
                 continue;
             end

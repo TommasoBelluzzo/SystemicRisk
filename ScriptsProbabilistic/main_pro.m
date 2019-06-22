@@ -164,16 +164,21 @@ function write_results(res,data)
     writetable(srisk,res,'FileType','spreadsheet','Sheet',4,'WriteRowNames',true);    
     writetable(avgs,res,'FileType','spreadsheet','Sheet',5,'WriteRowNames',true);    
 
-    exc = actxserver('Excel.Application');
-    exc_wbs = exc.Workbooks.Open(res,0,false);
-    
-    for i = 1:5
-        exc_wbs.Sheets.Item(i).Name = data.Lbls{i+2};
+    if (ispc())
+        try
+            exc = actxserver('Excel.Application');
+            exc_wbs = exc.Workbooks.Open(res,0,false);
+
+            for i = 1:5
+                exc_wbs.Sheets.Item(i).Name = data.Lbls{i+2};
+            end
+
+            exc_wbs.Save();
+            exc_wbs.Close();
+            exc.Quit();
+        catch
+        end
     end
-  
-    exc_wbs.Save();
-    exc_wbs.Close();
-    exc.Quit();
 
 end
 
