@@ -7,7 +7,7 @@ This script calculates and analyses the following systemic risk indicators:
 * `Network Measures` proposed by [Billio et al. (2011)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1963216)
 * `SRISK` (Conditional Capital Shortfall Index) proposed by [Brownlees & Engle (2010)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1611229)
 
-Some of the aforementioned models have been adjusted and improved according to the methodologies described in [V-Lab Documentation](https://vlab.stern.nyu.edu/docs).
+Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
 
 ## Requirements
 
