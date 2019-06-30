@@ -34,166 +34,188 @@ function data = parse_dataset_internal(file,df)
         error('The dataset file is not a valid Excel spreadsheet.');
     end
 
-    shts_len = length(file_shts);
-    
-    if (shts_len < 3)
-        error('The dataset does not contain all the required sheets.');
-    elseif (shts_len > 5)
-        error('The dataset contains unnecessary sheets.');
-    end
-    
     file_shts = strtrim(file_shts);
+    file_shts_oth = file_shts(2:end);
     
-    if (~isequal(file_shts(1:3),{'Returns' 'Market Capitalization' 'Total Liabilities'}))
-        error('The dataset contains invalid (wrong name) or misplaced (wrong order) sheets.');
+    if (~strcmp(file_shts{1},'Returns'))
+        error('The first sheet of the dataset file must be the ''Returns'' one.');
     end
     
-    stvars_off = -1;
-    grps_off = -1;
-    
-    if (shts_len == 4)
-        file_shts_4 = file_shts{4};
-        
-        if (strcmp(file_shts_4,'State Variables'))
-            stvars_off = 4;
-        elseif (strcmp(file_shts_4,'Groups'))
-            grps_off = 4;
-        else
-            error('The dataset contains invalid (wrong name) or misplaced (wrong order) sheets.');
-        end
-    elseif (shts_len == 5)
-        if (~isequal(file_shts(4:5),{'State Variables' 'Groups'}))
-            error('The dataset contains invalid (wrong name) or misplaced (wrong order) sheets.');
-        end
-        
-        stvars_off = 4;
-        grps_off = 5;
+    if (~isempty(setdiff(file_shts_oth,{'Market Capitalization' 'Total Liabilities' 'State Variables' 'Groups'})))
+        error('The dataset file contains unnecessary and/or unsupported sheets.');
     end
+
+    cap_def = any(strcmp(file_shts_oth,{'Market Capitalization'}));
+    lia_def = any(strcmp(file_shts_oth,{'Total Liabilities'}));
     
+    if (cap_def && lia_def)
+        full = true;
+    else
+        if (cap_def && ~lia_def)
+            error('The dataset file contains the ''Market Capitalization'' sheet but not the ''Total Liabilities'' sheet.');
+        elseif (~cap_def && lia_def)
+            error('The dataset file contains the ''Total Liabilities'' sheet but not the ''Market Capitalization'' sheet.');
+        end
+        
+        full = false;
+    end
+
     try
         datetime('now','InputFormat',df);
     catch
         error('The specified date format is invalid.');
     end
 
-    rets = parse_table(file,1,'Returns',df);
+    tab_rets = parse_table(file,1,'Returns',df);
     
-    if (any(ismissing(rets)))
+    if (any(ismissing(tab_rets)))
         error('The ''Returns'' table contains invalid or missing values.');
     end
     
-    if (width(rets) < 5)
-        error('The dataset must must contain at least the following series: observations dates, benchmark returns and the returns of 3 firms to analyze.');
+    if (width(tab_rets) < 5)
+        error('The dataset must contain at least the following series: observations dates, benchmark returns and the returns of 3 firms to analyze.');
     end
     
-    t = height(rets);
+    t = height(tab_rets);
 
     if (t < 253)
         error('The dataset must contain at least 253 observations (a full business year plus an additional observation at the beginning) in order to run consistent calculations.');
     end
 
-    dates_str = cellstr(datetime(rets{:,1},'InputFormat',df));
-    dates_num = datenum(rets{:,1});
-    rets.Date = [];
+    dates_str = cellstr(datetime(tab_rets{:,1},'InputFormat',df));
+    dates_num = datenum(tab_rets{:,1});
+    tab_rets.Date = [];
 
-    idx_ret = rets{2:end,1};
-    idx_nam = rets.Properties.VariableNames{1};
-    frms = numel(rets.Properties.VariableNames) - 1;
-    frms_nam = rets.Properties.VariableNames(2:end);
-    frms_ret = rets{2:end,2:end};
+    idx_ret = tab_rets{2:end,1};
+    idx_nam = tab_rets.Properties.VariableNames{1};
+    frms = numel(tab_rets.Properties.VariableNames) - 1;
+    frms_nam = tab_rets.Properties.VariableNames(2:end);
+    frms_ret = tab_rets{2:end,2:end};
 
-    frms_cap = parse_table(file,2,'Market Capitalization',df);
+    for tab = {'Market Capitalization' 'Total Liabilities' 'State Variables' 'Groups'}
 
-    if (any(ismissing(frms_cap)))
-        error('The ''Market Capitalization'' table contains invalid or missing values.');
-    end
+        tab_idx = find(strcmp(file_shts_oth,tab),1);
 
-    if ((size(frms_cap,1) ~= t) || any(datenum(frms_cap.Date) ~= dates_num))
-        error('The observation dates of ''Returns'' table and ''Market Capitalization'' table are mismatching.');
-    end
-    
-    frms_cap.Date = [];
-    
-    if (~isequal(frms_cap.Properties.VariableNames,frms_nam))
-        error('The firm names of ''Returns'' table and ''Market Capitalization'' table are mismatching.');
-    end
+        switch (char(tab))
 
-    frms_lia = parse_table(file,3,'Total Liabilities',df);
-    
-    if (any(ismissing(frms_lia)))
-        error('The ''Total Liabilities'' table contains invalid or missing values.');
-    end
+            case 'Market Capitalization'
 
-    if ((size(frms_lia,1) ~= t) || any(datenum(frms_lia.Date) ~= dates_num))
-        error('The observation dates of ''Returns'' table and ''Total Liabilities'' table are mismatching.');
-    end
-    
-    frms_lia.Date = [];
-    
-    if (~isequal(frms_lia.Properties.VariableNames,frms_nam))
-        error('The firm names of ''Returns'' table and ''Total Liabilities'' table are mismatching.');
-    end
+                if (~isempty(tab_idx))
+                    tab_cap = parse_table(file,tab_idx+1,'Market Capitalization',df);
 
-    if (stvars_off ~= -1)
-        stvars = parse_table(file,stvars_off,'State Variables',df);
-        
-        if (any(ismissing(stvars)))
-            error('The ''State Variables'' table contains invalid or missing values.');
+                    if (any(ismissing(tab_cap)))
+                        error('The ''Market Capitalization'' sheet contains invalid or missing values.');
+                    end
+
+                    if ((size(tab_cap,1) ~= t) || any(datenum(tab_cap.Date) ~= dates_num))
+                        error('The observation dates in ''Returns'' and ''Market Capitalization'' sheets are mismatching.');
+                    end
+
+                    tab_cap.Date = [];
+
+                    if (~isequal(tab_cap.Properties.VariableNames,frms_nam))
+                        error('The firm names in ''Returns'' and ''Market Capitalization'' sheets are mismatching.');
+                    end
+                    
+                    tc = tab_cap;
+                    tab_cap = tc{2:end,:};
+                    tab_cap_lag = tc{1:end-1,:};
+                else
+                    tab_cap = [];
+                    tab_cap_lag = [];
+                end
+
+            case 'Total Liabilities'
+                
+                if (~isempty(tab_idx))
+                    tab_lia = parse_table(file,tab_idx+1,'Total Liabilities',df);
+
+                    if (any(ismissing(tab_lia)))
+                        error('The ''Total Liabilities'' sheet contains invalid or missing values.');
+                    end
+
+                    if ((size(tab_lia,1) ~= t) || any(datenum(tab_lia.Date) ~= dates_num))
+                        error('The observation dates in ''Returns'' and ''Total Liabilities'' sheets are mismatching.');
+                    end
+
+                    tab_lia.Date = [];
+
+                    if (~isequal(tab_lia.Properties.VariableNames,frms_nam))
+                        error('The firm names in ''Returns'' and ''Total Liabilities'' sheets are mismatching.');
+                    end
+                    
+                    tab_lia = tab_lia{2:end,:};
+                else
+                    tab_lia = [];
+                end
+
+            case 'State Variables'
+
+                if (~isempty(tab_idx))
+                    stvars = parse_table(file,tab_idx+1,'State Variables',df);
+
+                    if (any(ismissing(stvars)))
+                        error('The ''State Variables'' sheet contains invalid or missing values.');
+                    end
+
+                    if ((size(stvars,1) ~= t) || any(datenum(stvars.Date) ~= dates_num))
+                        error('The observation dates of ''Returns'' and ''State Variables'' sheets are mismatching.');
+                    end
+
+                    stvars.Date = [];
+                    stvars_lag = stvars{1:end-1,:};
+                else
+                    stvars_lag = [];
+                end
+
+            case 'Groups'
+                
+                if (~isempty(tab_idx))
+                    grps = parse_table(file,tab_idx+1,'Groups',df);
+
+                    if (any(ismissing(grps)))
+                        error('The ''Groups'' sheet contains invalid or missing values.');
+                    end
+
+                    if (~isequal(grps.Properties.VariableNames,{'Name' 'Count'}))
+                        error('The ''Groups'' sheet contains invalid (wrong name) or misplaced (wrong order) columns.');
+                    end
+
+                    if (size(grps,1) < 2)
+                        error('In the ''Groups'' sheet, the number of rows must be greater than or equal to 2.');
+                    end
+
+                    grps_cnt = grps{:,2};
+
+                    if (any(grps_cnt <= 0))
+                        error('The ''Groups'' sheet contains one or more groups with an invalid number of firms.');
+                    end
+
+                    if (sum(grps_cnt) ~= frms)
+                        error('In the ''Groups'' sheet, the number of firms must be equal to the one defined in the ''Returns'' sheet.');
+                    end
+
+                    grps_del = cumsum(grps_cnt(1:end-1,:));
+                    grps_nam = strtrim(grps{:,1});
+                else
+                    grps_del = [];    
+                    grps_nam = [];
+                end
+
         end
-        
-        if ((size(stvars,1) ~= t) || any(datenum(stvars.Date) ~= dates_num))
-            error('The observation dates of ''Returns'' table and ''State Variables'' table are mismatching.');
-        end
-
-        stvars.Date = [];
-
-        stvars_lag = stvars{1:end-1,:};
-    else
-        stvars_lag = [];
-    end
-        
-    if (grps_off ~= -1)
-        grps = parse_table(file,grps_off,'Groups',df);
-        
-        if (any(ismissing(stvars)))
-            error('The ''Groups'' table contains invalid or missing values.');
-        end
-        
-        if (~isequal(grps.Properties.VariableNames,{'Name' 'Count'}))
-            error('The ''Groups'' table contains invalid (wrong name) or misplaced (wrong order) columns.');
-        end
-
-        if (size(grps,1) < 2)
-            error('In the ''Groups'' table, the number of rows must be greater than or equal to 2.');
-        end
-
-        grps_cnt = grps{:,2};
-        
-        if (any(grps_cnt <= 0))
-            error('The ''Groups'' table contains one or more groups with an invalid number of firms.');
-        end
-        
-        if (sum(grps_cnt) ~= frms)
-            error('In the ''Groups'' table, the number of firms must be equal to the one defined in the ''Returns'' table.');
-        end
-
-        grps_del = cumsum(grps_cnt(1:end-1,:));
-        grps_nam = strtrim(grps{:,1});
-    else
-        grps_del = [];    
-        grps_nam = [];
     end
 
     data = struct();
     data.DatesNum = dates_num(2:end);
     data.DatesStr = dates_str(2:end);
     data.Frms = frms;
-    data.FrmsCap = frms_cap{2:end,:};
-    data.FrmsCapLag = frms_cap{1:end-1,:};
-    data.FrmsLia = frms_lia{2:end,:};
+    data.FrmsCap = tab_cap;
+    data.FrmsCapLag = tab_cap_lag;
+    data.FrmsLia = tab_lia;
     data.FrmsNam = frms_nam;
     data.FrmsRet = frms_ret;
-    data.Grps = length(grps_nam);
+    data.Full = full;
+    data.Grps = numel(grps_nam);
     data.GrpsDel = grps_del;
     data.GrpsNam = grps_nam;
     data.IdxNam = idx_nam;
