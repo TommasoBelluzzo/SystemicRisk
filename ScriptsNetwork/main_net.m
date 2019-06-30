@@ -270,8 +270,12 @@ function plot_network(data)
         end
     end
     
-    wei = mean(data.FrmsCap,1);
-    wei = wei ./ mean(wei);
+    if (isempty(data.FrmsCap))
+        wei = ones(1,data.Frms);
+    else
+        wei = mean(data.FrmsCap,1);
+        wei = wei ./ mean(wei);
+    end
     
     theta = linspace(0,(2 * pi),(data.Frms + 1))';
     theta(end) = [];
