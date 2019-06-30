@@ -78,11 +78,11 @@ Datasets must be structured like the default one included in every release of th
 * Market capitalizations and total liabilities must be expressed in the same currency. Following the SRISK methodology, the latter must be rolled forward by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
 * Data concerning state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
-> Firms in the Returns Sheet: A, B, C, D, E, F, G, H
-> Insurance Companies - 2
-> Investment Banks - 2
-> Commercial Banks - 3
-> Government-sponsored Enterprises - 1
+> Firms in the Returns Sheet: A, B, C, D, E, F, G, H  
+> Insurance Companies - 2  
+> Investment Banks - 2  
+> Commercial Banks - 3  
+> Government-sponsored Enterprises - 1  
 
 produces the following outcome:
 
