@@ -73,11 +73,10 @@ Datasets must be structured like the default one included in every release of th
 * Financial time series must contain the benchmark index and at least 3 firms. They must be based on a daily frequency and contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning). They must have been previously validated and preprocessed by:
   * discarding illiquid series with too many zeroes (unless necessary);
   * detecting and removing outliers;
-  * removing rows with NaNs or filling the gaps with an interpolation approach.
-* returns must expressed on a logarithmic scale, in accordance with all the systemic risk indicators;
-* market capitalizations and total liabilities must be expressed in the same currency;
-* total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
-* state variables and groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary.
+  * removing rows with NaNs or filling the gaps through interpolation.
+* Returns must be expressed on a logarithmic scale, in accordance with all the systemic risk indicators.
+* Market capitalizations and total liabilities must be expressed in the same currency. Following the SRISK methodology, the latter must be rolled forward by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
+* Data concerning state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary.
 
 ## Screenshots
 
