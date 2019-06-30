@@ -68,10 +68,12 @@ Datasets must be structured like the default one included in every release of th
 * **LIQSPR:** the change in the liquidity spread (the 3M treasury bill rate minus the federal funds rate).
 * **YIESPR:** the change in the yield spread (the 10Y treasury bond rate minus the 3M treasury bond rate).
 
-For what concerns the financial time series:
-* they must be based on a daily frequency;
-* they must contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning, for the benchmark and at least 3 firms is required);
-* they must have been previously validated and preprocessed by discarding illiquid series with too many zeroes (unless necessary), detecting and removing outliers, removing rows with NaNs or filling the gaps with an interpolation approach;
+#### Notes
+
+* Financial time series must contain the benchmark index and at least 3 firms. They must be based on a daily frequency and contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning). They must have been previously validated and preprocessed by:
+  * discarding illiquid series with too many zeroes (unless necessary);
+  * detecting and removing outliers;
+  * removing rows with NaNs or filling the gaps with an interpolation approach.
 * returns must expressed on a logarithmic scale, in accordance with all the systemic risk indicators;
 * market capitalizations and total liabilities must be expressed in the same currency;
 * total liabilities values must be rolled forward by at least three months (keeping a daily frequency) in order to simulate the difficulty of renegotiating debt in case of financial distress following the SRISK methodology;
