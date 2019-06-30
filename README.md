@@ -82,13 +82,13 @@ Datasets must be structured like the default one included in every release of th
 > Insurance Companies - 2  
 > Investment Banks - 2  
 > Commercial Banks - 3  
-> Government-sponsored Enterprises - 1  
+> Government-sponsored Enterprises - 1
 
 produces the following outcome:
 
-> "Insurance Companies" contains A and B
-> "Investment Banks" contains C and D
-> "Commercial Banks" contains E, F and G
+> "Insurance Companies" contains A and B  
+> "Investment Banks" contains C and D  
+> "Commercial Banks" contains E, F and G  
 > "Government-sponsored Enterprises" contains H
 
 ## Screenshots
