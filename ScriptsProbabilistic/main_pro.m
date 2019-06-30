@@ -37,6 +37,10 @@ end
 
 function main_pro_internal(data,res,k,d,l,anl)
 
+    if (~data.Full)
+        error('The dataset does not contain market capitalization and total liabilities series, probabilistic measures cannot be computed.');
+    end
+
     data = initialize_data(data,k,d,l);
 
     ret0_m = data.IdxRet - mean(data.IdxRet);
