@@ -1,24 +1,26 @@
 % [INPUT]
 % adjm    = A numeric n-by-n matrix representing the adjacency matrix of the network.
 % grps    = A vector whose values represent the delimiters betweeen the different firm sectors.
-%           For example, for the vector [2 7] there will be 3 different sectors:
-%            - sector 1 with firms 1,2
-%            - sector 2 with firms 3,4,5,6
-%            - sector 3 with firms 7,8,...,n
+%           For example, the vector [2 7] defines 3 different sectors:
+%            - sector 1 with firms 1, 2
+%            - sector 2 with firms 3, 4, 5, 6, 7
+%            - sector 3 with firms 8, ..., n
 %
 % [OUTPUT]
-% dci     = A float representing the Dynamic Causality Index value.
-% n_io    = An integer representing the total number of in and out connections.
-% n_ioo   = An integer representing the total number of in and out connections between the different sectors (if no groups are specified a NaN is returned).
-% clo_cen = A vector of floats containing the normalized closeness centrality of each node.
-% clu_cen = A vector of floats containing the normalized clustering coefficient of each node.
-% deg_cen = A vector of floats containing the normalized degree centrality of each node.
-% eig_cen = A vector of floats containing the normalized eigenvector centrality of each node.
+% dci   = A float representing the Dynamic Causality Index value.
+% n_io  = An integer representing the total number of in and out connections.
+% n_ioo = An integer representing the total number of in and out connections between the different sectors (if no groups are specified a NaN is returned).
+% betc  = A vector of floats containing the normalized betweenness centrality of each node.
+% cloc  = A vector of floats containing the normalized closeness centrality of each node.
+% cluc  = A vector of floats containing the normalized clustering coefficient of each node.
+% degc  = A vector of floats containing the normalized degree centrality of each node.
+% eigc  = A vector of floats containing the normalized eigenvector centrality of each node.
+% eigc  = A vector of floats containing the normalized Katz centrality of each node.
 %
 % [NOTES]
-% If no sector delimiters are specified, n_ioo is equal to 0.
+% If no sector delimiters are specified, n_ioo is equal to NaN.
 
-function [dci,n_io,n_ioo,deg_cen,clo_cen,clu_cen,eig_cen] = calculate_measures(adjm,grps)
+function [dci,n_io,n_ioo,betc,cloc,cluc,degc,eigc,katc] = calculate_measures(adjm,grps)
 
     n = length(adjm);
 
@@ -73,33 +75,76 @@ function [dci,n_io,n_ioo,deg_cen,clo_cen,clu_cen,eig_cen] = calculate_measures(a
     end
     
     adjm_len = length(adjm);
-    adjm_seq = 1:adjm_len;
-    
-    [deg_cen_std,deg_cen] = calculate_degree_centrality(adjm,adjm_len,adjm_seq);
-    [~,clo_cen] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq);
-    [~,clu_cen] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,deg_cen_std);
-    [~,eig_cen] = calculate_eigenvector_centrality(adjm,adjm_len);
+
+    betc = calculate_betweenness_centrality(adjm,adjm_len);
+    [degc_std,degc] = calculate_degree_centrality(adjm,adjm_len);
+    cloc = calculate_closeness_centrality(adjm,adjm_len);
+    cluc = calculate_clustering_coefficient(adjm,adjm_len,degc_std);
+    eigc = calculate_eigenvector_centrality(adjm);
+    katc = calculate_katz_centrality(adjm,adjm_len);
 
 end
 
-function [cloc,cloc_nor] = calculate_closeness_centrality(adjm,adjm_len,adjm_seq)
+function betc = calculate_betweenness_centrality(adjm,adjm_len)
+
+    betc = zeros(1,adjm_len);
+
+    for i = 1:adjm_len
+        depth = 0;
+        nsp = accumarray([1 i],1,[1 adjm_len]);
+        bfs = false(250,adjm_len);
+        fringe = adjm(i,:);
+
+        while ((nnz(fringe) > 0) && (depth <= 250))
+            depth = depth + 1;
+            nsp = nsp + fringe;
+            bfs(depth,:) = logical(fringe);
+            fringe = (fringe * adjm) .* ~nsp;
+        end
+
+        [rows,cols,v] = find(nsp);
+        v = 1 ./ v;
+        
+        nsp_inv = accumarray([rows.' cols.'],v,[1 adjm_len]);
+
+        bcu = ones(1,adjm_len);
+
+        for depth = depth:-1:2
+            w = (bfs(depth,:) .* nsp_inv) .* bcu;
+            bcu = bcu + ((adjm * w.').' .* bfs(depth-1,:)) .* nsp;
+        end
+
+        betc = betc + sum(bcu,1);
+    end
+
+    betc = betc - adjm_len;
+    betc = (betc .* 2) ./ ((adjm_len - 1) * (adjm_len - 2));
+
+end
+
+function cloc = calculate_closeness_centrality(adjm,adjm_len)
 
     cloc = zeros(1,adjm_len);
 
-    for i = adjm_seq
-        cloc(i) = sum(2 .^ -dijkstra_shortest_path(adjm,i));
+    for i = 1:adjm_len
+        dsp = dijkstra_shortest_paths(adjm,adjm_len,i);
+        dsp_sum = sum(dsp(~isinf(dsp)));
+        
+        if (dsp_sum ~= 0)
+            cloc(i) = 1 / dsp_sum;
+        end
     end
 
-    cloc_nor = cloc ./ (adjm_len - 1);
+    cloc = cloc .* (adjm_len - 1);
 
 end
 
-function [cluc,cluc_nor] = calculate_clustering_coefficient(adjm,adjm_len,adjm_seq,degc)
+function cluc = calculate_clustering_coefficient(adjm,adjm_len,degc)
 
+    adjm_seq = 1:adjm_len;
     degc_max = max(degc);
     
     cluc = zeros(1,adjm_len);
-    cluc_nor = zeros(1,adjm_len);
 
     for i = adjm_seq
         degc_i = degc(i);
@@ -110,64 +155,64 @@ function [cluc,cluc_nor] = calculate_clustering_coefficient(adjm,adjm_len,adjm_s
 
         node = adjm_seq(logical(adjm(:,i)));
         cluc_i = (sum(sum(adjm(node,node))) / degc_i) / (degc_i - 1);
-        
-        cluc(i) = cluc_i;
-        cluc_nor(i) = cluc_i * (degc_i / degc_max);
+
+        cluc(i) = cluc_i * (degc_i / degc_max);
     end
 
 end
 
-function [degc,degc_nor] = calculate_degree_centrality(adjm,adjm_len,adjm_seq)
+function [degc,degc_nor] = calculate_degree_centrality(adjm,adjm_len)
 
     degc = zeros(1,adjm_len);
 
-    for i = adjm_seq
+    for i = 1:adjm_len
         degc(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
     end
-    
+
     degc_nor = degc ./ (adjm_len - 1);
 
 end
 
-function [eigc,eigc_nor] = calculate_eigenvector_centrality(adjm,adjm_len)
+function eigc = calculate_eigenvector_centrality(adjm)
 
-    if (adjm_len <= 1000)
-        [eig_vec,eig_val] = eig(adjm);
-    else
-        [eig_vec,eig_val] = eigs(sparse(adjm));
-    end
-
+	[eig_vec,eig_val] = eig(adjm);
     [~,idx] = max(diag(eig_val));
 
     eigc = abs(eig_vec(:,idx))';
-    eigc_nor = eigc ./ sum(eigc);
+    eigc = eigc ./ sum(eigc);
 
 end
 
-function dist = dijkstra_shortest_path(adjm,node)
+function katc = calculate_katz_centrality(adjm,adjm_len)
 
-    n = length(adjm);
-    n_seq = (1:n);
+    katc = (eye(adjm_len) - (adjm .* 0.1)) \ ones(adjm_len,1);
+    katc = katc.' ./ (sign(sum(katc)) * norm(katc,'fro'));
 
-    dist = inf * ones(1,n);
+end
+
+function dist = dijkstra_shortest_paths(adjm,adjm_len,node)
+
+    dist = Inf(1,adjm_len);
     dist(node) = 0;
 
-    while (~isempty(n_seq))
-        [~,idx] = min(dist(n_seq));
+    adjm_seq = 1:adjm_len;
 
-        for i = 1:length(n_seq)
-            n_seq_i = n_seq(i);
-            n_seq_idx = n_seq(idx);
+    while (~isempty(adjm_seq))
+        [~,idx] = min(dist(adjm_seq));
+        adjm_seq_idx = adjm_seq(idx);
+
+        for i = 1:length(adjm_seq)
+            adjm_seq_i = adjm_seq(i);
+
+            adjm_off = adjm(adjm_seq_idx,adjm_seq_i);
+            sum_off = adjm_off + dist(adjm_seq_idx);
             
-            adjm_cur = adjm(n_seq_idx,n_seq_i);
-            dist_sum = dist(n_seq_idx) + adjm_cur;
-            
-            if ((adjm_cur > 0) && (dist(n_seq_i) > dist_sum))
-                dist(n_seq_i) = dist_sum;
+            if ((adjm_off > 0) && (dist(adjm_seq_i) > sum_off))
+                dist(adjm_seq_i) = sum_off;
             end
         end
-    
-        n_seq = setdiff(n_seq,n_seq_idx);
+
+        adjm_seq = setdiff(adjm_seq,adjm_seq_idx);
     end
 
 end

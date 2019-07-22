@@ -28,10 +28,18 @@ function data = parse_dataset_internal(file,df)
         error('The dataset file does not exist.');
     end
 
-    [file_stat,file_shts,file_fmt] = xlsfinfo(file);
-
-    if (isempty(file_stat) || (ispc() && ~strcmp(file_fmt,'xlOpenXMLWorkbook')))
-        error('The dataset file is not a valid Excel spreadsheet.');
+    if (ispc() && verLessThan('Matlab','9.6'))
+        [file_stat,file_shts,file_fmt] = xlsfinfo(file);
+        
+        if (isempty(file_stat) || ~strcmp(file_fmt,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_stat,file_shts] = xlsfinfo(file);
+        
+        if (isempty(file_stat))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
     end
 
     file_shts = strtrim(file_shts);

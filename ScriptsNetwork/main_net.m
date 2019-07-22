@@ -33,7 +33,7 @@ end
 
 function main_net_internal(data,res,sst,rob,anl)
 
-    data = update_data(data,sst,rob);
+    data = data_initialize(data,sst,rob);
 
     win = get_rolling_windows(data.FrmsRet,252);
     win_len = length(win);
@@ -64,15 +64,17 @@ function main_net_internal(data,res,sst,rob,anl)
             win_i_nor(isnan(win_i_nor)) = 0;
 
             adjm = calculate_adjacency_matrix(win_i,data.SST,data.Rob);
-            [dci,n_io,n_ioo,clo_cen,clu_cen,deg_cen,eig_cen] = calculate_measures(adjm,data.GrpsDel);
+            [dci,n_io,n_ioo,betc,cloc,cluc,degc,eigc,katc] = calculate_measures(adjm,data.GrpsDel);
             [pca_coe,pca_sco,~,~,pca_exp] = pca(win_i_nor,'Economy',false);
 
             data.AdjMats{win_off} = adjm;
-            data.CloCen(win_off,:) = clo_cen;
-            data.CluCoe(win_off,:) = clu_cen;
+            data.BetCen(win_off,:) = betc;
+            data.CloCen(win_off,:) = cloc;
+            data.CluCoe(win_off,:) = cluc;
             data.DCI(win_off) = dci;
-            data.DegCen(win_off,:) = deg_cen;
-            data.EigCen(win_off,:) = eig_cen;
+            data.DegCen(win_off,:) = degc;
+            data.EigCen(win_off,:) = eigc;
+            data.KatCen(win_off,:) = katc;
             data.NumIO(win_off) = n_io;
             data.NumIOO(win_off) = n_ioo;
             data.PCACoe{win_off} = pca_coe;
@@ -87,7 +89,7 @@ function main_net_internal(data,res,sst,rob,anl)
             waitbar((i / win_len),bar,sprintf('Calculating network measures for window %d of %d...',i,win_len));
         end
 
-        data = update_data(data,win_dif);
+        data = data_finalize(data,win_dif);
 
         waitbar(100,bar,'Writing network measures...');
         write_results(res,data);
@@ -107,48 +109,55 @@ function main_net_internal(data,res,sst,rob,anl)
 
 end
 
-function data = update_data(data,arg_1,arg_2)
+function data = data_initialize(data,sst,rob)
 
-    if (nargin == 3)
-        data.SST = arg_1;
-        data.Rob = arg_2;
+    data.SST = sst;
+    data.Rob = rob;
 
-        data.AdjMats = cell(data.Obs,1);
-        data.CloCen = NaN(data.Obs,data.Frms);
-        data.CluCoe = NaN(data.Obs,data.Frms);
-        data.DCI = NaN(data.Obs,1);
-        data.DegCen = NaN(data.Obs,data.Frms);
-        data.EigCen = NaN(data.Obs,data.Frms);
-        data.NumIO = NaN(data.Obs,1);
-        data.NumIOO = NaN(data.Obs,1);
-        data.PCACoe = cell(data.Obs,1);
-        data.PCAExp = cell(data.Obs,1);
-        data.PCASco = cell(data.Obs,1);
-    else
-        data.WinOff = arg_1 + 1;
-        
-        win_seq =  data.WinOff:data.Obs;
-        win_seq_len = length(win_seq);
+    data.AdjMats = cell(data.Obs,1);
+    data.BetCen = NaN(data.Obs,data.Frms);
+    data.CloCen = NaN(data.Obs,data.Frms);
+    data.CluCoe = NaN(data.Obs,data.Frms);
+    data.DCI = NaN(data.Obs,1);
+    data.DegCen = NaN(data.Obs,data.Frms);
+    data.EigCen = NaN(data.Obs,data.Frms);
+    data.KatCen = NaN(data.Obs,data.Frms);
+    data.NumIO = NaN(data.Obs,1);
+    data.NumIOO = NaN(data.Obs,1);
+    data.PCACoe = cell(data.Obs,1);
+    data.PCAExp = cell(data.Obs,1);
+    data.PCASco = cell(data.Obs,1);
 
-        data.AdjMatAvg = sum(cat(3,data.AdjMats{win_seq}),3) ./ win_seq_len;
-        thre = mean(mean(data.AdjMatAvg));
-        data.AdjMatAvg(data.AdjMatAvg < thre) = 0;
-        data.AdjMatAvg(data.AdjMatAvg >= thre) = 1;
+end
 
-        data.CloCenAvg = sum(data.CloCen(win_seq,:),1) ./ win_seq_len;
-        data.CluCoeAvg = sum(data.CluCoe(win_seq,:),1) ./ win_seq_len;
-        data.DegCenAvg = sum(data.DegCen(win_seq,:),1) ./ win_seq_len;
-        data.EigCenAvg = sum(data.EigCen(win_seq,:),1) ./ win_seq_len;
+function data = data_finalize(data,win_dif)
 
-        data.PCACoeAvg = sum(cat(3,data.PCACoe{win_seq}),3) ./ length(win_seq);
-        data.PCAExpAvg = sum(cat(3,data.PCAExp{win_seq}),3) ./ length(win_seq);
-        data.PCAExpSum = NaN(data.Obs,4);
-        data.PCAScoAvg = sum(cat(3,data.PCASco{win_seq}),3) ./ length(win_seq);
+    data.WinOff = win_dif + 1;
 
-        for i = win_seq
-            exp = data.PCAExp{i};
-            data.PCAExpSum(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
-        end
+    win_seq =  data.WinOff:data.Obs;
+    win_seq_len = length(win_seq);
+
+    data.AdjMatAvg = sum(cat(3,data.AdjMats{win_seq}),3) ./ win_seq_len;
+    
+    thre = mean(mean(data.AdjMatAvg));
+    data.AdjMatAvg(data.AdjMatAvg < thre) = 0;
+    data.AdjMatAvg(data.AdjMatAvg >= thre) = 1;
+
+    data.BetCenAvg = sum(data.BetCen(win_seq,:),1) ./ win_seq_len;
+    data.CloCenAvg = sum(data.CloCen(win_seq,:),1) ./ win_seq_len;
+    data.CluCoeAvg = sum(data.CluCoe(win_seq,:),1) ./ win_seq_len;
+    data.DegCenAvg = sum(data.DegCen(win_seq,:),1) ./ win_seq_len;
+    data.EigCenAvg = sum(data.EigCen(win_seq,:),1) ./ win_seq_len;
+    data.KatCenAvg = sum(data.KatCen(win_seq,:),1) ./ win_seq_len;
+
+    data.PCACoeAvg = sum(cat(3,data.PCACoe{win_seq}),3) ./ length(win_seq);
+    data.PCAExpAvg = sum(cat(3,data.PCAExp{win_seq}),3) ./ length(win_seq);
+    data.PCAExpSum = NaN(data.Obs,4);
+    data.PCAScoAvg = sum(cat(3,data.PCASco{win_seq}),3) ./ length(win_seq);
+
+    for i = win_seq
+        exp = data.PCAExp{i};
+        data.PCAExpSum(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
     end
 
 end
@@ -170,14 +179,13 @@ function write_results(res,data)
     
     ind = cell2table([data.DatesStr num2cell(data.DCI) num2cell(data.NumIO) num2cell(data.NumIOO)],'VariableNames',{'Date' 'DCI' 'NumIO' 'NumIOO'});
 
-    vars = [frms num2cell(data.AdjMatAvg) sep frms num2cell(data.CloCenAvg') num2cell(data.CluCoeAvg') num2cell(data.DegCenAvg') num2cell(data.EigCenAvg')];
-    lbls = {'Firms1' data.FrmsNam{:,:} 'E' 'Firms2' 'CloCen' 'CluCoe' 'DegCen' 'EigCen'};
+    vars = [frms num2cell(data.AdjMatAvg) sep frms num2cell(data.BetCenAvg') num2cell(data.CloCenAvg') num2cell(data.DegCenAvg') num2cell(data.EigCenAvg') num2cell(data.KatCenAvg') num2cell(data.CluCoeAvg')];
+    lbls = {'Firms1' data.FrmsNam{:,:} 'X' 'Firms2' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
     net = cell2table(vars,'VariableNames',lbls);
- 
+
     vars = [frms num2cell(data.PCACoeAvg) sep num2cell(1:data.Frms)' num2cell(data.PCAExpAvg)];
-    lbls = {'Firms' data.FrmsNam{:,:} 'E' 'PC' 'ExpVar'};
+    lbls = {'Firms' data.FrmsNam{:,:} 'X' 'PC' 'ExplainedVariance'};
     pca_1 = cell2table(vars,'VariableNames',lbls);
-    
     pca_2 = cell2table(num2cell(data.PCAScoAvg),'VariableNames',data.FrmsNam);
     
     writetable(ind,res,'FileType','spreadsheet','Sheet',1,'WriteRowNames',true);
@@ -190,7 +198,7 @@ function write_results(res,data)
             exc = actxserver('Excel.Application');
             exc_wbs = exc.Workbooks.Open(res,0,false);
             exc_wbs.Sheets.Item(1).Name = 'Indices';
-            exc_wbs.Sheets.Item(2).Name = 'Network Averages';
+            exc_wbs.Sheets.Item(2).Name = 'Centrality Averages';
             exc_wbs.Sheets.Item(3).Name = 'PCA Average Coefficients';
             exc_wbs.Sheets.Item(4).Name = 'PCA Average Scores';
             exc_wbs.Save();
@@ -341,40 +349,54 @@ function plot_centralities(data)
     seq = 1:data.Frms;
     seq_lim = [0 (data.Frms + 1)];
     
+    [betc_sor,ord] = sort(data.BetCenAvg);
+    betc_nam = data.FrmsNam(ord);
     [cloc_sor,ord] = sort(data.CloCenAvg);
     cloc_nam = data.FrmsNam(ord);
-    [cluc_sor,ord] = sort(data.CluCoeAvg);
-    cluc_nam = data.FrmsNam(ord);
     [degc_sor,ord] = sort(data.DegCenAvg);
     degc_nam = data.FrmsNam(ord);
     [eigc_sor,ord] = sort(data.EigCenAvg);
-    eigc_nam = data.FrmsNam(ord);    
+    eigc_nam = data.FrmsNam(ord);
+    [katc_sor,ord] = sort(data.KatCenAvg);
+    katc_nam = data.FrmsNam(ord);
+    [cluc_sor,ord] = sort(data.CluCoeAvg);
+    cluc_nam = data.FrmsNam(ord);
 
-    fig = figure('Name','Average Centrality Coefficients','Units','normalized','Position',[100 100 0.85 0.85]);
+    fig = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    sub_1 = subplot(2,2,1);
-    bar(sub_1,seq,cloc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_1,'XTickLabel',cloc_nam);
-    title('Closeness Centrality');
-
-    sub_2 = subplot(2,2,2);
-    bar(sub_2,seq,cluc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_2,'XTickLabel',cluc_nam);
-    title('Clustering Coefficient');
+    sub_1 = subplot(2,3,1);
+    bar(sub_1,seq,betc_sor,'FaceColor',[0.678 0.922 1]);
+    set(sub_1,'XTickLabel',betc_nam);
+    title('Betweenness Centrality');
     
-    sub_3 = subplot(2,2,3);
+    sub_2 = subplot(2,3,2);
+    bar(sub_2,seq,cloc_sor,'FaceColor',[0.678 0.922 1]);
+    set(sub_2,'XTickLabel',cloc_nam);
+    title('Closeness Centrality');
+    
+    sub_3 = subplot(2,3,3);
     bar(sub_3,seq,degc_sor,'FaceColor',[0.678 0.922 1]);
     set(sub_3,'XTickLabel',degc_nam);
     title('Degree Centrality');
     
-    sub_4 = subplot(2,2,4);
+    sub_4 = subplot(2,3,4);
     bar(sub_4,seq,eigc_sor,'FaceColor',[0.678 0.922 1]);
     set(sub_4,'XTickLabel',eigc_nam);
     title('Eigenvector Centrality');
     
-    set([sub_1 sub_2 sub_3 sub_4],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',90);
+    sub_5 = subplot(2,3,5);
+    bar(sub_5,seq,katc_sor,'FaceColor',[0.678 0.922 1]);
+    set(sub_5,'XTickLabel',katc_nam);
+    title('Katz Centrality');
 
-    t = figure_title('Average Centrality Coefficients');
+    sub_6 = subplot(2,3,6);
+    bar(sub_6,seq,cluc_sor,'FaceColor',[0.678 0.922 1]);
+    set(sub_6,'XTickLabel',cluc_nam);
+    title('Clustering Coefficient');
+    
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',90);
+
+    t = figure_title('Average Centrality Measures');
     t_pos = get(t,'Position');
     set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
     
