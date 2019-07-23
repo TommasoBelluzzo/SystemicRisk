@@ -28,7 +28,7 @@ function data = parse_dataset_internal(file,df)
         error('The dataset file does not exist.');
     end
 
-    if (ispc() && verLessThan('Matlab','9.6'))
+    if (ispc())
         [file_stat,file_shts,file_fmt] = xlsfinfo(file);
         
         if (isempty(file_stat) || ~strcmp(file_fmt,'xlOpenXMLWorkbook'))

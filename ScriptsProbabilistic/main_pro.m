@@ -1,10 +1,11 @@
 % [INPUT]
 % data = A structure representing the dataset.
+% tpl  = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % res  = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k    = A float representing the confidence level used to calculate various measures (optional, default=0.95).
 % d    = A float representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
 % l    = A float representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
-% anl  = A boolean that indicates whether to analyse the results (optional, default=false).
+% anl  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 
 function main_pro(varargin)
 
@@ -13,6 +14,7 @@ function main_pro(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('tpl',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('res',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
         ip.addOptional('d',0.40,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.05,'<=',0.99}));
@@ -22,20 +24,15 @@ function main_pro(varargin)
 
     ip.parse(varargin{:});
 
-    ip_res = ip.Results;
-    res = ip_res.res;
+    ipd = ip.Results;
+    tpl = validate_template(ipd.tpl);
+    res = validate_output(ipd.res);
 
-    [path,name,ext] = fileparts(res);
-
-    if (~strcmp(ext,'.xlsx'))
-        res = fullfile(path,[name ext '.xlsx']);
-    end
-    
-    main_pro_internal(ip_res.data,res,ip_res.k,ip_res.d,ip_res.l,ip_res.anl);
+    main_pro_internal(ipd.data,tpl,res,ipd.k,ipd.d,ipd.l,ipd.anl);
 
 end
 
-function main_pro_internal(data,res,k,d,l,anl)
+function main_pro_internal(data,tpl,res,k,d,l,anl)
 
     if (~data.Full)
         error('The dataset does not contain market capitalization and total liabilities series, probabilistic measures cannot be computed.');
@@ -90,7 +87,7 @@ function main_pro_internal(data,res,k,d,l,anl)
         data = finalize_data(data);
         
         waitbar(100,bar,'Writing probabilistc measures...');
-        write_results(res,data);
+        write_results(tpl,res,data);
         
         delete(bar);
         
@@ -140,49 +137,6 @@ function data = finalize_data(data)
     srisk_avg = sum(data.SRISK .* wei,2);
 
     data.Avgs = [beta_avg var_avg covar_avg dcovar_avg mes_avg srisk_avg];
-
-end
-
-function write_results(res,data)
-
-    [res_path,~,~] = fileparts(res);
-
-    if (exist(res_path,'dir') ~= 7)
-        mkdir(res_path);
-    end
-
-    if (exist(res,'file') == 2)
-        delete(res);
-    end
-
-    dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
-    covar = [dates_str array2table(data.CoVaR,'VariableNames',data.FrmsNam)];
-    dcovar = [dates_str array2table(data.DCoVaR,'VariableNames',data.FrmsNam)];
-    mes = [dates_str array2table(data.MES,'VariableNames',data.FrmsNam)];
-    srisk = [dates_str array2table(data.SRISK,'VariableNames',data.FrmsNam)];
-    avgs = [dates_str array2table(data.Avgs(:,3:end),'VariableNames',data.LblsSim(3:end-1))];
-
-    writetable(covar,res,'FileType','spreadsheet','Sheet',1,'WriteRowNames',true);
-    writetable(dcovar,res,'FileType','spreadsheet','Sheet',2,'WriteRowNames',true);
-    writetable(mes,res,'FileType','spreadsheet','Sheet',3,'WriteRowNames',true);
-    writetable(srisk,res,'FileType','spreadsheet','Sheet',4,'WriteRowNames',true);    
-    writetable(avgs,res,'FileType','spreadsheet','Sheet',5,'WriteRowNames',true);    
-
-    if (ispc())
-        try
-            exc = actxserver('Excel.Application');
-            exc_wbs = exc.Workbooks.Open(res,0,false);
-
-            for i = 1:5
-                exc_wbs.Sheets.Item(i).Name = data.Lbls{i+2};
-            end
-
-            exc_wbs.Save();
-            exc_wbs.Close();
-            exc.Quit();
-        catch
-        end
-    end
 
 end
 
@@ -334,3 +288,116 @@ function plot_correlations(data)
     annotation('TextBox',[0 0 1 1],'String','Correlation Matrix','EdgeColor','none','FontName','Helvetica','FontSize',14,'HorizontalAlignment','center');
 
 end
+
+function res = validate_output(res)
+
+    [path,name,ext] = fileparts(res);
+
+    if (~strcmp(ext,'.xlsx'))
+        res = fullfile(path,[name ext '.xlsx']);
+    end
+    
+end
+
+function tpl = validate_template(tpl)
+
+    if (exist(tpl,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_stat,file_shts,file_fmt] = xlsfinfo(tpl);
+        
+        if (isempty(file_stat) || ~strcmp(file_fmt,'xlOpenXMLWorkbook'))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_stat,file_shts] = xlsfinfo(tpl);
+        
+        if (isempty(file_stat))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    shts = {'CoVaR' 'DCoVaR' 'MES' 'SRISK' 'Averages'};
+    
+    if (~all(ismember(shts,file_shts)))
+        error(['The template must contain the following sheets: ' shts{1} sprintf(', %s', shts{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            exc = actxserver('Excel.Application');
+            exc_wbs = exc.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(shts)
+                exc_wbs.Sheets.Item(shts{i}).Cells.Clear();
+            end
+            
+            exc_wbs.Save();
+            exc_wbs.Close();
+            exc.Quit();
+
+            delete(exc);
+        catch
+        end
+    end
+
+end
+
+function write_results(tpl,res,data)
+
+    [res_path,~,~] = fileparts(res);
+
+    if (exist(res_path,'dir') ~= 7)
+        mkdir(res_path);
+    end
+
+    if (exist(res,'file') == 2)
+        delete(res);
+    end
+    
+    cres = copyfile(tpl,res,'f');
+    
+    if (cres == 0)
+        error('The results file could not created from the template file.');
+    end
+
+    dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
+
+    t1 = [dates_str array2table(data.CoVaR,'VariableNames',data.FrmsNam)];
+    writetable(t1,res,'FileType','spreadsheet','Sheet','CoVaR','WriteRowNames',true);
+
+    t2 = [dates_str array2table(data.DCoVaR,'VariableNames',data.FrmsNam)];
+    writetable(t2,res,'FileType','spreadsheet','Sheet','DCoVaR','WriteRowNames',true);
+    
+    t3 = [dates_str array2table(data.MES,'VariableNames',data.FrmsNam)];
+    writetable(t3,res,'FileType','spreadsheet','Sheet','MES','WriteRowNames',true);
+
+    t4 = [dates_str array2table(data.SRISK,'VariableNames',data.FrmsNam)];
+    writetable(t4,res,'FileType','spreadsheet','Sheet','SRISK','WriteRowNames',true);  
+    
+    t5 = [dates_str array2table(data.Avgs(:,3:end),'VariableNames',data.LblsSim(3:end-1))];
+    writetable(t5,res,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
+
+    if (ispc())
+        try
+            exc = actxserver('Excel.Application');
+            exc_wbs = exc.Workbooks.Open(res,0,false);
+
+            exc_wbs.Sheets.Item('CoVaR').Name = data.Lbls{3};
+            exc_wbs.Sheets.Item('DCoVaR').Name = data.Lbls{4};
+            exc_wbs.Sheets.Item('MES').Name = data.Lbls{5};
+            exc_wbs.Sheets.Item('SRISK').Name = data.Lbls{6};
+            
+            exc_wbs.Save();
+            exc_wbs.Close();
+            exc.Quit();
+            
+            delete(exc);
+        catch
+        end
+    end
+
+end
+

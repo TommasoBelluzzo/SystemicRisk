@@ -1,37 +1,36 @@
 % [INPUT]
 % data = A structure representing the dataset.
+% tpl  = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % res  = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % sst  = A float representing he statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % rob  = A boolean indicating whether to use robust p-values (optional, default=true).
-% anl  = A boolean that indicates whether to analyse the results (optional, default=false).
+% anl  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 
 function main_net(varargin)
 
-    persistent p;
+    persistent ip;
 
-    if (isempty(p))
-        p = inputParser();
-        p.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        p.addRequired('res',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        p.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
-        p.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
-        p.addOptional('anl',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
+    if (isempty(ip))
+        ip = inputParser();
+        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('tpl',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        ip.addRequired('res',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        ip.addOptional('sst',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
+        ip.addOptional('rob',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('anl',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
-    p.parse(varargin{:});
-    res = p.Results;
+    ip.parse(varargin{:});
 
-    [path,name,ext] = fileparts(res.res);
-
-    if (~strcmp(ext,'.xlsx'))
-        res = fullfile(path,[name ext '.xlsx']);
-    end
+    ipd = ip.Results;
+    tpl = validate_template(ipd.tpl);
+    res = validate_output(ipd.res);
     
-    main_net_internal(res.data,res.res,res.sst,res.rob,res.anl);
+    main_net_internal(ipd.data,tpl,res,ipd.sst,ipd.rob,ipd.anl);
 
 end
 
-function main_net_internal(data,res,sst,rob,anl)
+function main_net_internal(data,tpl,res,sst,rob,anl)
 
     data = data_initialize(data,sst,rob);
 
@@ -92,12 +91,12 @@ function main_net_internal(data,res,sst,rob,anl)
         data = data_finalize(data,win_dif);
 
         waitbar(100,bar,'Writing network measures...');
-        write_results(res,data);
+        write_results(tpl,res,data);
         
         delete(bar);
         
         if (anl)        
-            plot_indices(data);
+            plot_indicators(data);
             plot_network(data);
             plot_centralities(data);
             plot_pca(data);
@@ -152,9 +151,10 @@ function data = data_finalize(data,win_dif)
 
     data.PCACoeAvg = sum(cat(3,data.PCACoe{win_seq}),3) ./ length(win_seq);
     data.PCAExpAvg = sum(cat(3,data.PCAExp{win_seq}),3) ./ length(win_seq);
-    data.PCAExpSum = NaN(data.Obs,4);
     data.PCAScoAvg = sum(cat(3,data.PCASco{win_seq}),3) ./ length(win_seq);
 
+    data.PCAExpSum = NaN(data.Obs,4);
+    
     for i = win_seq
         exp = data.PCAExp{i};
         data.PCAExpSum(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
@@ -162,55 +162,7 @@ function data = data_finalize(data,win_dif)
 
 end
 
-function write_results(res,data)
-
-    [res_path,~,~] = fileparts(res);
-
-    if (exist(res_path,'dir') ~= 7)
-        mkdir(res_path);
-    end
-
-    if (exist(res,'file') == 2)
-        delete(res);
-    end
-
-    frms = data.FrmsNam';
-    sep = repmat({' '},data.Frms,1);
-    
-    ind = cell2table([data.DatesStr num2cell(data.DCI) num2cell(data.NumIO) num2cell(data.NumIOO)],'VariableNames',{'Date' 'DCI' 'NumIO' 'NumIOO'});
-
-    vars = [frms num2cell(data.AdjMatAvg) sep frms num2cell(data.BetCenAvg') num2cell(data.CloCenAvg') num2cell(data.DegCenAvg') num2cell(data.EigCenAvg') num2cell(data.KatCenAvg') num2cell(data.CluCoeAvg')];
-    lbls = {'Firms1' data.FrmsNam{:,:} 'X' 'Firms2' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
-    net = cell2table(vars,'VariableNames',lbls);
-
-    vars = [frms num2cell(data.PCACoeAvg) sep num2cell(1:data.Frms)' num2cell(data.PCAExpAvg)];
-    lbls = {'Firms' data.FrmsNam{:,:} 'X' 'PC' 'ExplainedVariance'};
-    pca_1 = cell2table(vars,'VariableNames',lbls);
-    pca_2 = cell2table(num2cell(data.PCAScoAvg),'VariableNames',data.FrmsNam);
-    
-    writetable(ind,res,'FileType','spreadsheet','Sheet',1,'WriteRowNames',true);
-    writetable(net,res,'FileType','spreadsheet','Sheet',2,'WriteRowNames',true);   
-    writetable(pca_1,res,'FileType','spreadsheet','Sheet',3,'WriteRowNames',true); 
-    writetable(pca_2,res,'FileType','spreadsheet','Sheet',4,'WriteRowNames',false);
-    
-    if (ispc())
-        try
-            exc = actxserver('Excel.Application');
-            exc_wbs = exc.Workbooks.Open(res,0,false);
-            exc_wbs.Sheets.Item(1).Name = 'Indices';
-            exc_wbs.Sheets.Item(2).Name = 'Centrality Averages';
-            exc_wbs.Sheets.Item(3).Name = 'PCA Average Coefficients';
-            exc_wbs.Sheets.Item(4).Name = 'PCA Average Scores';
-            exc_wbs.Save();
-            exc_wbs.Close();
-            exc.Quit();
-        catch
-        end
-    end
-
-end
-
-function plot_indices(data)
+function plot_indicators(data)
 
     fig = figure('Name','Measures of Connectedness','Units','normalized','Position',[100 100 0.85 0.85]);
 
@@ -476,5 +428,113 @@ function plot_pca(data)
 
     jfr = get(fig,'JavaFrame');
     set(jfr,'Maximized',true);
+
+end
+
+function res = validate_output(res)
+
+    [path,name,ext] = fileparts(res);
+
+    if (~strcmp(ext,'.xlsx'))
+        res = fullfile(path,[name ext '.xlsx']);
+    end
+    
+end
+
+function tpl = validate_template(tpl)
+
+    if (exist(tpl,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_stat,file_shts,file_fmt] = xlsfinfo(tpl);
+        
+        if (isempty(file_stat) || ~strcmp(file_fmt,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_stat,file_shts] = xlsfinfo(tpl);
+        
+        if (isempty(file_stat))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    shts = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures' 'PCA Explained Variances' 'PCA Average Coefficients' 'PCA Average Scores'};
+
+    if (~all(ismember(shts,file_shts)))
+        error(['The template must contain the following sheets: ' shts{1} sprintf(', %s', shts{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            exc = actxserver('Excel.Application');
+            exc_wbs = exc.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(shts)
+                exc_wbs.Sheets.Item(shts{i}).Cells.Clear();
+            end
+            
+            exc_wbs.Save();
+            exc_wbs.Close();
+            exc.Quit();
+
+            delete(exc);
+        catch
+        end
+    end
+
+end
+
+function write_results(tpl,res,data)
+
+    [res_path,~,~] = fileparts(res);
+
+    if (exist(res_path,'dir') ~= 7)
+        mkdir(res_path);
+    end
+
+    if (exist(res,'file') == 2)
+        delete(res);
+    end
+    
+    cres = copyfile(tpl,res,'f');
+    
+    if (cres == 0)
+        error('The results file could not created from the template file.');
+    end
+
+    frms = data.FrmsNam';
+    
+    vars = [data.DatesStr num2cell(data.DCI) num2cell(data.NumIO) num2cell(data.NumIOO)];
+    lbls = {'Date' 'DCI' 'NumIO' 'NumIOO'};
+    t1 = cell2table(vars,'VariableNames',lbls);
+    writetable(t1,res,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
+
+    vars = [frms num2cell(data.AdjMatAvg)];
+    lbls = {'Firms' data.FrmsNam{:,:}};
+    t2 = cell2table(vars,'VariableNames',lbls);
+    writetable(t2,res,'FileType','spreadsheet','Sheet','Average Adjacency Matrix','WriteRowNames',true);
+
+    vars = [frms num2cell(data.BetCenAvg') num2cell(data.CloCenAvg') num2cell(data.DegCenAvg') num2cell(data.EigCenAvg') num2cell(data.KatCenAvg') num2cell(data.CluCoeAvg')];
+    lbls = {'Firms' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
+    t3 = cell2table(vars,'VariableNames',lbls);
+    writetable(t3,res,'FileType','spreadsheet','Sheet','Average Centrality Measures','WriteRowNames',true);
+
+    vars = [num2cell(1:data.Frms)' num2cell(data.PCAExpAvg)];
+    lbls = {'PC' 'ExplainedVariance'};
+    t4 = cell2table(vars,'VariableNames',lbls);
+    writetable(t4,res,'FileType','spreadsheet','Sheet','PCA Explained Variances','WriteRowNames',true);
+
+    vars = [frms num2cell(data.PCACoeAvg)];
+    lbls = {'Firms' data.FrmsNam{:,:}};
+    t5 = cell2table(vars,'VariableNames',lbls);
+    writetable(t5,res,'FileType','spreadsheet','Sheet','PCA Average Coefficients','WriteRowNames',true);
+    
+    vars = num2cell(data.PCAScoAvg);
+    lbls = data.FrmsNam;
+    t6 = cell2table(vars,'VariableNames',lbls);
+    writetable(t6,res,'FileType','spreadsheet','Sheet','PCA Average Scores','WriteRowNames',true);
 
 end

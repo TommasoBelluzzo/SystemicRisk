@@ -9,13 +9,13 @@
 % [OUTPUT]
 % dci   = A float representing the Dynamic Causality Index value.
 % n_io  = An integer representing the total number of in and out connections.
-% n_ioo = An integer representing the total number of in and out connections between the different sectors (if no groups are specified a NaN is returned).
+% n_ioo = An integer representing the total number of in and out connections between the different sectors.
 % betc  = A vector of floats containing the normalized betweenness centrality of each node.
 % cloc  = A vector of floats containing the normalized closeness centrality of each node.
 % cluc  = A vector of floats containing the normalized clustering coefficient of each node.
 % degc  = A vector of floats containing the normalized degree centrality of each node.
 % eigc  = A vector of floats containing the normalized eigenvector centrality of each node.
-% eigc  = A vector of floats containing the normalized Katz centrality of each node.
+% katc  = A vector of floats containing the normalized Katz centrality of each node.
 %
 % [NOTES]
 % If no sector delimiters are specified, n_ioo is equal to NaN.
@@ -161,15 +161,15 @@ function cluc = calculate_clustering_coefficient(adjm,adjm_len,degc)
 
 end
 
-function [degc,degc_nor] = calculate_degree_centrality(adjm,adjm_len)
+function [degc_std,degc] = calculate_degree_centrality(adjm,adjm_len)
 
-    degc = zeros(1,adjm_len);
+    degc_std = zeros(1,adjm_len);
 
     for i = 1:adjm_len
-        degc(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
+        degc_std(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
     end
 
-    degc_nor = degc ./ (adjm_len - 1);
+    degc = degc_std ./ (adjm_len - 1);
 
 end
 
