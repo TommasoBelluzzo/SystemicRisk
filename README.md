@@ -4,8 +4,8 @@ This script calculates and analyses the following systemic risk indicators:
 
 * `CoVaR` and `ΔCoVaR` (Conditional Value-at-Risk) proposed by [Adrian & Brunnermeier (2008)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1269446)
 * `MES` (Marginal Expected Shortfall) proposed by [Acharya et al. (2010)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1573171)
-* `Network Measures` proposed by [Billio et al. (2011)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1963216)
 * `SRISK` (Conditional Capital Shortfall Index) proposed by [Brownlees & Engle (2010)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1611229)
+* `Network Measures` proposed by [Billio et al. (2011)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1963216)
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
 
