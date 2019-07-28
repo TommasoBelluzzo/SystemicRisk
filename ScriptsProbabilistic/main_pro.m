@@ -42,12 +42,12 @@ function main_pro_internal(data,tpl,res,k,d,l,anl)
 
     ret0_m = data.IdxRet - mean(data.IdxRet);
     
-    bar = waitbar(0,'Calculating probabilistc measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
+    bar = waitbar(0,'Calculating probabilistic measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
     
     try
         for i = 1:data.Frms
-            waitbar(((i - 1) / data.Frms),bar,sprintf('Calculating probabilistc measures for %s and %s...',data.IdxNam,data.FrmsNam{i}));
+            waitbar(((i - 1) / data.Frms),bar,['Calculating probabilistic measures for ' data.FrmsNam{i} '...']);
 
             if (getappdata(bar,'Stop'))
                 delete(bar);
