@@ -25,7 +25,7 @@ if (~isempty(regexpi(path_base,'Editor')))
             
             path_base_new = ia{:};
 
-            if (isempty(path_base_new) || strcmp(path_base_new,path_base) || ~exist(path_base_new,'dir'))
+            if (isempty(path_base_new) || strcmp(path_base_new,path_base) || strcmp(path_base_new(1:end-1),path_base) || ~exist(path_base_new,'dir'))
                continue;
             end
             
@@ -73,4 +73,5 @@ pause(2);
 main_net(data,file_tnet,file_rnet,0.05,true,true);
 
 save('data.mat','data');
+
 rmpath(paths_base);
