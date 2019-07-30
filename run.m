@@ -11,6 +11,35 @@ if (~strcmpi(path_base(end),filesep()))
     path_base = [path_base filesep()];
 end
 
+if (~isempty(regexpi(path_base,'Editor')))
+    path_base_fs = dir(path_base);
+    is_live = ~all(cellfun(@isempty,regexpi({path_base_fs.name},'LiveEditorEvaluationHelper')));
+
+    if (is_live)
+        while (true)
+            ia = inputdlg('It looks like the program is being executed as a live script. Please, manually enter the root folder of this package:','Manual Input Required');
+    
+            if (isempty(ia))
+                return;
+            end
+            
+            path_base_new = ia{:};
+
+            if (isempty(path_base_new) || strcmp(path_base_new,path_base) || ~exist(path_base_new,'dir'))
+               continue;
+            end
+            
+            path_base = path_base_new;
+            
+            break;
+        end
+    end
+end
+
+if (~strcmpi(path_base(end),filesep()))
+    path_base = [path_base filesep()];
+end
+
 paths_base = genpath(path_base);
 paths_base = strsplit(paths_base,';');
 
@@ -25,27 +54,23 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-try
-    path_dset = strrep('Datasets\Example_Large.xlsx','\',filesep());
+path_dset = strrep('Datasets\Example_Large.xlsx','\',filesep());
 
-    path_tpro = strrep('Templates\TemplatePRO.xlsx','\',filesep());
-    file_tpro = fullfile(path_base,path_tpro);
-    path_rpro = strrep('Results\ResultsPRO.xlsx','\',filesep());
-    file_rpro = fullfile(path_base,path_rpro);
+path_tpro = strrep('Templates\TemplatePRO.xlsx','\',filesep());
+file_tpro = fullfile(path_base,path_tpro);
+path_rpro = strrep('Results\ResultsPRO.xlsx','\',filesep());
+file_rpro = fullfile(path_base,path_rpro);
 
-    path_tnet = strrep('Templates\TemplateNET.xlsx','\',filesep());
-    file_tnet = fullfile(path_base,path_tnet);
-    path_rnet = strrep('Results\ResultsNET.xlsx','\',filesep());
-    file_rnet = fullfile(path_base,path_rnet);
-    
-    data = parse_dataset(fullfile(path_base,path_dset));
+path_tnet = strrep('Templates\TemplateNET.xlsx','\',filesep());
+file_tnet = fullfile(path_base,path_tnet);
+path_rnet = strrep('Results\ResultsNET.xlsx','\',filesep());
+file_rnet = fullfile(path_base,path_rnet);
 
-    main_pro(data,file_tpro,file_rpro,0.95,0.40,0.08,true);
-    pause(2);
-    main_net(data,file_tnet,file_rnet,0.05,true,true);
+data = parse_dataset(fullfile(path_base,path_dset));
 
-    save('data.mat','data');
-catch e
-   rmpath(paths_base);
-   rethrow(e);
-end
+main_pro(data,file_tpro,file_rpro,0.95,0.40,0.08,true);
+pause(2);
+main_net(data,file_tnet,file_rnet,0.05,true,true);
+
+save('data.mat','data');
+rmpath(paths_base);
