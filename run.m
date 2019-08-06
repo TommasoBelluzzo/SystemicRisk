@@ -16,8 +16,14 @@ if (~isempty(regexpi(path_base,'Editor')))
     is_live = ~all(cellfun(@isempty,regexpi({path_base_fs.name},'LiveEditorEvaluationHelper')));
 
     if (is_live)
-        while (true)
-            ia = inputdlg('It looks like the program is being executed as a live script. Please, manually enter the root folder of this package:','Manual Input Required');
+        pwd_curr = pwd();
+
+        if (~strcmpi(pwd_curr(end),filesep()))
+            pwd_curr = [pwd_curr filesep()];
+        end
+        
+        while (true) 
+            ia = inputdlg('It looks like the program is being executed in a non-standard mode. Please, confirm or change the root folder of this package:','Manual Input Required',1,{pwd_curr});
     
             if (isempty(ia))
                 return;
