@@ -78,6 +78,6 @@ main_pro(data,file_tpro,file_rpro,0.95,0.40,0.08,true);
 pause(2);
 main_net(data,file_tnet,file_rnet,0.05,true,true);
 
-save('data.mat','data');
+save(fullfile(path_base,'Results\Data.mat'),'data');
 
 rmpath(paths_base);
