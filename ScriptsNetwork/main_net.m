@@ -346,7 +346,7 @@ function plot_centralities(data)
     set(sub_6,'XTickLabel',cluc_nam);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',seq_lim,'XTick',seq,'XTickLabelRotation',45);
 
     t = figure_title('Average Centrality Measures');
     t_pos = get(t,'Position');
