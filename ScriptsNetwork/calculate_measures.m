@@ -158,7 +158,7 @@ function cluc = calculate_clustering_coefficient(adjm,adjm_len,deg)
             continue;
         end
 
-        knei = find(adjm(i,:) > 0);
+        knei = find(adjm(i,:) ~= 0);
         ksub = adjm(knei,knei);
 
         if (issymmetric(ksub))
