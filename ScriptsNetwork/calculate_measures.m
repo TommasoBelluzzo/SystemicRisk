@@ -77,9 +77,9 @@ function [dci,n_io,n_ioo,betc,cloc,cluc,degc,eigc,katc] = calculate_measures(adj
     adjm_len = length(adjm);
 
     betc = calculate_betweenness_centrality(adjm,adjm_len);
-    [degc_std,degc] = calculate_degree_centrality(adjm,adjm_len);
+    [deg,degc] = calculate_degree_centrality(adjm,adjm_len);
     cloc = calculate_closeness_centrality(adjm,adjm_len);
-    cluc = calculate_clustering_coefficient(adjm,adjm_len,degc_std);
+    cluc = calculate_clustering_coefficient(adjm,adjm_len,deg);
     eigc = calculate_eigenvector_centrality(adjm);
     katc = calculate_katz_centrality(adjm,adjm_len);
 
@@ -139,37 +139,55 @@ function cloc = calculate_closeness_centrality(adjm,adjm_len)
 
 end
 
-function cluc = calculate_clustering_coefficient(adjm,adjm_len,degc)
+function cluc = calculate_clustering_coefficient(adjm,adjm_len,deg)
 
     adjm_seq = 1:adjm_len;
-    degc_max = max(degc);
     
-    cluc = zeros(1,adjm_len);
+    if (adjm == transpose(adjm))
+        z = 2;
+    else
+        z = 1;
+    end
+    
+    cluc = zeros(adjm_len,1);
 
     for i = adjm_seq
-        degc_i = degc(i);
-        
-        if ((degc_i == 0) || (degc_i == 1))
+        degi = deg(i);
+
+        if ((degi == 0) || (degi == 1))
             continue;
         end
 
-        node = adjm_seq(logical(adjm(:,i)));
-        cluc_i = (sum(sum(adjm(node,node))) / degc_i) / (degc_i - 1);
+        knei = find(adjm(i,:) > 0);
+        ksub = adjm(knei,knei);
 
-        cluc(i) = cluc_i * (degc_i / degc_max);
+        if (ksub == transpose(ksub))
+            ksub_sl = trace(ksub);
+            
+            if (ksub_sl == 0)
+                edges = sum(sum(ksub)) / 2; 
+            else
+                edges = ((sum(sum(ksub)) - ksub_sl) / 2) + ksub_sl;
+            end
+        else
+            edges = sum(sum(ksub));
+        end
+
+        cluc(i) = ((z * edges) / degi) / (degi - 1);
+
     end
 
 end
 
-function [degc_std,degc] = calculate_degree_centrality(adjm,adjm_len)
+function [deg,degc] = calculate_degree_centrality(adjm,adjm_len)
 
-    degc_std = zeros(1,adjm_len);
+    deg = zeros(1,adjm_len);
 
     for i = 1:adjm_len
-        degc_std(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
+        deg(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
     end
 
-    degc = degc_std ./ (adjm_len - 1);
+    degc = deg ./ (adjm_len - 1);
 
 end
 
