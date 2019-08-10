@@ -143,7 +143,7 @@ function cluc = calculate_clustering_coefficient(adjm,adjm_len,deg)
 
     adjm_seq = 1:adjm_len;
     
-    if (adjm == transpose(adjm))
+    if (issymmetric(adjm))
         z = 2;
     else
         z = 1;
@@ -161,7 +161,7 @@ function cluc = calculate_clustering_coefficient(adjm,adjm_len,deg)
         knei = find(adjm(i,:) > 0);
         ksub = adjm(knei,knei);
 
-        if (ksub == transpose(ksub))
+        if (issymmetric(ksub))
             ksub_sl = trace(ksub);
             
             if (ksub_sl == 0)
@@ -181,12 +181,12 @@ end
 
 function [deg,degc] = calculate_degree_centrality(adjm,adjm_len)
 
-    deg = zeros(1,adjm_len);
-
-    for i = 1:adjm_len
-        deg(i) = sum(adjm(:,i)~=0) + sum(adjm(i,:)~=0);
+    if (issymmetric(adjm))
+        deg = sum(adjm) + sum(adjm.');
+    else
+        deg = sum(adjm) + diag(adjm).';
     end
-
+    
     degc = deg ./ (adjm_len - 1);
 
 end
