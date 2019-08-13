@@ -76,7 +76,7 @@ function data = parse_dataset_internal(file,df)
 
     tab_rets = parse_table(file,1,'Returns',df);
     
-    if (any(ismissing(tab_rets)))
+    if (any(any(ismissing(tab_rets))))
         error('The ''Returns'' table contains invalid or missing values.');
     end
     
@@ -111,7 +111,7 @@ function data = parse_dataset_internal(file,df)
                 if (~isempty(tab_idx))
                     tab_cap = parse_table(file,tab_idx+1,'Market Capitalization',df);
 
-                    if (any(ismissing(tab_cap)))
+                    if (any(any(ismissing(tab_cap))))
                         error('The ''Market Capitalization'' sheet contains invalid or missing values.');
                     end
 
@@ -138,7 +138,7 @@ function data = parse_dataset_internal(file,df)
                 if (~isempty(tab_idx))
                     tab_lia = parse_table(file,tab_idx+1,'Total Liabilities',df);
 
-                    if (any(ismissing(tab_lia)))
+                    if (any(any(ismissing(tab_lia))))
                         error('The ''Total Liabilities'' sheet contains invalid or missing values.');
                     end
 
@@ -162,7 +162,7 @@ function data = parse_dataset_internal(file,df)
                 if (~isempty(tab_idx))
                     stvars = parse_table(file,tab_idx+1,'State Variables',df);
 
-                    if (any(ismissing(stvars)))
+                    if (any(any(ismissing(stvars))))
                         error('The ''State Variables'' sheet contains invalid or missing values.');
                     end
 
@@ -181,7 +181,7 @@ function data = parse_dataset_internal(file,df)
                 if (~isempty(tab_idx))
                     grps = parse_table(file,tab_idx+1,'Groups',df);
 
-                    if (any(ismissing(grps)))
+                    if (any(any(ismissing(grps))))
                         error('The ''Groups'' sheet contains invalid or missing values.');
                     end
 
