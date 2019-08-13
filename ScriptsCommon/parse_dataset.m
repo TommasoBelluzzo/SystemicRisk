@@ -87,7 +87,7 @@ function data = parse_dataset_internal(file,df)
     t = height(tab_rets);
 
     if (t < 253)
-        error('The dataset must contain at least 253 observations (a full business year plus an additional observation at the beginning) in order to run consistent calculations.');
+        error('The dataset must contain at least 253 observations (a full business year plus an additional observation at the beginning of the time series) in order to run consistent calculations.');
     end
 
     dates_str = cellstr(datetime(tab_rets{:,1},'InputFormat',df));
