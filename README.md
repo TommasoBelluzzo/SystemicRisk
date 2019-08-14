@@ -70,7 +70,7 @@ Datasets must be structured like the default one included in every release of th
 
 #### Notes
 
-* Financial time series must contain the benchmark index and at least 3 firms. They must be based on a daily frequency and contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning). They must have been previously validated and preprocessed by:
+* Financial time series must contain the benchmark index and at least 3 firms. They must be based on a daily frequency and contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning of the time series). They must have been previously validated and preprocessed by:
   * discarding illiquid series with too many zeroes (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
