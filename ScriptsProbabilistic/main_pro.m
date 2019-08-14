@@ -179,7 +179,6 @@ function plot_index(data)
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',strs,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     
     pause(0.01);
-
     jfr = get(fig,'JavaFrame');
     set(jfr,'Maximized',true);
 
@@ -187,7 +186,7 @@ end
 
 function plot_averages(data)
 
-    avgs = data.Avgs(:,3:end) ./ 1e6;
+    avgs = data.Avgs(:,3:end);
     avgs_len = size(avgs,2);
 
     x_max = max(max(avgs));
@@ -206,7 +205,7 @@ function plot_averages(data)
         plot(sub,data.DatesNum,avgs(:,i));
         datetick(sub,'x','yyyy');
         xlabel(sub,'Time');
-        ylabel(sub,'Billions of Dollars');
+        ylabel(sub,'Value');
         title(sub,data.Lbls(i+2));
         
         subs(i) = sub;
@@ -222,7 +221,6 @@ function plot_averages(data)
     set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
 
     pause(0.01);
-
     jfr = get(fig,'JavaFrame');
     set(jfr,'Maximized',true);
 
