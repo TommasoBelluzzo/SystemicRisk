@@ -22,19 +22,19 @@ function [p,s] = dcc_gjrgarch(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','finite','nonempty','nonnan','real'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty','real','finite'}));
         ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
         ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
-        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'numeric'},{'vector','real','finite','>=',1}));
-        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'numeric'},{'vector','real','finite','>=',1}));
+        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'numeric'},{'vector','nonempty','real','finite','>=',1}));
+        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'numeric'},{'vector','nonempty','real','finite','>=',1}));
     end
 
     ip.parse(varargin{:});
-    ip_res = ip.Results;
+    ipr = ip.Results;
 
     nargoutchk(2,2);
 
-    [p,s] = dcc_gjrgarch_internal(ip_res.data,ip_res.dcc_q,ip_res.dcc_p,ip_res.arch_q,ip_res.garch_p);
+    [p,s] = dcc_gjrgarch_internal(ipr.data,ipr.dcc_q,ipr.dcc_p,ipr.arch_q,ipr.garch_p);
 
 end
 
@@ -51,14 +51,14 @@ function [p,s] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
     end
 
     opt_lim = 1000 * max(arch_q + garch_p + 1);
-    opt = optimset('fmincon');
-    opt = optimset(opt,'Display','off');
-    opt = optimset(opt,'Diagnostics','off');
-    opt = optimset(opt,'LargeScale','off');
-    opt = optimset(opt,'MaxFunEvals',opt_lim);
-    opt = optimset(opt,'MaxIter',opt_lim);  
-    opt = optimset(opt,'MaxSQPIter',1000);
-    opt = optimset(opt,'TolFun',1e-006);
+    options = optimset('fmincon');
+    options = optimset(options,'Display','off');
+    options = optimset(options,'Diagnostics','off');
+    options = optimset(options,'LargeScale','off');
+    options = optimset(options,'MaxFunEvals',opt_lim);
+    options = optimset(options,'MaxIter',opt_lim);  
+    options = optimset(options,'MaxSQPIter',1000);
+    options = optimset(options,'TolFun',1e-006);
 
     gjr = cell(k,1);
     gjr_params = 0;
@@ -68,7 +68,7 @@ function [p,s] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
     parfor i = 1:k
         data_i = data(:,i);
 
-        [gjr_param,gjr_s] = gjrgarch(data_i,arch_q(i),garch_p(i),opt);
+        [gjr_param,gjr_s] = gjrgarch(data_i,arch_q(i),garch_p(i),options);
 
         gjr_params = gjr_params + length(gjr_param);
         
@@ -76,13 +76,13 @@ function [p,s] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
         rsd(:,i) = data_i ./ sqrt(gjr_s);
     end
 
-    opt = optimset('fmincon');
-    opt = optimset(opt,'Algorithm','sqp');
-    opt = optimset(opt,'Display','off');
-    opt = optimset(opt,'Diagnostics','off');
-    opt = optimset(opt,'LargeScale','off');
+    options = optimset('fmincon');
+    options = optimset(options,'Algorithm','sqp');
+    options = optimset(options,'Display','off');
+    options = optimset(options,'Diagnostics','off');
+    options = optimset(options,'LargeScale','off');
 
-    dcc_param = dcc(dcc_q,dcc_p,rsd,opt);
+    dcc_param = dcc(dcc_q,dcc_p,rsd,options);
     
     param = NaN(gjr_params,1);
     param_off = 1;
@@ -133,7 +133,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
             data_lag = data(i-q_i:i-1,j);
             data_lag_m = data_lag .* data_lag;
 
-            s_i(i,1) = ((1 - (al_i_sum + (0.5 * ga_i_sum) + be_i_sum)) * data_var) + (data_lag_m' * al_i) + ((data_lag_m .* (data_lag<0))' * ga_i) + (s_i(i-p_i:i-1,1)' * be_i);
+            s_i(i,1) = ((1 - (al_i_sum + (0.5 * ga_i_sum) + be_i_sum)) * data_var) + (data_lag_m.' * al_i) + ((data_lag_m .* (data_lag<0)).' * ga_i) + (s_i(i-p_i:i-1,1).' * be_i);
         end
 
         s(:,j) = s_i;
@@ -166,7 +166,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
 
         for j = 1:dcc_q
             rsd_off = rsd(i-j,:);
-            qt(:,:,i) = qt(:,:,i) + (al(j) * (rsd_off' * rsd_off));
+            qt(:,:,i) = qt(:,:,i) + (al(j) * (rsd_off.' * rsd_off));
         end
 
         for j = 1:dcc_p
@@ -176,7 +176,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
         qt_i = qt(:,:,i);
         qt_i_sd = sqrt(diag(qt_i));
 
-        pt(:,:,i) = qt_i ./ (qt_i_sd * qt_i_sd');
+        pt(:,:,i) = qt_i ./ (qt_i_sd * qt_i_sd.');
     end
 
     p = pt(:,:,(m1:mt));
@@ -232,7 +232,7 @@ function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
 
         for j = 1:dcc_q
             rsd_off = rsd(i-j,:);
-            qt(:,:,i) = qt(:,:,i) + (al(j) * (rsd_off' * rsd_off));
+            qt(:,:,i) = qt(:,:,i) + (al(j) * (rsd_off.' * rsd_off));
         end
 
         for j = 1:dcc_p
@@ -241,9 +241,9 @@ function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
 
         qt_i = qt(:,:,i);
         qt_i_sd = sqrt(diag(qt_i));
-        pt_i = qt_i ./ (qt_i_sd * qt_i_sd');
+        pt_i = qt_i ./ (qt_i_sd * qt_i_sd.');
 
-        x = x + log(det(pt_i)) + ((rsd_i / pt_i) * rsd_i');
+        x = x + log(det(pt_i)) + ((rsd_i / pt_i) * rsd_i.');
     end
 
     x = 0.5 * x;
@@ -307,9 +307,9 @@ function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
         data_lag = data(i-arch_q:i-1);
         data_lag_m = data_lag .* data_lag;
 
-        al_i = data_lag_m' * al;
-        ga_i = (data_lag_m .* (data_lag<0))' * ga;
-        be_i = s(i-garch_p:i-1)' * be;
+        al_i = data_lag_m.' * al;
+        ga_i = (data_lag_m .* (data_lag<0)).' * ga;
+        be_i = s(i-garch_p:i-1).' * be;
 
         s(i) = ((1 - (al_sum + (0.5 * ga_sum) + be_sum)) * data_var) + al_i + ga_i + be_i;
     end

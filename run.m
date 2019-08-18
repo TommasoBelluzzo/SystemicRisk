@@ -1,5 +1,9 @@
 warning('off','all');
 
+spmd
+	warning('off','all')
+end
+
 close('all');
 clearvars();
 clc();
@@ -16,20 +20,20 @@ if (~isempty(regexpi(path_base,'Editor')))
     is_live = ~all(cellfun(@isempty,regexpi({path_base_fs.name},'LiveEditorEvaluationHelper')));
 
     if (is_live)
-        pwd_curr = pwd();
+        pwd_current = pwd();
 
-        if (~strcmpi(pwd_curr(end),filesep()))
-            pwd_curr = [pwd_curr filesep()];
+        if (~strcmpi(pwd_current(end),filesep()))
+            pwd_current = [pwd_current filesep()];
         end
         
         while (true) 
-            ia = inputdlg('It looks like the program is being executed in a non-standard mode. Please, confirm or change the root folder of this package:','Manual Input Required',1,{pwd_curr});
+            answer = inputdlg('It looks like the program is being executed in a non-standard mode. Please, confirm or change the root folder of this package:','Manual Input Required',1,{pwd_current});
     
-            if (isempty(ia))
+            if (isempty(answer))
                 return;
             end
             
-            path_base_new = ia{:};
+            path_base_new = answer{:};
 
             if (isempty(path_base_new) || strcmp(path_base_new,path_base) || strcmp(path_base_new(1:end-1),path_base) || ~exist(path_base_new,'dir'))
                continue;
@@ -50,9 +54,9 @@ paths_base = genpath(path_base);
 paths_base = strsplit(paths_base,';');
 
 for i = numel(paths_base):-1:1
-    path_cur = paths_base{i};
+    path_current = paths_base{i};
 
-    if (~strcmp(path_cur,path_base) && isempty(regexpi(path_cur,[filesep() 'Scripts'])))
+    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'])))
         paths_base(i) = [];
     end
 end
@@ -60,20 +64,19 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-file_tsto = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
-file_tnet = fullfile(path_base,['Templates' filesep() 'TemplateNetwork.xlsx']);
+dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
+dataset_mat = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
+data = parse_dataset(dataset);
+save(dataset_mat,'data');
 
-file_dset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-file_rsto = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
-file_rnet = fullfile(path_base,['Results' filesep() 'ResultsNetwork.xlsx']);
-file_mat = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
+out_temp_sto = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
+out_file_sto = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
+run_stochastic(data,out_temp_sto,out_file_sto,0.95,0.40,0.08,0.40,true);
 
-data = parse_dataset(file_dset);
-
-main_stochastic(data,file_tsto,file_rsto,0.95,0.40,0.08,true);
 pause(2);
-main_network(data,file_tnet,file_rnet,0.05,true,true);
 
-save(file_mat,'data');
+out_temp_net = fullfile(path_base,['Templates' filesep() 'TemplateNetwork.xlsx']);
+out_file_net = fullfile(path_base,['Results' filesep() 'ResultsNetwork.xlsx']);
+run_network(data,out_temp_net,out_file_net,0.05,true,252,true);
 
 rmpath(paths_base);
