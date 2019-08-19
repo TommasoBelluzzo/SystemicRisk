@@ -112,6 +112,7 @@ function run_network_internal(data,out_temp,out_file,bandwidth,significance,robu
     if (analyze)        
         plot_indicators(data);
         plot_network(data);
+        plot_adjacency_matrix(data);
         plot_centralities(data);
         plot_pca(data);
     end
@@ -688,6 +689,42 @@ function plot_network(data)
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
 
+end
+
+function plot_adjacency_matrix(data)
+
+    f = figure('Name','Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85]);
+
+    a = data.AdjacencyMatrixAverage;
+    a(logical(eye(data.N))) = 0.5;
+
+    off = data.N + 0.5;
+
+    imagesc(a);
+    colormap([1 1 1; 0.6 0.6 0.6; 0.678 0.922 1])
+    axis image ij;
+
+    hold on;
+        for row = 0.5:off
+          line([0.5 off],[row row],'Color','k');
+        end
+    hold off;
+
+    hold on;
+        for column = 0.5:off
+          line([column column],[0.5 off],'Color','k');
+        end
+    hold off;
+
+    set(gca(),'XAxisLocation','top','TickLength',[0 0],'XTick',1:data.N,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YTick',1:data.N,'YTickLabels',data.FirmNames,'YTickLabelRotation',45);
+
+    t = figure_title('Average Adjacency Matrix');
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
 end
 
 function plot_centralities(data)
