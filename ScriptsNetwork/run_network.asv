@@ -147,36 +147,34 @@ function data = data_initialize(data,significance,robust,bandwidth)
 
 end
 
-function data = data_finalize(data,windows_diff)
+function data = data_finalize(data,win_dif)
 
-    windows_off = windows_diff + 1;
-    windows_sequence =  windows_off:data.Obs;
+    data.WinOff = win_dif + 1;
+
+    windows_sequence =  data.WinOff:data.Obs;
     windows_sequence_len = length(windows_sequence);
 
-    a = sum(cat(3,data.AdjacencyMatrices{windows_sequence}),3) ./ windows_sequence_len;
-    a_threshold = mean(mean(a));
-    a(a < a_threshold) = 0;
-    a(a >= a_threshold) = 1;
+    data.AdjMatAvg = sum(cat(3,data.AdjacencyMatrices{windows_sequence}),3) ./ windows_sequence_len;
     
-    data.WindowsOffset = windows_off;
+    thre = mean(mean(data.AdjMatAvg));
+    data.AdjMatAvg(data.AdjMatAvg < thre) = 0;
+    data.AdjMatAvg(data.AdjMatAvg >= thre) = 1;
+
+    data.BetCenAvg = sum(data.BetCen(windows_sequence,:),1) ./ windows_sequence_len;
+    data.CloCenAvg = sum(data.CloCen(windows_sequence,:),1) ./ windows_sequence_len;
+    data.CluCoeAvg = sum(data.CluCoe(windows_sequence,:),1) ./ windows_sequence_len;
+    data.DegCenAvg = sum(data.DegCen(windows_sequence,:),1) ./ windows_sequence_len;
+    data.EigCenAvg = sum(data.EigCen(windows_sequence,:),1) ./ windows_sequence_len;
+    data.KatCenAvg = sum(data.KatCen(windows_sequence,:),1) ./ windows_sequence_len;
+
+    data.PCACoefficientsAverages = sum(cat(3,data.PCACoe{windows_sequence}),3) ./ windows_sequence_len;
+    data.PCAExpAvg = sum(cat(3,data.PCAExp{windows_sequence}),3) ./ windows_sequence_len;
+    data.PCAScoresAverages = sum(cat(3,data.PCASco{windows_sequence}),3) ./ windows_sequence_len;
+    data.PCAExpSum = NaN(data.Obs,4);
     
-    data.AdjacencyMatrixAverage = a;
-
-    data.BetweennessCentralityAverage = sum(data.BetCen(windows_sequence,:),1) ./ windows_sequence_len;
-    data.ClosenessCentralityAverage = sum(data.CloCen(windows_sequence,:),1) ./ windows_sequence_len;
-    data.DegreeCentralityAverage = sum(data.DegCen(windows_sequence,:),1) ./ windows_sequence_len;
-    data.EigenvectorCentralityAverage = sum(data.EigCen(windows_sequence,:),1) ./ windows_sequence_len;
-    data.KatzCentralityAverage = sum(data.KatCen(windows_sequence,:),1) ./ windows_sequence_len;
-    data.ClusteringCoefficientsAverage = sum(data.CluCoe(windows_sequence,:),1) ./ windows_sequence_len;
-
-    data.PCACoefficientsAverage = sum(cat(3,data.PCACoe{windows_sequence}),3) ./ windows_sequence_len;
-    data.PCAExplainedAverage = sum(cat(3,data.PCAExp{windows_sequence}),3) ./ windows_sequence_len;
-    data.PCAExplainedSums = NaN(data.Obs,4);
-    data.PCAScoresAverage = sum(cat(3,data.PCASco{windows_sequence}),3) ./ windows_sequence_len;
-
     for i = windows_sequence
         exp = data.PCAExp{i};
-        data.PCAExplainedSums(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
+        data.PCAExpSum(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
     end
 
 end
@@ -297,27 +295,27 @@ function write_results(out_temp,out_file,data)
     t1 = cell2table(vars,'VariableNames',labels);
     writetable(t1,out_file,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
-    vars = [firm_names num2cell(data.AdjacencyMatrixAverage)];
+    vars = [firm_names num2cell(data.AdjMatAvg)];
     labels = {'Firms' data.FrmsNam{:,:}};
     t2 = cell2table(vars,'VariableNames',labels);
     writetable(t2,out_file,'FileType','spreadsheet','Sheet','Average Adjacency Matrix','WriteRowNames',true);
 
-    vars = [firm_names num2cell(data.BetweennessCentralityAverage') num2cell(data.ClosenessCentralityAverage') num2cell(data.DegreeCentralityAverage') num2cell(data.EigenvectorCentralityAverage') num2cell(data.KatzCentralityAverage') num2cell(data.ClusteringCoefficientsAverage')];
+    vars = [firm_names num2cell(data.BetCenAvg') num2cell(data.CloCenAvg') num2cell(data.DegCenAvg') num2cell(data.EigCenAvg') num2cell(data.KatCenAvg') num2cell(data.CluCoeAvg')];
     labels = {'Firms' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
     t3 = cell2table(vars,'VariableNames',labels);
     writetable(t3,out_file,'FileType','spreadsheet','Sheet','Average Centrality Measures','WriteRowNames',true);
 
-    vars = [num2cell(1:data.Frms)' num2cell(data.PCAExplainedAverage)];
+    vars = [num2cell(1:data.Frms)' num2cell(data.PCAExpAvg)];
     labels = {'PC' 'ExplainedVariance'};
     t4 = cell2table(vars,'VariableNames',labels);
     writetable(t4,out_file,'FileType','spreadsheet','Sheet','PCA Explained Variances','WriteRowNames',true);
 
-    vars = [firm_names num2cell(data.PCACoefficientsAverage)];
+    vars = [firm_names num2cell(data.PCACoefficientsAverages)];
     labels = {'Firms' data.FrmsNam{:,:}};
     t5 = cell2table(vars,'VariableNames',labels);
     writetable(t5,out_file,'FileType','spreadsheet','Sheet','PCA Average Coefficients','WriteRowNames',true);
     
-    vars = num2cell(data.PCAScoresAverage);
+    vars = num2cell(data.PCAScoresAverages);
     labels = data.FrmsNam;
     t6 = cell2table(vars,'VariableNames',labels);
     writetable(t6,out_file,'FileType','spreadsheet','Sheet','PCA Average Scores','WriteRowNames',true);
@@ -576,7 +574,7 @@ function plot_indicators(data)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    set([sub_1 sub_2],'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'XTickLabelRotation',45);
+    set([sub_1 sub_2],'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'XTickLabelRotation',45);
     
     indices_clean = ~isnan(data.NumberIO);
 
@@ -634,7 +632,7 @@ function plot_network(data)
     theta = linspace(0,(2 * pi),(data.Frms + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
-    [i,j] = find(data.AdjacencyMatrixAverage);
+    [i,j] = find(data.AdjMatAvg);
     [~,idxs] = sort(max(i,j));
     i = i(idxs);
     j = j(idxs);
@@ -693,17 +691,17 @@ function plot_centralities(data)
 
     seq = 1:data.Frms;
     
-    [betc_sor,order] = sort(data.BetweennessCentralityAverage);
+    [betc_sor,order] = sort(data.BetCenAvg);
     betc_nam = data.FrmsNam(order);
-    [cloc_sor,order] = sort(data.ClosenessCentralityAverage);
+    [cloc_sor,order] = sort(data.CloCenAvg);
     cloc_nam = data.FrmsNam(order);
-    [degc_sor,order] = sort(data.DegreeCentralityAverage);
+    [degc_sor,order] = sort(data.DegCenAvg);
     degc_nam = data.FrmsNam(order);
-    [eigc_sor,order] = sort(data.EigenvectorCentralityAverage);
+    [eigc_sor,order] = sort(data.EigCenAvg);
     eigc_nam = data.FrmsNam(order);
-    [katc_sor,order] = sort(data.KatzCentralityAverage);
+    [katc_sor,order] = sort(data.KatCenAvg);
     katc_nam = data.FrmsNam(order);
-    [cluc_sor,order] = sort(data.ClusteringCoefficientsAverage);
+    [cluc_sor,order] = sort(data.CluCoeAvg);
     cluc_nam = data.FrmsNam(order);
 
     f = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
@@ -752,10 +750,10 @@ end
 
 function plot_pca(data)
 
-    coe = data.PCACoefficientsAverage(:,1:3);
+    coe = data.PCACoefficientsAverages(:,1:3);
     [coe_rows,coe_cols] = size(coe);
 
-    sco = data.PCAScoresAverage(:,1:3);
+    sco = data.PCAScoresAverages(:,1:3);
     sco_rows = size(sco,1);
     
     [~,idx] = max(abs(coe),[],1);
@@ -799,15 +797,15 @@ function plot_pca(data)
     title('Coefficients & Scores');
 
     sub_2 = subplot(1,2,2);
-    ar_1 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
+    ar_1 = area(sub_2,data.DatesNum,data.PCAExpSum(:,1),'FaceColor',[0.7 0.7 0.7]);
     hold on;
-        ar_2 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,2),'FaceColor','g');
-        ar_3 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,3),'FaceColor','b');
-        ar_4 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,4),'FaceColor','r');
+        ar_2 = area(sub_2,data.DatesNum,data.PCAExpSum(:,2),'FaceColor','g');
+        ar_3 = area(sub_2,data.DatesNum,data.PCAExpSum(:,3),'FaceColor','b');
+        ar_4 = area(sub_2,data.DatesNum,data.PCAExpSum(:,4),'FaceColor','r');
     hold off;
     datetick('x','yyyy','KeepLimits');
     set([ar_1 ar_2 ar_3 ar_4],'EdgeColor','none');
-    set(sub_2,'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'YLim',[y_tcks(1) y_tcks(end)],'YTick',y_tcks,'YTickLabel',y_lbls);
+    set(sub_2,'XLim',[data.DatesNum(data.WinOff) data.DatesNum(end)],'YLim',[y_tcks(1) y_tcks(end)],'YTick',y_tcks,'YTickLabel',y_lbls);
     legend(sub_2,sprintf('PC 4-%d',data.Frms),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 

@@ -65,9 +65,7 @@ paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-dataset_mat = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
 data = parse_dataset(dataset);
-save(dataset_mat,'data');
 
 out_temp_sto = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
 out_file_sto = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
@@ -78,5 +76,8 @@ pause(2);
 out_temp_net = fullfile(path_base,['Templates' filesep() 'TemplateNetwork.xlsx']);
 out_file_net = fullfile(path_base,['Results' filesep() 'ResultsNetwork.xlsx']);
 run_network(data,out_temp_net,out_file_net,0.05,true,252,true);
+
+dataset_mat = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
+save(dataset_mat,'data');
 
 rmpath(paths_base);
