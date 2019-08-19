@@ -64,7 +64,7 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
+dataset = fullfile(path_base,['Datasets' filesep() 'Example_Small1.xlsx']);
 data = parse_dataset(dataset);
 
 out_temp_sto = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);

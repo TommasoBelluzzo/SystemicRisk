@@ -624,10 +624,10 @@ function plot_network(data)
         end
     end
     
-    if (isempty(data.NCap))
+    if (isempty(data.Capitalizations))
         wei = ones(1,data.N);
     else
-        wei = mean(data.NCap,1);
+        wei = mean(data.Capitalizations,1);
         wei = wei ./ mean(wei);
     end
     
