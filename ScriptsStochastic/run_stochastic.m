@@ -507,8 +507,8 @@ function plot_correlations(data)
             axis normal;
             
             if (i ~= j)
-                handle_line = lsline();
-                set(handle_line,'Color','r');
+                line = lsline();
+                set(line,'Color','r');
 
                 if (pval(i,j) < 0.05)
                     color = 'r';

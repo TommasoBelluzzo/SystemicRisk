@@ -287,12 +287,8 @@ function write_results(out_temp,out_file,data)
     end
 
     firm_names = data.FirmNames';
-    
-    var1 = data.DatesStr;
-    var2 = num2cell(data.DCI);
-    var3 = num2cell(data.NumberIO);
-    var4 = num2cell(data.NumberIOO);
-    vars = [var1 var2 var3 var4];
+
+    vars = [data.DatesStr num2cell(data.DCI) num2cell(data.NumberIO) num2cell(data.NumberIOO)];
     labels = {'Date' 'DCI' 'NumIO' 'NumIOO'};
     t1 = cell2table(vars,'VariableNames',labels);
     writetable(t1,out_file,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
@@ -561,16 +557,16 @@ function plot_indicators(data)
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,1,2);
-    handle_area_1 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
+    area_1 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
     hold on;
         if (data.Groups == 0)
-            handle_area_2 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_2 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
             area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
         else
-            handle_area_2 = area(sub_2,data.DatesNum,data.NumberIOO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_2 = area(sub_2,data.DatesNum,data.NumberIOO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
-    legend(sub_2,[handle_area_1 handle_area_2],'Num IO','Num IOO','Location','best');
+    legend(sub_2,[area_1 area_2],'Number IO','Number IOO','Location','best');
     t2 = title(sub_2,'In & Out Connections');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
@@ -578,9 +574,9 @@ function plot_indicators(data)
 
     set([sub_1 sub_2],'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'XTickLabelRotation',45);
     
-    indices_clean = ~isnan(data.NumberIO);
+    indices = ~isnan(data.NumberIO);
 
-    if (length(unique(year(data.DatesNum(indices_clean)))) <= 3)
+    if (length(unique(year(data.DatesNum(indices)))) <= 3)
         datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
         datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
     else
@@ -601,144 +597,149 @@ end
 function plot_network(data)
 
     if (data.Groups == 0)
-        grps_col = repmat(lines(1),data.N,1);
+        group_colors = repmat(lines(1),data.N,1);
     else
-        grps_col = zeros(data.N,3);
-        grps_del_len = length(data.GroupDelimiters);
-        grps_del_plu = data.GroupDelimiters + 1;
-        grps_lin = lines(data.Groups);
+        group_colors = zeros(data.N,3);
+        group_delimiters_len = length(data.GroupDelimiters);
+        group_lines = lines(data.Groups);
 
-        for i = 1:grps_del_len
+        for i = 1:group_delimiters_len
             del = data.GroupDelimiters(i);
 
             if (i == 1)
-                grps_col(1:del,:) = repmat(grps_lin(i,:),del,1);
+                group_colors(1:del,:) = repmat(group_lines(i,:),del,1);
             else
                 del_prev = data.GroupDelimiters(i-1) + 1;
-                grps_col(del_prev:del,:) = repmat(grps_lin(i,:),del-del_prev+1,1);
+                group_colors(del_prev:del,:) = repmat(group_lines(i,:),del-del_prev+1,1);
             end
 
-            if (i == grps_del_len)
-                grps_col(del+1:end,:) = repmat(grps_lin(i+1,:),data.N-del,1);
+            if (i == group_delimiters_len)
+                group_colors(del+1:end,:) = repmat(group_lines(i+1,:),data.N-del,1);
             end
         end
     end
     
     if (isempty(data.Capitalizations))
-        wei = ones(1,data.N);
+        weights = ones(1,data.N);
     else
-        wei = mean(data.Capitalizations,1);
-        wei = wei ./ mean(wei);
+        weights = mean(data.Capitalizations,1);
+        weights = weights ./ mean(weights);
     end
     
     theta = linspace(0,(2 * pi),(data.N + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
     [i,j] = find(data.AdjacencyMatrixAverage);
-    [~,idxs] = sort(max(i,j));
-    i = i(idxs);
-    j = j(idxs);
+    [~,order] = sort(max(i,j));
+    i = i(order);
+    j = j(order);
     x = [xy(i,1) xy(j,1)].';
     y = [xy(i,2) xy(j,2)].';
 
-    fig = figure('Name','Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub = subplot(100,1,10:100);
-    
+
     hold on;
         for i = 1:size(x,2)
-            idx = ismember(xy,[x(1,i) y(1,i)],'rows');
-            plot(sub,x(:,i),y(:,i),'Color',grps_col(idx,:));
+            index = ismember(xy,[x(1,i) y(1,i)],'rows');
+            plot(sub,x(:,i),y(:,i),'Color',group_colors(index,:));
         end
-
-        if (data.Groups == 0)
-            for i = 1:size(xy,1)
-                line(xy(i,1),xy(i,2),'Color',grps_col(i,:),'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * wei(i))));
-            end
-        else
-            lins = NaN(data.Groups,1);
-            lins_off = 1;
-            
-            for i = 1:size(xy,1)
-                grps_col_i = grps_col(i,:);
-                line(xy(i,1),xy(i,2),'Color',grps_col_i,'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * wei(i))));
-
-                if ((i == 1) || any(grps_del_plu == i))
-                    lins(lins_off) = line(xy(i,1),xy(i,2),'Color',grps_col_i,'LineStyle','none','Marker','.','MarkerSize',35);
-                    lins_off = lins_off + 1;
-                end
-            end
-
-            legend(sub,lins,data.GroupNames,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
-        end
-
-        axis(sub,[-1 1 -1 1]);
-        axis equal off;
     hold off;
 
-    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FirmNames,'FontSize',10);
-    set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
+    if (data.Groups == 0)
+        hold on;
+            for i = 1:size(xy,1)
+                line(xy(i,1),xy(i,2),'Color',group_colors(i,:),'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * weights(i))));
+            end
+        hold off;
+    else
+        group_delimiters_inc = data.GroupDelimiters + 1;
+
+        lines_ref = NaN(data.Groups,1);
+        lines_off = 1;
+
+        hold on;
+            for i = 1:size(xy,1)
+                group_color = group_colors(i,:);
+                line(xy(i,1),xy(i,2),'Color',group_color,'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * weights(i))));
+
+                if ((i == 1) || any(group_delimiters_inc == i))
+                    lines_ref(lines_off) = line(xy(i,1),xy(i,2),'Color',group_color,'LineStyle','none','Marker','.','MarkerSize',35);
+                    lines_off = lines_off + 1;
+                end
+            end
+        hold off;
+
+        legend(sub,lines_ref,data.GroupNames,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
+    end
+
+    axis(sub,[-1 1 -1 1]);
+    axis equal off;
+
+    labels = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FirmNames,'FontSize',10);
+    set(labels,{'Rotation'},num2cell(theta * (180 / pi)));
 
     t = figure_title('Network Graph');
-    t_pos = get(t,'Position');
-    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
 
 end
 
 function plot_centralities(data)
 
-    seq = 1:data.N;
+    sequence = 1:data.N;
     
-    [betc_sor,order] = sort(data.BetweennessCentralitiesAverage);
-    betc_nam = data.FirmNames(order);
-    [cloc_sor,order] = sort(data.ClosenessCentralitiesAverage);
-    cloc_nam = data.FirmNames(order);
-    [degc_sor,order] = sort(data.DegreeCentralitiesAverage);
-    degc_nam = data.FirmNames(order);
-    [eigc_sor,order] = sort(data.EigenvectorCentralitiesAverage);
-    eigc_nam = data.FirmNames(order);
-    [katc_sor,order] = sort(data.KatzCentralitiesAverage);
-    katc_nam = data.FirmNames(order);
-    [cluc_sor,order] = sort(data.ClusteringCoefficientsAverage);
-    cluc_nam = data.FirmNames(order);
+    [bc,order] = sort(data.BetweennessCentralitiesAverage);
+    bc_names = data.FirmNames(order);
+    [cc,order] = sort(data.ClosenessCentralitiesAverage);
+    cc_names = data.FirmNames(order);
+    [dc,order] = sort(data.DegreeCentralitiesAverage);
+    dc_names = data.FirmNames(order);
+    [ec,order] = sort(data.EigenvectorCentralitiesAverage);
+    ec_names = data.FirmNames(order);
+    [kc,order] = sort(data.KatzCentralitiesAverage);
+    kc_names = data.FirmNames(order);
+    [clustering_coefficients,order] = sort(data.ClusteringCoefficientsAverage);
+    clustering_coefficients_names = data.FirmNames(order);
 
     f = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,3,1);
-    bar(sub_1,seq,betc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_1,'XTickLabel',betc_nam);
+    bar(sub_1,sequence,bc,'FaceColor',[0.678 0.922 1]);
+    set(sub_1,'XTickLabel',bc_names);
     title('Betweenness Centrality');
     
     sub_2 = subplot(2,3,2);
-    bar(sub_2,seq,cloc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_2,'XTickLabel',cloc_nam);
+    bar(sub_2,sequence,cc,'FaceColor',[0.678 0.922 1]);
+    set(sub_2,'XTickLabel',cc_names);
     title('Closeness Centrality');
     
     sub_3 = subplot(2,3,3);
-    bar(sub_3,seq,degc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_3,'XTickLabel',degc_nam);
+    bar(sub_3,sequence,dc,'FaceColor',[0.678 0.922 1]);
+    set(sub_3,'XTickLabel',dc_names);
     title('Degree Centrality');
     
     sub_4 = subplot(2,3,4);
-    bar(sub_4,seq,eigc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_4,'XTickLabel',eigc_nam);
+    bar(sub_4,sequence,ec,'FaceColor',[0.678 0.922 1]);
+    set(sub_4,'XTickLabel',ec_names);
     title('Eigenvector Centrality');
     
     sub_5 = subplot(2,3,5);
-    bar(sub_5,seq,katc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_5,'XTickLabel',katc_nam);
+    bar(sub_5,sequence,kc,'FaceColor',[0.678 0.922 1]);
+    set(sub_5,'XTickLabel',kc_names);
     title('Katz Centrality');
 
     sub_6 = subplot(2,3,6);
-    bar(sub_6,seq,cluc_sor,'FaceColor',[0.678 0.922 1]);
-    set(sub_6,'XTickLabel',cluc_nam);
+    bar(sub_6,sequence,clustering_coefficients,'FaceColor',[0.678 0.922 1]);
+    set(sub_6,'XTickLabel',clustering_coefficients_names);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',sequence,'XTickLabelRotation',90);
 
     t = figure_title('Average Centrality Measures');
     t_position = get(t,'Position');
@@ -752,46 +753,44 @@ end
 
 function plot_pca(data)
 
-    coe = data.PCACoefficientsfficientsAverage(:,1:3);
-    [coe_rows,coe_cols] = size(coe);
+    coefficients = data.PCACoefficientsfficientsAverage(:,1:3);
+    [coefficients_rows,coefficients_columns] = size(coefficients);
+    [~,indices] = max(abs(coefficients),[],1);
+    coefficients_max_len = sqrt(max(sum(coefficients.^2,2)));
+    coefficients_columns_sign = sign(coefficients(indices + (0:coefficients_rows:((coefficients_columns-1)*coefficients_rows))));
+    coefficients = bsxfun(@times,coefficients,coefficients_columns_sign);
 
-    sco = data.PCAScoresresAverage(:,1:3);
-    sco_rows = size(sco,1);
+    scores = data.PCAScoresresAverage(:,1:3);
+    scores_rows = size(scores,1);
+    scores = bsxfun(@times,(coefficients_max_len .* (scores ./ max(abs(scores(:))))),coefficients_columns_sign);
     
-    [~,idx] = max(abs(coe),[],1);
-    coe_max_len = sqrt(max(sum(coe.^2,2)));
-    cols_sig = sign(coe(idx + (0:coe_rows:((coe_cols-1)*coe_rows))));
+    area_begin = zeros(coefficients_rows,1);
+    area_end = NaN(coefficients_rows,1);
+    x_area = [area_begin coefficients(:,1) area_end].';
+    y_area = [area_begin coefficients(:,2) area_end].';
+    z_area = [area_begin coefficients(:,3) area_end].';
+    
+    area_end = NaN(scores_rows,1);
+    x_points = [scores(:,1) area_end]';
+    y_points = [scores(:,2) area_end]';
+    z_points = [scores(:,3) area_end]';
 
-    coe = bsxfun(@times,coe,cols_sig);
-    sco = bsxfun(@times,(coe_max_len .* (sco ./ max(abs(sco(:))))),cols_sig);
+    limits_high = 1.1 * max(abs(coefficients(:)));
+    limits_low = -limits_high;
     
-    ar_beg = zeros(coe_rows,1);
-    ar_end = NaN(coe_rows,1);
-    x_ar = [ar_beg coe(:,1) ar_end]';
-    y_ar = [ar_beg coe(:,2) ar_end]';
-    z_ar = [ar_beg coe(:,3) ar_end]';
+    y_ticks = 0:10:100;
+    y_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
     
-    ar_end = NaN(sco_rows,1);
-    x_pts = [sco(:,1) ar_end]';
-    y_pts = [sco(:,2) ar_end]';
-    z_pts = [sco(:,3) ar_end]';
-
-    lim_hi = 1.1 * max(abs(coe(:)));
-    lim_lo = -lim_hi;
-    
-    y_tcks = 0:10:100;
-    y_lbls = arrayfun(@(x)sprintf('%d%%',x),y_tcks,'UniformOutput',false);
-    
-    fig = figure('Name','Principal Component Analysis','Units','normalized');
+    f = figure('Name','Principal Component Analysis','Units','normalized');
 
     sub_1 = subplot(1,2,1);
-    lin_1 = line(x_ar(1:2,:),y_ar(1:2,:),z_ar(1:2,:),'LineStyle','-','Marker','none');
-    lin_2 = line(x_ar(2:3,:),y_ar(2:3,:),z_ar(2:3,:),'LineStyle','none','Marker','.');
-    set([lin_1 lin_2],'Color','b');
-    line(x_pts,y_pts,z_pts,'Color','r','LineStyle','none','Marker','.');
-    view(sub_1,coe_cols);
+    line_1 = line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'LineStyle','-','Marker','none');
+    line_2 = line(x_area(2:3,:),y_area(2:3,:),z_area(2:3,:),'LineStyle','none','Marker','.');
+    set([line_1 line_2],'Color','b');
+    line(x_points,y_points,z_points,'Color','r','LineStyle','none','Marker','.');
+    view(sub_1,coefficients_columns);
     grid on;
-    line([lim_lo lim_hi NaN 0 0 NaN 0 0],[0 0 NaN lim_lo lim_hi NaN 0 0],[0 0 NaN 0 0 NaN lim_lo lim_hi],'Color','k');
+    line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color','k');
     axis tight;
     xlabel(sub_1,'PC 1');
     ylabel(sub_1,'PC 2');
@@ -799,25 +798,24 @@ function plot_pca(data)
     title('Coefficients & Scores');
 
     sub_2 = subplot(1,2,2);
-    ar_1 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
+    area_1 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
     hold on;
-        ar_2 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,2),'FaceColor','g');
-        ar_3 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,3),'FaceColor','b');
-        ar_4 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,4),'FaceColor','r');
+        area_2 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,2),'FaceColor','g');
+        area_3 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,3),'FaceColor','b');
+        area_4 = area(sub_2,data.DatesNum,data.PCAExplainedlainedSums(:,4),'FaceColor','r');
     hold off;
     datetick('x','yyyy','KeepLimits');
-    set([ar_1 ar_2 ar_3 ar_4],'EdgeColor','none');
-    set(sub_2,'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'YLim',[y_tcks(1) y_tcks(end)],'YTick',y_tcks,'YTickLabel',y_lbls);
+    set([area_1 area_2 area_3 area_4],'EdgeColor','none');
+    set(sub_2,'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
     legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
     t = figure_title('Principal Component Analysis');
-    t_pos = get(t,'Position');
-    set(t,'Position',[t_pos(1) -0.0157 t_pos(3)]);
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
-
-    jfr = get(fig,'JavaFrame');
-    set(jfr,'Maximized',true);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
 
 end

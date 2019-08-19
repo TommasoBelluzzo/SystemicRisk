@@ -1,105 +1,103 @@
 % [INPUT]
-% str = A string representing the figure title.
+% s = A string representing the figure title.
 %
 % [OUTPUT]
-% t   = The handler of the figure title.
+% t = The handler of the figure title.
 
 function t = figure_title(varargin)
 
-    persistent p;
+    persistent ip;
 
-    if (isempty(p))
-        p = inputParser();
-        p.addRequired('str',@(x)validateattributes(x,{'char','string'},{'scalartext','nonempty'}));
+    if (isempty(ip))
+        ip = inputParser();
+        ip.addRequired('s',@(x)validateattributes(x,{'char','string'},{'scalartext','nonempty'}));
     end
 
-    p.parse(varargin{:});
-
-    res = p.Results;
-    str = res.str;
+    ip.parse(varargin{:});
+    ipr = ip.Results;
+    s = ipr.s;
 
     if (nargout == 0)
-        figure_title_internal(str);
+        figure_title_internal(s);
     else
-        t = figure_title_internal(str);
+        t = figure_title_internal(s);
     end
 
 end
 
-function t = figure_title_internal(str)
+function t = figure_title_internal(s)
 
-    fig = gcf();
-    fig_fts = get(fig,'DefaultAxesFontSize') + 4;
-    fig_uni = get(fig,'Units');
+    f = gcf();
+    f_font_size = get(f,'DefaultAxesFontSize') + 4;
+    f_units = get(f,'Units');
     
-    if (~strcmp(fig_uni,'pixels'))
-        set(fig,'Units','pixels');
-        fig_pos = get(fig,'Position');
-        set(fig,'Units',fig_uni);
+    if (~strcmp(f_units,'pixels'))
+        set(f,'Units','pixels');
+        f_position = get(f,'Position');
+        set(f,'Units',f_units);
     else
-        fig_pos = get(fig,'Position');
+        f_position = get(f,'Position');
     end
 
-    ff = ((fig_fts - 4) * 6.35) / fig_pos(4);
-
-    tit = NaN;
+    adjustment = ((f_font_size - 4) * 6.35) / f_position(4);
+    title = NaN;
     y_max = 0;
     y_min = 1;
 
-    h = findobj(fig,'Type','axes');
-    h_len = length(h);
-    h_pos = zeros(h_len,4);
+    handles = findobj(f,'Type','axes');
+    handles_len = length(handles);
+    handles_position = zeros(handles_len,4);
 
-    for i = 1:h_len
-        h_cur = h(i);
+    for i = 1:handles_len
+        h_current = handles(i);
         
-        fig_pos = get(h_cur,'Position');
-        h_pos(i,:) = fig_pos;
+        f_position = get(h_current,'Position');
+        handles_position(i,:) = f_position;
 
-        if (~strcmp(get(h_cur,'Tag'),'FigureTitle'))
-            fig_y = fig_pos(2);
-            fig_hei = fig_pos(4);
+        if (~strcmp(get(h_current,'Tag'),'FigureTitle'))
+            f_y = f_position(2);
+            f_height = f_position(4);
             
-            if (fig_y < y_min)
-                y_min = fig_y - (ff / 15);
+            if (f_y < y_min)
+                y_min = f_y - (adjustment / 15);
             end
 
-            if ((fig_hei + fig_y) > y_max)
-                y_max = fig_hei + fig_y + (ff / 10);
+            if ((f_height + f_y) > y_max)
+                y_max = f_height + f_y + (adjustment / 10);
             end
         else
-            tit = h_cur;
+            title = h_current;
         end
     end
 
     if (y_max > 0.92)
-        scl = (0.92 - y_min) / (y_max - y_min);
+        scale = (0.92 - y_min) / (y_max - y_min);
 
-        for i = 1:h_len
-            fig_pos = h_pos(i,:);
-            fig_pos(2) = ((fig_pos(2) - y_min) * scl) + y_min;
-            fig_pos(4) = (fig_pos(4) * scl) - ((1 - scl) * (ff / 15));
+        for i = 1:handles_len
+            f_position = handles_position(i,:);
+            f_position(2) = ((f_position(2) - y_min) * scale) + y_min;
+            f_position(4) = (f_position(4) * scale) - ((1 - scale) * (adjustment / 15));
 
-            set(h(i),'Position',fig_pos);
+            set(handles(i),'Position',f_position);
         end
     end
 
-    np = get(fig,'NextPlot');
-    set(fig,'NextPlot','add');
+    next_plot = get(f,'NextPlot');
+    set(f,'NextPlot','add');
 
-    if (ishghandle(tit))
-        delete(tit);
+    if (ishghandle(title))
+        delete(title);
     end
 
     axes('Position',[0 1 1 1],'Tag','FigureTitle','Visible','off');
-    t_int = text(0.50,-0.05,str,'FontSize',fig_fts,'HorizontalAlignment','center');
+    t_internal = text(0.50,-0.05,s,'FontSize',f_font_size,'HorizontalAlignment','center');
 
-    set(fig,'NextPlot',np);
+    set(f,'NextPlot',next_plot);
 
     axes(gca());
 
     if (nargout == 1)
-        t = t_int;
+        t = t_internal;
     end
 
 end
