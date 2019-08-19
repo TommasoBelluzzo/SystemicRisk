@@ -103,31 +103,31 @@ function data = parse_dataset_internal(file,date_format)
             case 'Market Capitalization'
 
                 if (~isempty(tab_index))
-                    tab_capitalization = parse_table(file,tab_index+1,'Market Capitalization',date_format);
+                    tab_capitalizations = parse_table(file,tab_index+1,'Market Capitalization',date_format);
 
-                    if (any(any(ismissing(tab_capitalization))))
+                    if (any(any(ismissing(tab_capitalizations))))
                         error('The ''Market Capitalization'' sheet contains invalid or missing values.');
                     end
                     
-                    if (any(any(tab_capitalization{:,2:end} < 0)))
+                    if (any(any(tab_capitalizations{:,2:end} < 0)))
                         error('The ''Market Capitalization'' sheet contains negative values.');
                     end
 
-                    if ((size(tab_capitalization,1) ~= t) || any(datenum(tab_capitalization.Date) ~= dates_num))
+                    if ((size(tab_capitalizations,1) ~= t) || any(datenum(tab_capitalizations.Date) ~= dates_num))
                         error('The observation dates in ''Returns'' and ''Market Capitalization'' sheets are mismatching.');
                     end
 
-                    tab_capitalization.Date = [];
+                    tab_capitalizations.Date = [];
 
-                    if (~isequal(tab_capitalization.Properties.VariableNames,firm_names))
+                    if (~isequal(tab_capitalizations.Properties.VariableNames,firm_names))
                         error('The firm names in ''Returns'' and ''Market Capitalization'' sheets are mismatching.');
                     end
 
-                    capitalization = tab_capitalization{2:end,:};
-                    capitalization_lagged = tab_capitalization{1:end-1,:};
+                    capitalizations = tab_capitalizations{2:end,:};
+                    capitalizations_lagged = tab_capitalizations{1:end-1,:};
                 else
-                    capitalization = [];
-                    capitalization_lagged = [];
+                    capitalizations = [];
+                    capitalizations_lagged = [];
                 end
 
             case 'Total Liabilities'
@@ -244,23 +244,28 @@ function data = parse_dataset_internal(file,date_format)
     end
 
     data = struct();
+    
+    data.Full = full;
+    data.T = t - 1;
+    data.N = firms;
+    
     data.DatesNum = dates_num(2:end);
     data.DatesStr = dates_str(2:end);
-    data.Frms = firms;
-    data.FrmsCap = capitalization;
-    data.FrmsCapLag = capitalization_lagged;
-    data.FrmsLia = liabilities;
-    data.FrmsSep = separate_accounts;
-    data.FrmsNam = firm_names;
-    data.FrmsRet = firm_returns;
-    data.Full = full;
-    data.Grps = numel(group_names);
-    data.GrpsDel = group_delimiters;
-    data.GrpsNam = group_names;
-    data.IdxNam = index_name;
-    data.IdxRet = index_returns;
-    data.Obs = t - 1;
+    
+    data.IndexName = index_name;
+    data.IndexReturns = index_returns;
+    data.FirmNames = firm_names;
+    data.FirmReturns = firm_returns;
+
+    data.Capitalizations = capitalizations;
+    data.CapitalizationsLagged = capitalizations_lagged;
+    data.Liabilities = liabilities;
+    data.SeparateAccounts = separate_accounts;
     data.StateVariables = state_variables;
+
+    data.Groups = numel(group_names);
+    data.GroupDelimiters = group_delimiters;
+    data.GroupNames = group_names;
 
 end
 

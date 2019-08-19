@@ -69,7 +69,7 @@ data = parse_dataset(dataset);
 
 out_temp_sto = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
 out_file_sto = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
-run_stochastic(data,out_temp_sto,out_file_sto,0.95,0.40,0.08,0.40,true);
+%run_stochastic(data,out_temp_sto,out_file_sto,0.95,0.40,0.08,0.40,true);
 
 pause(2);
 

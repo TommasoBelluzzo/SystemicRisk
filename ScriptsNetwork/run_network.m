@@ -2,8 +2,8 @@
 % data         = A structure representing the dataset.
 % out_temp     = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file     = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth    = An integer representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% significance = A float representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% bandwidth    = An integer (>= 30) representing the bandwidth (dimension) of each rolling window (optional, default=252).
+% significance = A float [0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % robust       = A boolean indicating whether to use robust p-values (optional, default=true).
 % analyze      = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 
@@ -40,9 +40,9 @@ function run_network_internal(data,out_temp,out_file,bandwidth,significance,robu
     
     data = data_initialize(data,bandwidth,significance,robust);
 
-    windows = extract_rolling_windows(data.FrmsRet,bandwidth);
+    windows = extract_rolling_windows(data.FirmReturns,bandwidth);
     windows_len = length(windows);
-    windows_diff = data.Obs - windows_len;
+    windows_diff = data.T - windows_len;
     
     try
         for i = 1:windows_len
@@ -56,10 +56,10 @@ function run_network_internal(data,out_temp,out_file,bandwidth,significance,robu
             window = windows{i,1};
             window_off = i + windows_diff;
 
-            adjacency_matrix = calculate_adjacency_matrix(window,data.Significance,data.Robust);
+            adjacency_matrix = causal_adjacency(window,data.Significance,data.Robust);
             data.AdjacencyMatrices{window_off} = adjacency_matrix;
             
-            [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,data.GrpsDel);
+            [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,data.GroupDelimiters);
             
             data.DCI(window_off) = dci;
             data.NumberIO(window_off) = number_io;
@@ -128,29 +128,29 @@ function data = data_initialize(data,bandwidth,significance,robust)
     data.Robust = robust;
     data.Significance = significance;
 
-    data.AdjacencyMatrices = cell(data.Obs,1);
+    data.AdjacencyMatrices = cell(data.T,1);
     
-    data.DCI = NaN(data.Obs,1);
-    data.NumberIO = NaN(data.Obs,1);
-    data.NumberIOO = NaN(data.Obs,1);
+    data.DCI = NaN(data.T,1);
+    data.NumberIO = NaN(data.T,1);
+    data.NumberIOO = NaN(data.T,1);
 
-    data.BetweennessCentralities = NaN(data.Obs,data.Frms);
-    data.ClosenessCentralities = NaN(data.Obs,data.Frms);
-    data.ClusteringCoefficients = NaN(data.Obs,data.Frms);
-    data.DegreeCentralities = NaN(data.Obs,data.Frms);
-    data.EigenvectorCentralities = NaN(data.Obs,data.Frms);
-    data.KatzCentralities = NaN(data.Obs,data.Frms);
+    data.BetweennessCentralities = NaN(data.T,data.N);
+    data.ClosenessCentralities = NaN(data.T,data.N);
+    data.ClusteringCoefficients = NaN(data.T,data.N);
+    data.DegreeCentralities = NaN(data.T,data.N);
+    data.EigenvectorCentralities = NaN(data.T,data.N);
+    data.KatzCentralities = NaN(data.T,data.N);
 
-    data.PCACoefficients = cell(data.Obs,1);
-    data.PCAExplained = cell(data.Obs,1);
-    data.PCAScores = cell(data.Obs,1);
+    data.PCACoefficients = cell(data.T,1);
+    data.PCAExplained = cell(data.T,1);
+    data.PCAScores = cell(data.T,1);
 
 end
 
 function data = data_finalize(data,windows_diff)
 
     windows_off = windows_diff + 1;
-    windows_sequence =  windows_off:data.Obs;
+    windows_sequence =  windows_off:data.T;
     windows_sequence_len = length(windows_sequence);
 
     a = sum(cat(3,data.AdjacencyMatrices{windows_sequence}),3) ./ windows_sequence_len;
@@ -171,7 +171,7 @@ function data = data_finalize(data,windows_diff)
 
     data.PCACoefficientsfficientsAverage = sum(cat(3,data.PCACoefficients{windows_sequence}),3) ./ windows_sequence_len;
     data.PCAExplainedlainedAverage = sum(cat(3,data.PCAExplained{windows_sequence}),3) ./ windows_sequence_len;
-    data.PCAExplainedlainedSums = NaN(data.Obs,4);
+    data.PCAExplainedlainedSums = NaN(data.T,4);
     data.PCAScoresresAverage = sum(cat(3,data.PCAScores{windows_sequence}),3) ./ windows_sequence_len;
 
     for i = windows_sequence
@@ -202,8 +202,8 @@ end
 
 function data = validate_data(data)
 
-    fields = {'DatesNum', 'DatesStr', 'Frms', 'FrmsCap', 'FrmsCapLag', 'FrmsLia', 'FrmsSep', 'FrmsNam', 'FrmsRet', 'Full', 'Grps', 'GrpsDel', 'GrpsNam', 'IdxNam', 'IdxRet', 'Obs', 'StateVariables'};
-
+    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
+    
     for i = 1:numel(fields)
         if (~isfield(data,fields{i}))
             error('The dataset does not contain all the required data.');
@@ -286,7 +286,7 @@ function write_results(out_temp,out_file,data)
         error('The results file could not be created from the template file.');
     end
 
-    firm_names = data.FrmsNam';
+    firm_names = data.FirmNames';
     
     var1 = data.DatesStr;
     var2 = num2cell(data.DCI);
@@ -298,7 +298,7 @@ function write_results(out_temp,out_file,data)
     writetable(t1,out_file,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
     vars = [firm_names num2cell(data.AdjacencyMatrixAverage)];
-    labels = {'Firms' data.FrmsNam{:,:}};
+    labels = {'Firms' data.FirmNames{:,:}};
     t2 = cell2table(vars,'VariableNames',labels);
     writetable(t2,out_file,'FileType','spreadsheet','Sheet','Average Adjacency Matrix','WriteRowNames',true);
 
@@ -307,18 +307,18 @@ function write_results(out_temp,out_file,data)
     t3 = cell2table(vars,'VariableNames',labels);
     writetable(t3,out_file,'FileType','spreadsheet','Sheet','Average Centrality Measures','WriteRowNames',true);
 
-    vars = [num2cell(1:data.Frms)' num2cell(data.PCAExplainedlainedAverage)];
+    vars = [num2cell(1:data.N)' num2cell(data.PCAExplainedlainedAverage)];
     labels = {'PC' 'ExplainedVariance'};
     t4 = cell2table(vars,'VariableNames',labels);
     writetable(t4,out_file,'FileType','spreadsheet','Sheet','PCA Explained Variances','WriteRowNames',true);
 
     vars = [firm_names num2cell(data.PCACoefficientsfficientsAverage)];
-    labels = {'Firms' data.FrmsNam{:,:}};
+    labels = {'Firms' data.FirmNames{:,:}};
     t5 = cell2table(vars,'VariableNames',labels);
     writetable(t5,out_file,'FileType','spreadsheet','Sheet','PCA Average Coefficients','WriteRowNames',true);
     
     vars = num2cell(data.PCAScoresresAverage);
-    labels = data.FrmsNam;
+    labels = data.FirmNames;
     t6 = cell2table(vars,'VariableNames',labels);
     writetable(t6,out_file,'FileType','spreadsheet','Sheet','PCA Average Scores','WriteRowNames',true);
 
@@ -563,7 +563,7 @@ function plot_indicators(data)
     sub_2 = subplot(2,1,2);
     handle_area_1 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
     hold on;
-        if (data.Grps == 0)
+        if (data.Groups == 0)
             handle_area_2 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
             area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
         else
@@ -600,38 +600,38 @@ end
 
 function plot_network(data)
 
-    if (data.Grps == 0)
-        grps_col = repmat(lines(1),data.Frms,1);
+    if (data.Groups == 0)
+        grps_col = repmat(lines(1),data.N,1);
     else
-        grps_col = zeros(data.Frms,3);
-        grps_del_len = length(data.GrpsDel);
-        grps_del_plu = data.GrpsDel + 1;
-        grps_lin = lines(data.Grps);
+        grps_col = zeros(data.N,3);
+        grps_del_len = length(data.GroupDelimiters);
+        grps_del_plu = data.GroupDelimiters + 1;
+        grps_lin = lines(data.Groups);
 
         for i = 1:grps_del_len
-            del = data.GrpsDel(i);
+            del = data.GroupDelimiters(i);
 
             if (i == 1)
                 grps_col(1:del,:) = repmat(grps_lin(i,:),del,1);
             else
-                del_prev = data.GrpsDel(i-1) + 1;
+                del_prev = data.GroupDelimiters(i-1) + 1;
                 grps_col(del_prev:del,:) = repmat(grps_lin(i,:),del-del_prev+1,1);
             end
 
             if (i == grps_del_len)
-                grps_col(del+1:end,:) = repmat(grps_lin(i+1,:),data.Frms-del,1);
+                grps_col(del+1:end,:) = repmat(grps_lin(i+1,:),data.N-del,1);
             end
         end
     end
     
-    if (isempty(data.FrmsCap))
-        wei = ones(1,data.Frms);
+    if (isempty(data.NCap))
+        wei = ones(1,data.N);
     else
-        wei = mean(data.FrmsCap,1);
+        wei = mean(data.NCap,1);
         wei = wei ./ mean(wei);
     end
     
-    theta = linspace(0,(2 * pi),(data.Frms + 1)).';
+    theta = linspace(0,(2 * pi),(data.N + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
     [i,j] = find(data.AdjacencyMatrixAverage);
@@ -651,12 +651,12 @@ function plot_network(data)
             plot(sub,x(:,i),y(:,i),'Color',grps_col(idx,:));
         end
 
-        if (data.Grps == 0)
+        if (data.Groups == 0)
             for i = 1:size(xy,1)
                 line(xy(i,1),xy(i,2),'Color',grps_col(i,:),'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * wei(i))));
             end
         else
-            lins = NaN(data.Grps,1);
+            lins = NaN(data.Groups,1);
             lins_off = 1;
             
             for i = 1:size(xy,1)
@@ -669,14 +669,14 @@ function plot_network(data)
                 end
             end
 
-            legend(sub,lins,data.GrpsNam,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
+            legend(sub,lins,data.GroupNames,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
         end
 
         axis(sub,[-1 1 -1 1]);
         axis equal off;
     hold off;
 
-    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FrmsNam,'FontSize',10);
+    txts = text((xy(:,1) .* 1.05), (xy(:,2) .* 1.05),data.FirmNames,'FontSize',10);
     set(txts,{'Rotation'},num2cell(theta * (180 / pi)));
 
     t = figure_title('Network Graph');
@@ -691,20 +691,20 @@ end
 
 function plot_centralities(data)
 
-    seq = 1:data.Frms;
+    seq = 1:data.N;
     
     [betc_sor,order] = sort(data.BetweennessCentralitiesAverage);
-    betc_nam = data.FrmsNam(order);
+    betc_nam = data.FirmNames(order);
     [cloc_sor,order] = sort(data.ClosenessCentralitiesAverage);
-    cloc_nam = data.FrmsNam(order);
+    cloc_nam = data.FirmNames(order);
     [degc_sor,order] = sort(data.DegreeCentralitiesAverage);
-    degc_nam = data.FrmsNam(order);
+    degc_nam = data.FirmNames(order);
     [eigc_sor,order] = sort(data.EigenvectorCentralitiesAverage);
-    eigc_nam = data.FrmsNam(order);
+    eigc_nam = data.FirmNames(order);
     [katc_sor,order] = sort(data.KatzCentralitiesAverage);
-    katc_nam = data.FrmsNam(order);
+    katc_nam = data.FirmNames(order);
     [cluc_sor,order] = sort(data.ClusteringCoefficientsAverage);
-    cluc_nam = data.FrmsNam(order);
+    cluc_nam = data.FirmNames(order);
 
     f = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
 
@@ -738,7 +738,7 @@ function plot_centralities(data)
     set(sub_6,'XTickLabel',cluc_nam);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.Frms + 1)],'XTick',seq,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
 
     t = figure_title('Average Centrality Measures');
     t_position = get(t,'Position');
@@ -808,7 +808,7 @@ function plot_pca(data)
     datetick('x','yyyy','KeepLimits');
     set([ar_1 ar_2 ar_3 ar_4],'EdgeColor','none');
     set(sub_2,'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'YLim',[y_tcks(1) y_tcks(end)],'YTick',y_tcks,'YTickLabel',y_lbls);
-    legend(sub_2,sprintf('PC 4-%d',data.Frms),'PC 3','PC 2','PC 1','Location','southeast');
+    legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
     t = figure_title('Principal Component Analysis');

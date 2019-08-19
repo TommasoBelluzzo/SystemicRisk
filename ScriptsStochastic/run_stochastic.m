@@ -2,10 +2,10 @@
 % data     = A structure representing the dataset.
 % out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% k        = A float representing the confidence level used to calculate CoVaR, Delta CoVaR, MES and LRMES (optional, default=0.95).
-% d        = A float representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
-% l        = A float representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
-% s        = A float representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
+% k        = A float [0.90,0.99] representing the confidence level used to calculate CoVaR, Delta CoVaR, MES and LRMES (optional, default=0.95).
+% d        = A float [0.10,0.60] representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
+% l        = A float [0.05,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
+% s        = A float [0.00,1.00] representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
 % analyze  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 
 function run_stochastic(varargin)
@@ -42,18 +42,18 @@ function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
     
     data = data_initialize(data,k,d,l,h);
     
-    r0_m = data.IdxRet - mean(data.IdxRet);
+    r0_m = data.IndexReturns - mean(data.IndexReturns);
     
     try
-        for i = 1:data.Frms
-            waitbar(((i - 1) / data.Frms),bar,['Calculating stochastic measures for ' data.FrmsNam{i} '...']);
+        for i = 1:data.N
+            waitbar(((i - 1) / data.N),bar,['Calculating stochastic measures for ' data.FirmNames{i} '...']);
 
             if (getappdata(bar,'Stop'))
                 delete(bar);
                 return;
             end
             
-            r_x = data.FrmsRet(:,i);
+            r_x = data.FirmReturns(:,i);
             r0_x = r_x - mean(r_x);
 
             [p,h] = dcc_gjrgarch([r0_m r0_x]);
@@ -66,7 +66,7 @@ function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
 
             [covar,dcovar] = calculate_covar(data.A,r0_m,r0_x,var,data.StateVariables);
             [mes,lrmes] = calculate_mes(data.A,data.D,r0_m,s_m,r0_x,s_x,rho,beta);
-            srisk = calculate_srisk(data.L,data.S,lrmes,data.FrmsLia(:,i),data.FrmsCap(:,i),data.FrmsSep(:,i));
+            srisk = calculate_srisk(data.L,data.S,lrmes,data.Liabilities(:,i),data.Capitalizations(:,i),data.SeparateAccounts(:,i));
 
             data.Beta(:,i) = beta;
             data.VaR(:,i) = -1 .* var;
@@ -80,7 +80,7 @@ function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
                 return;
             end
             
-            waitbar((i / data.Frms),bar);
+            waitbar((i / data.N),bar);
         end
 
         data = data_finalize(data);
@@ -121,19 +121,19 @@ function data = data_initialize(data,k,d,l,s)
     data.Labels = {'Beta' ['VaR (k=' k_label ')'] ['CoVaR (k=' k_label ')'] ['Delta CoVaR (k=' k_label ')'] ['MES (k=' k_label ')'] ['SRISK (d=' d_label ', l=' l_label ', s=' s_label ')'] 'Averages'};
     data.LabelsSimple = {'Beta' 'VaR' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};  
     
-    data.Beta = NaN(data.Obs,data.Frms);
-    data.VaR = NaN(data.Obs,data.Frms);
-    data.CoVaR = NaN(data.Obs,data.Frms);
-    data.DeltaCoVaR = NaN(data.Obs,data.Frms);
-    data.MES = NaN(data.Obs,data.Frms);
-    data.SRISK = NaN(data.Obs,data.Frms);
+    data.Beta = NaN(data.T,data.N);
+    data.VaR = NaN(data.T,data.N);
+    data.CoVaR = NaN(data.T,data.N);
+    data.DeltaCoVaR = NaN(data.T,data.N);
+    data.MES = NaN(data.T,data.N);
+    data.SRISK = NaN(data.T,data.N);
 
 end
 
 function data = data_finalize(data)
 
-    factors = sum(data.FrmsCap,2);
-    weights = data.FrmsCapLag ./ repmat(sum(data.FrmsCapLag,2),1,data.Frms);
+    factors = sum(data.Capitalizations,2);
+    weights = data.CapitalizationsLagged ./ repmat(sum(data.CapitalizationsLagged,2),1,data.N);
 
     beta_average = sum(data.Beta .* weights,2) .* factors;
     var_average = sum(data.VaR .* weights,2) .* factors;
@@ -148,8 +148,8 @@ end
 
 function data = validate_data(data)
 
-    fields = {'DatesNum', 'DatesStr', 'Frms', 'FrmsCap', 'FrmsCapLag', 'FrmsLia', 'FrmsSep', 'FrmsNam', 'FrmsRet', 'Full', 'Grps', 'GrpsDel', 'GrpsNam', 'IdxNam', 'IdxRet', 'Obs', 'StateVariables'};
-
+    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
+    
     for i = 1:numel(fields)
         if (~isfield(data,fields{i}))
             error('The dataset does not contain all the required data.');
@@ -238,16 +238,16 @@ function write_results(out_temp,out_file,data)
 
     dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
 
-    t1 = [dates_str array2table(data.CoVaR,'VariableNames',data.FrmsNam)];
+    t1 = [dates_str array2table(data.CoVaR,'VariableNames',data.FirmNames)];
     writetable(t1,out_file,'FileType','spreadsheet','Sheet','CoVaR','WriteRowNames',true);
 
-    t2 = [dates_str array2table(data.DeltaCoVaR,'VariableNames',data.FrmsNam)];
+    t2 = [dates_str array2table(data.DeltaCoVaR,'VariableNames',data.FirmNames)];
     writetable(t2,out_file,'FileType','spreadsheet','Sheet','Delta CoVaR','WriteRowNames',true);
     
-    t3 = [dates_str array2table(data.MES,'VariableNames',data.FrmsNam)];
+    t3 = [dates_str array2table(data.MES,'VariableNames',data.FirmNames)];
     writetable(t3,out_file,'FileType','spreadsheet','Sheet','MES','WriteRowNames',true);
 
-    t4 = [dates_str array2table(data.SRISK,'VariableNames',data.FrmsNam)];
+    t4 = [dates_str array2table(data.SRISK,'VariableNames',data.FirmNames)];
     writetable(t4,out_file,'FileType','spreadsheet','Sheet','SRISK','WriteRowNames',true);  
     
     t5 = [dates_str array2table(data.Averages(:,3:end),'VariableNames',strrep(data.LabelsSimple(3:end-1),' ','_'))];
@@ -376,11 +376,11 @@ end
 
 function plot_index(data)
 
-    f = figure('Name',['Market Index (' data.IdxNam ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name',['Market Index (' data.IndexName ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.IdxRet,'-b');
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(data.IdxRet) - 0.01) (max(data.IdxRet) + 0.01)],'XTickLabelRotation',45);
+    plot(sub_1,data.DatesNum,data.IndexReturns,'-b');
+    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(data.IndexReturns) - 0.01) (max(data.IndexReturns) + 0.01)],'XTickLabelRotation',45);
     t1 = title(sub_1,'Log Returns');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
@@ -393,11 +393,11 @@ function plot_index(data)
     end
     
     sub_2 = subplot(2,1,2);
-    hist = histogram(sub_2,data.IdxRet,50,'FaceAlpha',0.25,'Normalization','pdf');
+    hist = histogram(sub_2,data.IndexReturns,50,'FaceAlpha',0.25,'Normalization','pdf');
     edges = get(hist,'BinEdges');
     edges_max = max(edges);
     edges_min = min(edges);
-    [values,points] = ksdensity(data.IdxRet);
+    [values,points] = ksdensity(data.IndexReturns);
     hold on;
         plot(sub_2,points,values,'-b','LineWidth',1.5);
     hold off;
@@ -407,11 +407,11 @@ function plot_index(data)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    t = figure_title(['Market Index (' data.IdxNam ')']);
+    t = figure_title(['Market Index (' data.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
-    annotation_strings = {sprintf('Observations: %d',size(data.IdxRet,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IdxRet)) sprintf('Mean: %.4f',mean(data.IdxRet)) sprintf('Median: %.4f',median(data.IdxRet)) sprintf('Skewness: %.4f',skewness(data.IdxRet)) sprintf('Standard Deviation: %.4f',std(data.IdxRet))};
+    annotation_strings = {sprintf('Observations: %d',size(data.IndexReturns,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IndexReturns)) sprintf('Mean: %.4f',mean(data.IndexReturns)) sprintf('Median: %.4f',median(data.IndexReturns)) sprintf('Skewness: %.4f',skewness(data.IndexReturns)) sprintf('Standard Deviation: %.4f',std(data.IndexReturns))};
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',annotation_strings,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     
     pause(0.01);
