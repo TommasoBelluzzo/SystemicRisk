@@ -70,12 +70,11 @@ Datasets must be structured like the default one included in every release of th
 
 #### Notes
 
-* Financial time series must contain the benchmark index and at least 3 firms. They must be based on a daily frequency and contain enough observations to run consistent calculations (a minimum of 253 observations, which translates into a full business year plus an additional observation at the beginning of the time series). They must have been previously validated and preprocessed by:
+* Financial time series must contain a benchmark index and at least 3 firms. They must have a daily frequency and contain enough observations to run consistent calculations (the minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the time series). They must have been previously validated and preprocessed by:
   * discarding illiquid series with too many zeroes (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
-* Returns must be expressed on a logarithmic scale, in accordance with all the systemic risk indicators.
-* Market capitalizations and total liabilities must be expressed in the same currency. Following the SRISK methodology, the latter must be rolled forward by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
+* In accordance with all the systemic risk indicators, returns must be expressed on a logarithmic scale. Market capitalizations, total liabilities and separate accounts must be expressed in the same currency and scale. Following the SRISK methodology, it is recommended to roll forward liabilities by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
 * Data concerning state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
 > Firms in the Returns Sheet: A, B, C, D, E, F, G, H  
