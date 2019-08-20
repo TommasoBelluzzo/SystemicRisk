@@ -706,13 +706,13 @@ function plot_adjacency_matrix(data)
 
     hold on;
         for row = 0.5:off
-          line([0.5 off],[row row],'Color','k');
+            line([0.5 off],[row row],'Color','k');
         end
     hold off;
 
     hold on;
         for column = 0.5:off
-          line([column column],[0.5 off],'Color','k');
+            line([column column],[0.5 off],'Color','k');
         end
     hold off;
 
@@ -725,6 +725,7 @@ function plot_adjacency_matrix(data)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
 end
 
 function plot_centralities(data)

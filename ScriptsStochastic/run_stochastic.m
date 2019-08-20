@@ -96,6 +96,7 @@ function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
     
     if (analyze)
         plot_index(data);
+        plot_returns(data);
         plot_averages(data);
         plot_correlations(data);
     end
@@ -376,7 +377,7 @@ end
 
 function plot_index(data)
 
-    f = figure('Name',['Market Index (' data.IndexName ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name',['Index (' data.IndexName ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.IndexReturns,'-b');
@@ -407,13 +408,44 @@ function plot_index(data)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    t = figure_title(['Market Index (' data.IndexName ')']);
+    t = figure_title(['Index (' data.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     annotation_strings = {sprintf('Observations: %d',size(data.IndexReturns,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IndexReturns)) sprintf('Mean: %.4f',mean(data.IndexReturns)) sprintf('Median: %.4f',median(data.IndexReturns)) sprintf('Skewness: %.4f',skewness(data.IndexReturns)) sprintf('Standard Deviation: %.4f',std(data.IndexReturns))};
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',annotation_strings,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
+
+end
+
+function plot_returns(data)
+
+    f = figure('Name','Firm Returns','Units','normalized','Position',[100 100 0.85 0.85]);    
+
+    boxplot(data.FirmReturns,'Notch','on','Symbol','k.');
+    set(findobj(f,'type','line','Tag','Median'),'Color','g');
+    set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
+    delete(findobj(f,'-regexp','Tag','\w*Outlier'));
+    
+    lower_av = findobj(f,'-regexp','Tag','Lower Adjacent Value');
+    lower_av = cell2mat(get(lower_av,'YData'));
+    y_low = min(lower_av(:));
+    y_low = y_low - abs(y_low / 10);
+
+    upper_av = findobj(f,'-regexp','Tag','Upper Adjacent Value');
+    upper_av = cell2mat(get(upper_av,'YData'));
+    y_high = max(upper_av(:));
+    y_high = y_high + abs(y_high / 10);
+    
+    set(gca(),'TickLength',[0 0],'XTick',1:data.N,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YLim',[y_low y_high]);
+
+    t = figure_title('Firm Returns');
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
