@@ -7,8 +7,11 @@
 % l        = A float [0.05,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
 % s        = A float [0.00,1.00] representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
 % analyze  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
+%
+% [OUTPUT]
+% result           = A structure representing the original dataset inclusive of intermediate and final calculations.
 
-function run_stochastic(varargin)
+function result = run_stochastic(varargin)
 
     persistent ip;
 
@@ -31,11 +34,11 @@ function run_stochastic(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
 
-    run_stochastic_internal(data,out_temp,out_file,ipr.k,ipr.d,ipr.l,ipr.s,ipr.analyze);
+    result = run_stochastic_internal(data,out_temp,out_file,ipr.k,ipr.d,ipr.l,ipr.s,ipr.analyze);
 
 end
 
-function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
+function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
 
     bar = waitbar(0,'Calculating probabilistic measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
@@ -100,6 +103,8 @@ function run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
         plot_averages(data);
         plot_correlations(data);
     end
+    
+    result = data;
 
 end
 

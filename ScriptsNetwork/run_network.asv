@@ -8,9 +8,9 @@
 % analyze          = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
-% result           = A structure representing the original dataset inclusive of intermediate and final calculations.
+% result           = A structure representing the original dataset 
 
-function result = run_network(varargin)
+function run_network(varargin)
 
     persistent ip;
 
@@ -32,11 +32,11 @@ function result = run_network(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
     
-    result = run_network_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.analyze);
+    run_network_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.analyze);
 
 end
 
-function result = run_network_internal(data,out_temp,out_file,bandwidth,significance,robust,analyze)
+function run_network_internal(data,out_temp,out_file,bandwidth,significance,robust,analyze)
 
     bar = waitbar(0,'Calculating network measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
@@ -122,8 +122,6 @@ function result = run_network_internal(data,out_temp,out_file,bandwidth,signific
         plot_centralities(data);
         plot_pca(data);
     end
-    
-    result = data;
 
 end
 
@@ -730,10 +728,8 @@ function plot_adjacency_matrix(data)
     colormap([1 1 1; 0.6 0.6 0.6; 0.678 0.922 1])
     axis image;
 
-    ax = gca();
-    set(ax,'XAxisLocation','top','TickLength',[0 0],'YDir','reverse');
-    set(ax,'XTick',1.5:off,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YTick',1.5:off,'YTickLabels',data.FirmNames,'YTickLabelRotation',45);
-    
+    set(gca(),'XAxisLocation','top','TickLength',[0 0],'XDir','reverse','XTick',0.5:off,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YDir','reverse','YTick',0.5:off,'YTickLabels',data.FirmNames,'YTickLabelRotation',45);
+
     t = figure_title('Average Adjacency Matrix');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
