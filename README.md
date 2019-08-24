@@ -3,7 +3,7 @@
 This script calculates and analyses the following returns-based systemic risk indicators:
 
 * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` proposed by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
-* `MES (Marginal Expected Shortfall)` proposed by [Acharya et al. (2010)](hhttps://doi.org/10.2139/ssrn.1573171)
+* `MES (Marginal Expected Shortfall)` proposed by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
 * `SRISK (Conditional Capital Shortfall Index)` proposed by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
 * `DCI (Dynamic Causality Index)` proposed by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
 
