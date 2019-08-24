@@ -1,14 +1,14 @@
 % [INPUT]
-% data             = A structure representing the dataset.
-% out_temp         = A string representing the full path to the Excel spreadsheet used as a template for the results file.
-% out_file         = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth        = An integer (>= 30) representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% significance     = A float [0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
-% robust           = A boolean indicating whether to use robust p-values (optional, default=true).
-% analyze          = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
+% data         = A structure representing the dataset.
+% out_temp     = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% out_file     = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
+% bandwidth    = An integer (>= 30) representing the bandwidth (dimension) of each rolling window (optional, default=252).
+% significance = A float [0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% robust       = A boolean indicating whether to use robust p-values (optional, default=true).
+% analyze      = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
-% result           = A structure representing the original dataset inclusive of intermediate and final calculations.
+% result       = A structure representing the original dataset inclusive of intermediate and final calculations.
 
 function result = run_network(varargin)
 
@@ -642,7 +642,8 @@ function plot_network(data)
     end
     
     if (isempty(data.Capitalizations))
-        weights = ones(1,data.N) .* 2.1;
+        weights = nanmean(data.Degrees,1);
+        weights = weights ./ mean(weights);
     else
         weights = mean(data.Capitalizations,1);
         weights = weights ./ mean(weights);
@@ -650,7 +651,7 @@ function plot_network(data)
 
 	weights_min = min(weights);
 	weights = (weights - weights_min) ./ (max(weights) - min(weights));
-    weights = (weights .* 3.8) + 0.2;
+    weights = (weights .* 3.75) + 0.25;
     
     theta = linspace(0,(2 * pi),(data.N + 1)).';
     theta(end) = [];

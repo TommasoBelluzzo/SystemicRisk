@@ -9,7 +9,7 @@
 % analyze  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
-% result           = A structure representing the original dataset inclusive of intermediate and final calculations.
+% result   = A structure representing the original dataset inclusive of intermediate and final calculations.
 
 function result = run_stochastic(varargin)
 
@@ -40,12 +40,13 @@ end
 
 function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
 
-    bar = waitbar(0,'Calculating probabilistic measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
+    bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
     setappdata(bar,'Stop',false);
     
     data = data_initialize(data,k,d,l,h);
     
-    r0_m = data.IndexReturns - mean(data.IndexReturns);
+    r_m = data.IndexReturns;
+    r0_m = r_m - mean(r_m);
     
     try
         for i = 1:data.N
