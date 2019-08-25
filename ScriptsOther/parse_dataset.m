@@ -94,6 +94,14 @@ function data = parse_dataset_internal(file,date_format)
     firm_names = tab_returns.Properties.VariableNames(2:end);
     firm_returns = tab_returns{2:end,2:end};
 
+    capitalizations = [];
+    capitalizations_lagged = [];
+    liabilities = [];
+    separate_accounts = NaN(1,t);
+    state_variables = [];
+    group_delimiters = [];    
+    group_names = [];
+    
     for tab = {'Market Capitalization' 'Total Liabilities' 'Separate Accounts' 'State Variables' 'Groups'}
 
         tab_index = find(strcmp(file_sheets_other,tab),1);
@@ -125,9 +133,6 @@ function data = parse_dataset_internal(file,date_format)
 
                     capitalizations = tab_capitalizations{2:end,:};
                     capitalizations_lagged = tab_capitalizations{1:end-1,:};
-                else
-                    capitalizations = [];
-                    capitalizations_lagged = [];
                 end
 
             case 'Total Liabilities'
@@ -154,8 +159,6 @@ function data = parse_dataset_internal(file,date_format)
                     end
                     
                     liabilities = tab_liabilities{2:end,:};
-                else
-                    liabilities = [];
                 end
                 
             case 'Separate Accounts'
@@ -182,8 +185,6 @@ function data = parse_dataset_internal(file,date_format)
                     end
                     
                     separate_accounts = tab_separate_accounts{2:end,:};
-                else
-                    separate_accounts = NaN(1,t);
                 end
 
             case 'State Variables'
@@ -202,8 +203,6 @@ function data = parse_dataset_internal(file,date_format)
                     tab_state_variables.Date = [];
 
                     state_variables = tab_state_variables{1:end-1,:};
-                else
-                    state_variables = [];
                 end
 
             case 'Groups'
@@ -235,9 +234,6 @@ function data = parse_dataset_internal(file,date_format)
 
                     group_delimiters = cumsum(groups_count(1:end-1,:));
                     group_names = strtrim(tab_groups{:,1});
-                else
-                    group_delimiters = [];    
-                    group_names = [];
                 end
 
         end
