@@ -142,14 +142,14 @@ function data = data_finalize(data)
     factors = sum(data.Capitalizations,2);
     weights = data.CapitalizationsLagged ./ repmat(sum(data.CapitalizationsLagged,2),1,data.N);
 
-    beta_average = sum(data.Beta .* weights,2) .* factors;
-    var_average = sum(data.VaR .* weights,2) .* factors;
-    covar_average = sum(data.CoVaR .* weights,2) .* factors;
-    dcovar_average = sum(data.DeltaCoVaR .* weights,2) .* factors;
-    mes_average = sum(data.MES .* weights,2) .* factors;
-    srisk_average = sum(data.SRISK .* weights,2);
+    beta_avg = sum(data.Beta .* weights,2) .* factors;
+    var_avg = sum(data.VaR .* weights,2) .* factors;
+    covar_avg = sum(data.CoVaR .* weights,2) .* factors;
+    dcovar_avg = sum(data.DeltaCoVaR .* weights,2) .* factors;
+    mes_avg = sum(data.MES .* weights,2) .* factors;
+    srisk_avg = sum(data.SRISK .* weights,2);
 
-    data.Averages = [beta_average var_average covar_average dcovar_average mes_average srisk_average];
+    data.Averages = [beta_avg var_avg covar_avg dcovar_avg mes_avg srisk_avg];
 
 end
 
