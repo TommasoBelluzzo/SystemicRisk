@@ -83,5 +83,3 @@ save(mat_network,'result_network');
 
 mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
 save(mat_dataset,'data');
-
-rmpath(paths_base);
