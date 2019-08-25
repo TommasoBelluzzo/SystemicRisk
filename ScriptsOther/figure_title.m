@@ -14,6 +14,7 @@ function t = figure_title(varargin)
     end
 
     ip.parse(varargin{:});
+
     ipr = ip.Results;
     s = ipr.s;
 
