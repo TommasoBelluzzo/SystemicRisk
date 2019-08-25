@@ -224,7 +224,7 @@ function data = parse_dataset_internal(file,date_format)
 
                     groups_count = tab_groups{:,2};
 
-                    if (any(groups_count <= 0))
+                    if (any(groups_count <= 0) || any(round(groups_count) ~= groups_count))
                         error('The ''Groups'' sheet contains one or more groups with an invalid number of firms.');
                     end
 
