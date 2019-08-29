@@ -6,6 +6,7 @@ This script calculates and analyses the following returns-based systemic risk in
 * `MES (Marginal Expected Shortfall)` proposed in [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
 * `SRISK (Conditional Capital Shortfall Index)` proposed in [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
 * `DCI (Dynamic Causality Index)` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
+* `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
 
