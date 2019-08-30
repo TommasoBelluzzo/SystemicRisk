@@ -1,9 +1,9 @@
 % [INPUT]
-% file        = A string representing the full path to the Excel spreadsheet containing the dataset.
+% file = A string representing the full path to the Excel spreadsheet containing the dataset.
 % date_format = A string representing the date format used in the Excel spreadsheet (optional, default=dd/MM/yyyy).
 %
 % [OUTPUT]
-% data        = A structure containing the parsed dataset.
+% data = A structure containing the parsed dataset.
 
 function data = parse_dataset(varargin)
 
@@ -247,6 +247,7 @@ function data = parse_dataset_internal(file,date_format)
     
     data.DatesNum = dates_num(2:end);
     data.DatesStr = dates_str(2:end);
+    data.MonthlyTicks = length(unique(year(data.DatesNum))) <= 3;
     
     data.IndexName = index_name;
     data.IndexReturns = index_returns;
@@ -267,7 +268,7 @@ end
 
 function output = parse_table(file,sheet,name,date_format)
 
-    if (verLessThan('Matlab','9.1'))
+    if (verLessThan('MATLAB','9.1'))
         output = readtable(file,'Sheet',sheet);
         
         if (~all(cellfun(@isempty,regexp(output.Properties.VariableNames,'^Var\d+$','once'))))

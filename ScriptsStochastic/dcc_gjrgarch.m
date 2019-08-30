@@ -1,17 +1,17 @@
 % [INPUT]
-% data    = A numeric t-by-n matrix containing the input data.
-% dcc_q   = An integer representing the lag of the innovation term in the DCC estimator (optional, default=1).
-% dcc_p   = An integer representing the lag of the lagged correlation matrices in the DCC estimator (optional, default=1).
-% arch_q  = Optional argument (default=1) with two possible types:
-%            - An integer representing the lag of the innovation terms in the ARCH estimator.
-%            - A vector of integers, of length n, containing the lag of each innovation term in the ARCH estimator.
+% data = A numeric t-by-n matrix containing the model input.
+% dcc_q = An integer greater than or equal to 1 representing the lag of the innovation term in the DCC estimator (optional, default=1).
+% dcc_p = An integer greater than or equal to 1 representing the lag of the lagged correlation matrices in the DCC estimator (optional, default=1).
+% arch_q = Optional argument (default=1) with two possible types:
+%   - An integer greater than or equal to 1 representing the lag of the innovation terms in the ARCH estimator.
+%   - A vector of integers greater than or equal to 1, of length n, containing the lag of each innovation term in the ARCH estimator.
 % garch_p = Optional argument (default=1) with two possible types:
-%            - An integer representing the lag of the innovation terms in the GARCH estimator.
-%            - A vector of integers, of length n, containing the lag of each innovation term in the GARCH estimator.
+%   - An integer greater than or equal to 1 representing the lag of the innovation terms in the GARCH estimator.
+%   - A vector of integers greater than or equal to 1, of length n, containing the lag of each innovation term in the GARCH estimator.
 %
 % [OUTPUT]
-% p       = An n-by-n-by-t matrix of floats containing the DCC coefficients.
-% s       = A t-by-n matrix of floats containing the conditional variances.
+% p = An n-by-n-by-t matrix of floats containing the DCC coefficients.
+% s = A t-by-n matrix of floats containing the conditional variances.
 %
 % [NOTES]
 % Credit goes to Kevin Sheppard, the author of the original code.

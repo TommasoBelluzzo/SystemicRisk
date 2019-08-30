@@ -77,7 +77,7 @@ pause(2);
 
 out_temp_network = fullfile(path_base,['Templates' filesep() 'TemplateNetwork.xlsx']);
 out_file_network = fullfile(path_base,['Results' filesep() 'ResultsNetwork.xlsx']);
-result_network = run_network(data,out_temp_network,out_file_network,252,0.05,true,true);
+result_network = run_network(data,out_temp_network,out_file_network,252,0.05,true,0.06,2,4,true,true);
 mat_network = fullfile(path_base,['Results' filesep() 'DataNetwork.mat']);
 save(mat_network,'result_network');
 

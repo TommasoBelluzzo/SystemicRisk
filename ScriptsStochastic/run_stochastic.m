@@ -1,15 +1,15 @@
 % [INPUT]
-% data     = A structure representing the dataset.
+% data = A structure representing the dataset.
 % out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% k        = A float [0.90,0.99] representing the confidence level used to calculate CoVaR, Delta CoVaR, MES and LRMES (optional, default=0.95).
-% d        = A float [0.10,0.60] representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
-% l        = A float [0.05,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
-% s        = A float [0.00,1.00] representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
-% analyze  = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
+% k = A float [0.90,0.99] representing the confidence level used to calculate CoVaR, Delta CoVaR, MES and LRMES (optional, default=0.95).
+% d = A float [0.10,0.60] representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
+% l = A float [0.05,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
+% s = A float [0.00,1.00] representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
+% analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
-% result   = A structure representing the original dataset inclusive of intermediate and final calculations.
+% result = A structure representing the original dataset inclusive of intermediate and final calculations.
 
 function result = run_stochastic(varargin)
 
@@ -40,17 +40,19 @@ end
 
 function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
 
-    bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
-    setappdata(bar,'Stop',false);
-    
+    result = [];
+
     data = data_initialize(data,k,d,l,h);
     
     r_m = data.IndexReturns;
     r0_m = r_m - mean(r_m);
     
+    bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
+    setappdata(bar,'Stop',false);
+
     try
         for i = 1:data.N
-            waitbar(((i - 1) / data.N),bar,['Calculating stochastic measures for ' data.FirmNames{i} '...']);
+            waitbar((i - 1) / data.N,bar,['Calculating stochastic measures for ' data.FirmNames{i} '...']);
 
             if (getappdata(bar,'Stop'))
                 delete(bar);
@@ -84,7 +86,7 @@ function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze
                 return;
             end
             
-            waitbar((i / data.N),bar);
+            waitbar(i / data.N,bar);
         end
 
         data = data_finalize(data);
@@ -155,7 +157,7 @@ end
 
 function data = validate_data(data)
 
-    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
+    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'MonthlyTicks', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
     
     for i = 1:numel(fields)
         if (~isfield(data,fields{i}))
@@ -386,21 +388,21 @@ function plot_index(data)
     f = figure('Name',['Index (' data.IndexName ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.IndexReturns,'-b');
+    plot(sub_1,data.DatesNum,data.IndexReturns);
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(data.IndexReturns) - 0.01) (max(data.IndexReturns) + 0.01)],'XTickLabelRotation',45);
     t1 = title(sub_1,'Log Returns');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
-    if (length(unique(year(data.DatesNum))) <= 3)
+    if (data.MonthlyTicks)
         datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
     else
         datetick(sub_1,'x','yyyy','KeepLimits');
     end
     
     sub_2 = subplot(2,1,2);
-    hist = histogram(sub_2,data.IndexReturns,50,'FaceAlpha',0.25,'Normalization','pdf');
+    hist = histogram(sub_2,data.IndexReturns,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
     edges = get(hist,'BinEdges');
     edges_max = max(edges);
     edges_min = min(edges);
@@ -460,8 +462,6 @@ end
 
 function plot_averages(data)
 
-    extended_dates = length(unique(year(data.DatesNum))) <= 3;
-
     averages = data.Averages(:,3:end);
     averages_len = size(averages,2);
 
@@ -483,7 +483,7 @@ function plot_averages(data)
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'XTickLabelRotation',45);
         title(sub,data.Labels(i+2));
         
-        if (extended_dates)
+        if (data.MonthlyTicks)
             datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
         else
             datetick(sub,'x','yyyy','KeepLimits');

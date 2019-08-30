@@ -1,7 +1,7 @@
 % [INPUT]
-% data             = A numeric t-by-n matrix containing the network data.
-% significance     = A float [0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
-% robust           = A boolean indicating whether to use robust p-values (optional, default=true).
+% data = A numeric t-by-n matrix containing the time series.
+% significance = A float [0.00,0.20] representing the statistical significance threshold (optional, default=0.05).
+% robust = A boolean indicating whether to use robust p-values (optional, default=true).
 %
 % [OUTPUT]
 % adjacency_matrix = An numeric n-by-n matrix representing the adjacency matrix of the network.
@@ -19,6 +19,8 @@ function adjacency_matrix = causal_adjacency(varargin)
 
     ip.parse(varargin{:});
     ipr = ip.Results;
+    
+    nargoutchk(1,1);
     
     adjacency_matrix = causal_adjacency_internal(ipr.data,ipr.significance,ipr.robust);
 

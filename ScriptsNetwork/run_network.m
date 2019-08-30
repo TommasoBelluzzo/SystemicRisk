@@ -1,14 +1,18 @@
 % [INPUT]
-% data         = A structure representing the dataset.
-% out_temp     = A string representing the full path to the Excel spreadsheet used as a template for the results file.
-% out_file     = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth    = An integer (>= 30) representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% significance = A float [0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
-% robust       = A boolean indicating whether to use robust p-values (optional, default=true).
-% analyze      = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
+% data = A structure representing the dataset.
+% out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
+% bandwidth = An integer greater than or equal to 30 representing the bandwidth (dimension) of each rolling window (optional, default=252).
+% significance = A float (0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=true).
+% k = A float (0.00,0.20] representing the Granger-causality threshold for no causal relationships (optional, default=0.06).
+% lags = An integer [1,5] representing the number of lags of the VAR model for the variance decomposition spillovers (optional, default=2).
+% h = An integer [1,15] representing the prediction horizon for the variance decomposition spillovers (optional, default=4).
+% generalized = A boolean indicating whether to use the Generalised FEVD for the variance decomposition spillovers (optional, default=true).
+% analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
-% result       = A structure representing the original dataset inclusive of intermediate and final calculations.
+% result = A structure representing the original dataset inclusive of intermediate and final calculations.
 
 function result = run_network(varargin)
 
@@ -19,9 +23,13 @@ function result = run_network(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('out_temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('out_file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'vector','integer','real','finite','>=',30}));
+        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',30}));
         ip.addOptional('significance',0.05,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
         ip.addOptional('robust',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('k',0.06,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0,'<=',0.20}));
+        ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',5}));
+        ip.addOptional('h',3,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',15}));
+        ip.addOptional('generalized',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -32,94 +40,70 @@ function result = run_network(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
     
-    result = run_network_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.analyze);
+    result = run_network_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.k,ipr.lags,ipr.h,ipr.generalized,ipr.analyze);
 
 end
 
-function result = run_network_internal(data,out_temp,out_file,bandwidth,significance,robust,analyze)
+function result = run_network_internal(data,out_temp,out_file,bandwidth,significance,robust,k,lags,h,generalized,analyze)
 
-    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn','setappdata(gcbf,''Stop'',true)');
-    setappdata(bar,'Stop',false);
+    result = [];
     
-    data = data_initialize(data,bandwidth,significance,robust);
-
     windows = extract_rolling_windows(data.FirmReturns,bandwidth);
     windows_len = length(windows);
-    windows_diff = data.T - windows_len;
+
+    data = data_initialize(data,windows_len,bandwidth,significance,robust,k,lags,h,generalized);
+
+    futures(1:windows_len) = parallel.FevalFuture;
+    futures_max = 0;
+    futures_results = cell(windows_len,1);
+    
+    for i = 1:windows_len
+       futures(i) = parfeval(@main_loop,1,windows{i},data);
+    end
+
+    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
+    setappdata(bar,'Stop',false);
     
     try
         for i = 1:windows_len
-            waitbar(((i - 1) / windows_len),bar,sprintf('Calculating network measures for window %d of %d...',i,windows_len));
-            
             if (getappdata(bar,'Stop'))
+                cancel(futures);
                 delete(bar);
                 return;
             end
             
-            window = windows{i,1};
-            window_off = i + windows_diff;
-
-            adjacency_matrix = causal_adjacency(window,data.Significance,data.Robust);
-            data.AdjacencyMatrices{window_off} = adjacency_matrix;
+            [future_index,value] = fetchNext(futures);
+            futures_results{future_index} = value;
             
-            [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,data.GroupDelimiters);
-            
-            data.DCI(window_off) = dci;
-            data.NumberIO(window_off) = number_io;
-            data.NumberIOO(window_off) = number_ioo;
-            
-            [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(adjacency_matrix);
-            
-            data.BetweennessCentralities(window_off,:) = bc;
-            data.ClosenessCentralities(window_off,:) = cc;
-            data.DegreeCentralities(window_off,:) = dc;
-            data.EigenvectorCentralities(window_off,:) = ec;
-            data.KatzCentralities(window_off,:) = kc;
-            data.ClusteringCoefficients(window_off,:) = clustering_coefficients;
-            data.DegreesIn(window_off,:) = degrees_in;
-            data.DegreesOut(window_off,:) = degrees_out;
-            data.Degrees(window_off,:) = degrees;
-
-            window_normalized = window;
-            
-            for j = 1:size(window_normalized,2)
-                window_normalized_j = window_normalized(:,j);
-                window_normalized_j = window_normalized_j - nanmean(window_normalized_j);
-                window_normalized(:,j) = window_normalized_j / nanstd(window_normalized_j);
-            end
-            
-            window_normalized(isnan(window_normalized)) = 0;
-
-            [pca_coefficients,pca_scores,~,~,pca_explained] = pca(window_normalized,'Economy',false);
-
-            data.PCACoefficients{window_off} = pca_coefficients;
-            data.PCAExplained{window_off} = pca_explained;
-            data.PCAScores{window_off} = pca_scores;
+            futures_max = max([future_index futures_max]);
+            waitbar((futures_max - 1) / windows_len,bar);
 
             if (getappdata(bar,'Stop'))
+                cancel(futures);
                 delete(bar);
                 return;
             end
-            
-            waitbar((i / windows_len),bar,sprintf('Calculating network measures for window %d of %d...',i,windows_len));
         end
 
-        data = data_finalize(data,windows_diff);
+        data = data_finalize(data,futures_results);
 
         waitbar(100,bar,'Writing network measures...');
         write_results(out_temp,out_file,data);
         
+        cancel(futures);
         delete(bar);
     catch e
+        cancel(futures);
         delete(bar);
         rethrow(e);
     end
 
     if (analyze)        
-        plot_indicators(data);
+        plot_connectedness_measures(data);
         plot_network(data);
         plot_adjacency_matrix(data);
         plot_centralities(data);
+        plot_spillover_measures(data);
         plot_pca(data);
     end
     
@@ -131,18 +115,21 @@ end
 % DATA %
 %%%%%%%%
 
-function data = data_initialize(data,bandwidth,significance,robust)
+function data = data_initialize(data,windows_len,bandwidth,significance,robust,k,lags,h,generalized)
 
     data.Bandwidth = bandwidth;
+    data.Generalized = generalized;
+    data.H = h;
+    data.K = k;
+    data.Lags = lags;
     data.Robust = robust;
     data.Significance = significance;
+    data.Windows = windows_len;
 
-    data.AdjacencyMatrices = cell(data.T,1);
-    
+    data.AdjacencyMatrices = cell(windows_len,1);
     data.DCI = NaN(data.T,1);
-    data.NumberIO = NaN(data.T,1);
-    data.NumberIOO = NaN(data.T,1);
-
+    data.ConnectionsInOut = NaN(data.T,1);
+    data.ConnectionsInOutOther = NaN(data.T,1);
     data.BetweennessCentralities = NaN(data.T,data.N);
     data.ClosenessCentralities = NaN(data.T,data.N);
     data.DegreeCentralities = NaN(data.T,data.N);
@@ -152,30 +139,59 @@ function data = data_initialize(data,bandwidth,significance,robust)
     data.DegreesIn = NaN(data.T,data.N);
     data.DegreesOut = NaN(data.T,data.N);
     data.Degrees = NaN(data.T,data.N);
+    
+    data.VarianceDecompositions = cell(windows_len,1);
+    data.SpilloverIndex = NaN(data.T,1);
+    data.SpilloversFrom = NaN(data.T,data.N);
+    data.SpilloversTo = NaN(data.T,data.N);
+    data.SpilloversNet = NaN(data.T,data.N);
 
-    data.PCACoefficients = cell(data.T,1);
-    data.PCAExplained = cell(data.T,1);
-    data.PCAScores = cell(data.T,1);
+    data.PCACoefficients = cell(windows_len,1);
+    data.PCAExplained = cell(windows_len,1);
+    data.PCAExplainedSums = NaN(data.T,4);
+    data.PCAScores = cell(windows_len,1);
 
 end
 
-function data = data_finalize(data,windows_diff)
+function data = data_finalize(data,futures_results)
 
-    windows_off = windows_diff + 1;
-    windows_sequence =  windows_off:data.T;
-    windows_sequence_len = length(windows_sequence);
+    for i = 1:data.Windows
+        futures_result = futures_results{i};
+        futures_result_off = data.Bandwidth + i - 1;
 
-    a = sum(cat(3,data.AdjacencyMatrices{windows_sequence}),3) ./ windows_sequence_len;
+        data.AdjacencyMatrices{i} = futures_result.AdjacencyMatrix;
+        data.DCI(futures_result_off) = futures_result.DCI;
+        data.ConnectionsInOut(futures_result_off) = futures_result.ConnectionsInOut;
+        data.ConnectionsInOutOther(futures_result_off) = futures_result.ConnectionsInOutOther;
+        data.BetweennessCentralities(futures_result_off,:) = futures_result.BetweennessCentralities;
+        data.ClosenessCentralities(futures_result_off,:) = futures_result.ClosenessCentralities;
+        data.DegreeCentralities(futures_result_off,:) = futures_result.DegreeCentralities;
+        data.EigenvectorCentralities(futures_result_off,:) = futures_result.EigenvectorCentralities;
+        data.KatzCentralities(futures_result_off,:) = futures_result.KatzCentralities;
+        data.ClusteringCoefficients(futures_result_off,:) = futures_result.ClusteringCoefficients;
+        data.DegreesIn(futures_result_off,:) = futures_result.DegreesIn;
+        data.DegreesOut(futures_result_off,:) = futures_result.DegreesOut;
+        data.Degrees(futures_result_off,:) = futures_result.Degrees;
+        
+        data.VarianceDecompositions{i} = futures_result.VarianceDecomposition;
+        data.SpilloverIndex(futures_result_off) = futures_result.SpilloverIndex;
+        data.SpilloversFrom(futures_result_off,:) = futures_result.SpilloversFrom;
+        data.SpilloversTo(futures_result_off,:) = futures_result.SpilloversTo;
+        data.SpilloversNet(futures_result_off,:) = futures_result.SpilloversNet;
+        
+        data.PCACoefficients{i} = futures_result.PCACoefficients;
+        data.PCAExplained{i} = futures_result.PCAExplained;
+        data.PCAExplainedSums(futures_result_off,:) = fliplr([cumsum([futures_result.PCAExplained(1) futures_result.PCAExplained(2) exp(3)]) 100]);
+        data.PCAScores{i} = futures_result.PCAScores;
+    end
+
+    a = sum(cat(3,data.AdjacencyMatrices{:}),3) ./ data.Windows;
     a_threshold = mean(mean(a));
     a(a < a_threshold) = 0;
     a(a >= a_threshold) = 1;
+    data.AdjacencyMatrixAverage = a;
     
     [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(a);
-    [pca_coefficients,pca_scores,~,~,pca_explained] = pca(data.FirmReturns,'Economy',false);
-    
-    data.WindowsOffset = windows_off;
-    data.AdjacencyMatrixAverage = a;
-
     data.BetweennessCentralitiesAverage = bc;
     data.ClosenessCentralitiesAverage = cc;
     data.DegreeCentralitiesAverage = dc;
@@ -185,17 +201,11 @@ function data = data_finalize(data,windows_diff)
     data.DegreesInAverage = degrees_in;
     data.DegreesOutAverage = degrees_out;
     data.DegreesAverage = degrees;
-
+    
+    [pca_coefficients,pca_scores,~,~,pca_explained] = pca(data.FirmReturns,'Economy',false);
     data.PCACoefficientsOverall = pca_coefficients;
     data.PCAExplainedOverall = pca_explained;
     data.PCAScoresOverall = pca_scores;
-    
-    data.PCAExplainedSums = NaN(data.T,4);
-
-    for i = windows_sequence
-        exp = data.PCAExplained{i};
-        data.PCAExplainedSums(i,:) = fliplr([cumsum([exp(1) exp(2) exp(3)]) 100]);
-    end
 
 end
 
@@ -220,7 +230,7 @@ end
 
 function data = validate_data(data)
 
-    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
+    fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'MonthlyTicks', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
     
     for i = 1:numel(fields)
         if (~isfield(data,fields{i}))
@@ -260,7 +270,7 @@ function out_temp = validate_template(out_temp)
         end
     end
     
-    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures' 'PCA Explained Variances' 'PCA Average Coefficients' 'PCA Average Scores'};
+    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores' 'Spillovers From' 'Spillovers To' 'Spillovers Net'};
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
@@ -306,8 +316,8 @@ function write_results(out_temp,out_file,data)
 
     firm_names = data.FirmNames';
 
-    vars = [data.DatesStr num2cell(data.DCI) num2cell(data.NumberIO) num2cell(data.NumberIOO)];
-    labels = {'Date' 'DCI' 'NumIO' 'NumIOO'};
+    vars = [data.DatesStr num2cell(data.DCI) num2cell(data.ConnectionsInOut) num2cell(data.ConnectionsInOutOther) num2cell(data.SpilloverIndex)];
+    labels = {'Date' 'DCI' 'Connections_InOut' 'Connections_InOutOther' 'SpilloverIndex'};
     t1 = cell2table(vars,'VariableNames',labels);
     writetable(t1,out_file,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
@@ -324,23 +334,87 @@ function write_results(out_temp,out_file,data)
     vars = [num2cell(1:data.N)' num2cell(data.PCAExplainedOverall)];
     labels = {'PC' 'ExplainedVariance'};
     t4 = cell2table(vars,'VariableNames',labels);
-    writetable(t4,out_file,'FileType','spreadsheet','Sheet','PCA Explained Variances','WriteRowNames',true);
+    writetable(t4,out_file,'FileType','spreadsheet','Sheet','PCA Overall Explained','WriteRowNames',true);
 
     vars = [firm_names num2cell(data.PCACoefficientsOverall)];
     labels = {'Firms' data.FirmNames{:,:}};
     t5 = cell2table(vars,'VariableNames',labels);
-    writetable(t5,out_file,'FileType','spreadsheet','Sheet','PCA Average Coefficients','WriteRowNames',true);
+    writetable(t5,out_file,'FileType','spreadsheet','Sheet','PCA Overall Coefficients','WriteRowNames',true);
     
-    vars = num2cell(data.PCAScoresOverall);
-    labels = data.FirmNames;
+    vars = [data.DatesStr num2cell(data.PCAScoresOverall)];
+    labels = {'Date' data.FirmNames{:,:}};
     t6 = cell2table(vars,'VariableNames',labels);
-    writetable(t6,out_file,'FileType','spreadsheet','Sheet','PCA Average Scores','WriteRowNames',true);
+    writetable(t6,out_file,'FileType','spreadsheet','Sheet','PCA Overall Scores','WriteRowNames',true);
+    
+    vars = [data.DatesStr num2cell(data.SpilloversFrom)];
+    labels = {'Date' data.FirmNames{:,:}};
+    t7 = cell2table(vars,'VariableNames',labels);
+    writetable(t7,out_file,'FileType','spreadsheet','Sheet','Spillovers From','WriteRowNames',true);
 
+    vars = [data.DatesStr num2cell(data.SpilloversTo)];
+    labels = {'Date' data.FirmNames{:,:}};
+    t8 = cell2table(vars,'VariableNames',labels);
+    writetable(t8,out_file,'FileType','spreadsheet','Sheet','Spillovers To','WriteRowNames',true);
+    
+    vars = [data.DatesStr num2cell(data.SpilloversNet)];
+    labels = {'Date' data.FirmNames{:,:}};
+    t9 = cell2table(vars,'VariableNames',labels);
+    writetable(t9,out_file,'FileType','spreadsheet','Sheet','Spillovers Net','WriteRowNames',true);
+    
 end
 
 %%%%%%%%%%%%
 % MEASURES %
 %%%%%%%%%%%%
+
+function window_results = main_loop(window,data)
+
+    window_normalized = window;
+
+    for j = 1:size(window_normalized,2)
+        window_normalized_j = window_normalized(:,j);
+        window_normalized_j = window_normalized_j - mean(window_normalized_j);
+        window_normalized(:,j) = window_normalized_j / std(window_normalized_j);
+    end
+
+    window_normalized(isnan(window_normalized)) = 0;
+
+    window_results = struct();
+
+    adjacency_matrix = causal_adjacency(window,data.Significance,data.Robust);
+    window_results.AdjacencyMatrix = adjacency_matrix;
+
+    [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,data.GroupDelimiters);
+    window_results.DCI = dci;
+    window_results.ConnectionsInOut = number_io;
+    window_results.ConnectionsInOutOther = number_ioo;
+
+    [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(adjacency_matrix);
+    window_results.BetweennessCentralities = bc;
+    window_results.ClosenessCentralities = cc;
+    window_results.DegreeCentralities = dc;
+    window_results.EigenvectorCentralities = ec;
+    window_results.KatzCentralities = kc;
+    window_results.ClusteringCoefficients = clustering_coefficients;
+    window_results.DegreesIn = degrees_in;
+    window_results.DegreesOut = degrees_out;
+    window_results.Degrees = degrees;
+
+    vd = variance_decomposition(window,data.Lags,data.H,data.Generalized);
+    window_results.VarianceDecomposition = vd;
+
+    [spillover_index,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd);
+    window_results.SpilloverIndex = spillover_index;
+    window_results.SpilloversFrom = spillovers_from;
+    window_results.SpilloversTo = spillovers_to;
+    window_results.SpilloversNet = spillovers_net;
+
+    [pca_coefficients,pca_scores,~,~,pca_explained] = pca(window_normalized,'Economy',false);
+    window_results.PCACoefficients = pca_coefficients;
+    window_results.PCAExplained = pca_explained;
+    window_results.PCAScores = pca_scores;
+
+end
 
 function [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(adjacency_matrix)
 
@@ -357,11 +431,9 @@ end
 
 function [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,group_delimiters)
 
-    n = length(adjacency_matrix);
+    n = size(adjacency_matrix,1);
 
-    links_current = sum(sum(adjacency_matrix));
-    links_max = (n ^ 2) - n;
-    dci = links_current / links_max;
+    dci = sum(sum(adjacency_matrix)) / ((n ^ 2) - n);
 
     number_i = zeros(n,1);
     number_o = zeros(n,1);
@@ -371,18 +443,18 @@ function [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,g
         number_o(i) = sum(adjacency_matrix(i,:));
     end
 
-    number_io = sum(number_i) + sum(number_o);
+    number_io = (sum(number_i) + sum(number_o)) / (2 * (n - 1));
     
     if (isempty(group_delimiters))
         number_ioo = NaN;
     else
-        groups_len = length(group_delimiters);
+        group_delimiters_len = length(group_delimiters);
         number_ifo = zeros(n,1);
         number_oto = zeros(n,1);
         
         for i = 1:n
             group_1 = group_delimiters(1);
-            group_n = group_delimiters(groups_len);
+            group_n = group_delimiters(group_delimiters_len);
             
             if (i <= group_1)
                 group_begin = 1;
@@ -391,7 +463,7 @@ function [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,g
                 group_begin = group_n + 1;
                 group_end = n;
             else
-                for j = 1:groups_len-1
+                for j = 1:group_delimiters_len-1
                     group_j0 = group_delimiters(j);
                     group_j1 = group_delimiters(j+1);
 
@@ -406,8 +478,24 @@ function [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,g
             number_oto(i) = number_o(i) - sum(adjacency_matrix(i,group_begin:group_end));
         end
 
-        number_ioo = sum(number_ifo) + sum(number_oto);
+        number_ioo = (sum(number_ifo) + sum(number_oto)) / (2 * group_delimiters_len * (n / group_delimiters_len));
     end
+
+end
+
+function [spillover_index,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd)
+
+    vd_diag = diag(vd);
+    
+    spillovers_from = sum(vd,2) - vd_diag;
+    spillovers_to = sum(vd,1).' - vd_diag;
+    spillovers_net = spillovers_to - spillovers_from;
+
+    spillover_index = sum(spillovers_from,1) / (sum(vd_diag) + sum(spillovers_from,1));
+    
+    spillovers_from = spillovers_from.';
+    spillovers_to = spillovers_to.';
+    spillovers_net = spillovers_net.';
 
 end
 
@@ -567,38 +655,45 @@ end
 % PLOTTING %
 %%%%%%%%%%%%
 
-function plot_indicators(data)
+function plot_connectedness_measures(data)
+
+    connections_max = max(max([data.ConnectionsInOut data.ConnectionsInOutOther])) * 1.1;
+    threshold_indices = data.DCI >= data.K;
+    threshold = NaN(data.T,1);
+    threshold(threshold_indices) = connections_max;
 
     f = figure('Name','Measures of Connectedness','Units','normalized','Position',[100 100 0.85 0.85]);
     
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
+    hold on;
+        plot(sub_1,data.DatesNum,repmat(data.K,[data.T 1]),'Color',[1 0.4 0.4]);
+    hold off;
     t1 = title(sub_1,'Dynamic Causality Index');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,1,2);
-    area_1 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
+    area_1 = area(sub_2,data.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
     hold on;
+        area_2 = area(sub_2,data.DatesNum,data.ConnectionsInOut,'EdgeColor','none','FaceColor','b');
         if (data.Groups == 0)
-            area_2 = area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
-            area(sub_2,data.DatesNum,data.NumberIO,'EdgeColor','none','FaceColor','b');
+            area_3 = area(sub_2,data.DatesNum,NaN(data.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         else
-            area_2 = area(sub_2,data.DatesNum,data.NumberIOO,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_3 = area(sub_2,data.DatesNum,data.ConnectionsInOutOther,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
-    legend(sub_2,[area_1 area_2],'Number IO','Number IOO','Location','best');
-    t2 = title(sub_2,'In & Out Connections');
+    set(sub_2,'YLim',[0 connections_max]);
+    legend(sub_2,[area_2 area_3 area_1],'In & Out','In & Out - Other','Granger-causality Threshold','Location','best');
+    t2 = title(sub_2,'Connections');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    set([sub_1 sub_2],'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'XTickLabelRotation',45);
-    
-    indices = ~isnan(data.NumberIO);
+    set([sub_1 sub_2],'XLim',[data.DatesNum(data.Bandwidth) data.DatesNum(end)],'XTickLabelRotation',45);
 
-    if (length(unique(year(data.DatesNum(indices)))) <= 3)
+    if (data.MonthlyTicks)
         datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
         datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
     else
@@ -728,7 +823,7 @@ function plot_adjacency_matrix(data)
     f = figure('Name','Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85]);
 
     pcolor(a);
-    colormap([1 1 1; 0.6 0.6 0.6; 0.678 0.922 1])
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
     axis image;
 
     ax = gca();
@@ -747,7 +842,7 @@ end
 
 function plot_centralities(data)
 
-    sequence = 1:data.N;
+    seq = 1:data.N;
     
     [bc,order] = sort(data.BetweennessCentralitiesAverage);
     bc_names = data.FirmNames(order);
@@ -765,38 +860,114 @@ function plot_centralities(data)
     f = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,3,1);
-    bar(sub_1,sequence,bc,'FaceColor',[0.678 0.922 1]);
+    bar(sub_1,seq,bc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_1,'XTickLabel',bc_names);
     title('Betweenness Centrality');
     
     sub_2 = subplot(2,3,2);
-    bar(sub_2,sequence,cc,'FaceColor',[0.678 0.922 1]);
+    bar(sub_2,seq,cc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_2,'XTickLabel',cc_names);
     title('Closeness Centrality');
     
     sub_3 = subplot(2,3,3);
-    bar(sub_3,sequence,dc,'FaceColor',[0.678 0.922 1]);
+    bar(sub_3,seq,dc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_3,'XTickLabel',dc_names);
     title('Degree Centrality');
     
     sub_4 = subplot(2,3,4);
-    bar(sub_4,sequence,ec,'FaceColor',[0.678 0.922 1]);
+    bar(sub_4,seq,ec,'FaceColor',[0.749 0.862 0.933]);
     set(sub_4,'XTickLabel',ec_names);
     title('Eigenvector Centrality');
     
     sub_5 = subplot(2,3,5);
-    bar(sub_5,sequence,kc,'FaceColor',[0.678 0.922 1]);
+    bar(sub_5,seq,kc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_5,'XTickLabel',kc_names);
     title('Katz Centrality');
 
     sub_6 = subplot(2,3,6);
-    bar(sub_6,sequence,clustering_coefficients,'FaceColor',[0.678 0.922 1]);
+    bar(sub_6,seq,clustering_coefficients,'FaceColor',[0.749 0.862 0.933]);
     set(sub_6,'XTickLabel',clustering_coefficients_names);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',sequence,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
 
     t = figure_title('Average Centrality Measures');
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
+
+end
+
+function plot_spillover_measures(data)
+
+    spillovers_from_cs = cumsum(data.SpilloversFrom,2);
+    spillovers_from = (spillovers_from_cs ./ repmat(spillovers_from_cs(:,end),1,data.N)) .* 100;
+    
+    spillovers_to_cs = cumsum(data.SpilloversTo,2);
+    spillovers_to = (spillovers_to_cs ./ repmat(spillovers_to_cs(:,end),1,data.N)) .* 100;
+    
+    spillovers_net = [min(data.SpilloversNet,[],2) max(data.SpilloversNet,[],2)];
+    spillovers_net_avg = mean(spillovers_net,2);
+    
+    spillovers_seq = 0:20:100;
+    spillovers_labels = arrayfun(@(x)sprintf('%d%%',x),spillovers_seq,'UniformOutput',false);
+
+    f = figure('Name','Spillover Measures','Units','normalized','Position',[100 100 0.85 0.85]);
+    
+    sub_1 = subplot(2,3,1:3);
+    plot(sub_1,data.DatesNum,data.SpilloverIndex);
+    set(sub_1,'XTickLabelRotation',45);
+    t1 = title(sub_1,'Spillover Index');
+    set(t1,'Units','normalized');
+    t1_position = get(t1,'Position');
+    set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
+
+    sub_2 = subplot(2,3,4);
+    colors = get(gca(),'ColorOrder');
+    plot(sub_2,data.DatesNum,spillovers_from(:,1:end-1),'Color',colors(1,:));
+    t2 = title(sub_2,'Spillovers From Others');
+    set(t2,'Units','normalized');
+    t2_position = get(t2,'Position');
+    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
+
+    sub_3 = subplot(2,3,5);
+    colors = get(gca(),'ColorOrder');
+    plot(sub_3,data.DatesNum,spillovers_to(:,1:end-1),'Color',colors(1,:));
+    t3 = title(sub_3,'Spillovers To Others');
+    set(t3,'Units','normalized');
+    t3_position = get(t3,'Position');
+    set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
+    
+    sub_4 = subplot(2,3,6);
+    fill(sub_4,[data.DatesNum(data.Bandwidth:end); flipud(data.DatesNum(data.Bandwidth:end))],[spillovers_net(data.Bandwidth:end,1); fliplr(spillovers_net(data.Bandwidth:end,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
+    hold on;
+        plot(sub_4,data.DatesNum,spillovers_net_avg,'Color','r');
+    hold off;
+    set(sub_4,'YLim',[-1 1]);
+    t4 = title(sub_4,'Net Spillovers');
+    set(t4,'Units','normalized');
+    t4_position = get(t4,'Position');
+    set(t4,'Position',[0.4783 t4_position(2) t4_position(3)]);
+
+    if (data.MonthlyTicks)
+        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_3,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_4,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        datetick(sub_1,'x','yyyy','KeepLimits');
+        datetick(sub_2,'x','yyyy','KeepLimits');
+        datetick(sub_3,'x','yyyy','KeepLimits');
+        datetick(sub_4,'x','yyyy','KeepLimits');
+    end
+    
+    set([sub_1 sub_2 sub_3 sub_4],'XLim',[data.DatesNum(data.Bandwidth) data.DatesNum(end)]);
+    set([sub_2 sub_3],'YTick',spillovers_seq,'YTickLabels',spillovers_labels);
+
+    t = figure_title('Spillover Measures');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
@@ -861,7 +1032,7 @@ function plot_pca(data)
     hold off;
     datetick('x','yyyy','KeepLimits');
     set([area_1 area_2 area_3 area_4],'EdgeColor','none');
-    set(sub_2,'XLim',[data.DatesNum(data.WindowsOffset) data.DatesNum(end)],'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
+    set(sub_2,'XLim',[data.DatesNum(data.Bandwidth) data.DatesNum(end)],'XTick',[],'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
     legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
