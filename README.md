@@ -104,7 +104,7 @@ Datasets must be built following the structure of default ones included in every
 
 ## Screenshots
 
-![Probabilistic Measures](https://i.imgur.com/1Q1SQd2.png)
+![Probabilistic Measures](https://i.imgur.com/VxmTnEs.png)
 
 ![Network Measures](https://i.imgur.com/NuSHgBO.png)
 
