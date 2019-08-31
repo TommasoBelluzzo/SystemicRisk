@@ -9,7 +9,7 @@ This script calculates and analyses the following returns-based systemic risk in
   * `Dynamic Causality Index (DCI)`
   * `"In & Out" Connections`
   * `"In & Out - Other" Connections`
-  * `Standard Centralities`
+  * `Network Centralities`
   * `Principal Component Analysis`
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillover Index`
