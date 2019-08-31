@@ -1,6 +1,6 @@
 # Systemic Risk
 
-This script calculates and analyses the following returns-based systemic risk indicators:
+This script calculates and analyses the following returns-based systemic risk measures:
 
 * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` proposed in [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
 * `MES (Marginal Expected Shortfall)` proposed in [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
