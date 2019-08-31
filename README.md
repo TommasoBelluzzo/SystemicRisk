@@ -12,7 +12,7 @@ This script calculates and analyses the following returns-based systemic risk in
   * `Network Centralities`
   * `Principal Component Analysis`
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
-  * `Spillover Index`
+  * `Spillover Index (SI)`
   * `Spillovers From`
   * `Spillovers To`
   * `Net Spillovers`
