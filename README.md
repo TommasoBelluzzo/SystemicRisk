@@ -106,6 +106,6 @@ Datasets must be built following the structure of default ones included in every
 
 ![Probabilistic Measures](https://i.imgur.com/VxmTnEs.png)
 
-![Network Measures](https://i.imgur.com/NuSHgBO.png)
+![Connectedness Measures](https://i.imgur.com/NuSHgBO.png)
 
-![Network Graph](https://i.imgur.com/fpEVHPf.png)
+![Connectedness Network](https://i.imgur.com/rTnsYxa.png)
