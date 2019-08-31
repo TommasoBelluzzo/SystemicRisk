@@ -100,7 +100,7 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
   
-* While stochastic measures are very fast to compute, for huge datasets like `Datasets\Example_Large.xlsx` network measures may take very long time to finish. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores available for parallel computing.
+* While stochastic measures are very fast to compute, for huge datasets like `Datasets\Example_Large.xlsx` connectedness and spillover measures may take very long time to finish. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores available for parallel computing.
 
 ## Screenshots
 
