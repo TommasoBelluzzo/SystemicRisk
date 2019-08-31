@@ -31,7 +31,7 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Dataset
 
-Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). The latter, based on the US financial sector, defines the following entities:
+Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). The main one (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities over a period of time between `2000` and `2014`:
 
 #### Benchmark: S&P 500
 
@@ -91,7 +91,7 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
   
-* asd
+* While stochastic measures are very fast to compute, for huge datasets like `Datasets\Example_Large.xlsx` network measures may take very long time to finish. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores available for parallel computing.
 
 ## Screenshots
 
