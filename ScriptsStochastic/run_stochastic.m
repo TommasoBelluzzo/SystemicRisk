@@ -41,14 +41,14 @@ end
 function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
 
     result = [];
+    
+    bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
+    setappdata(bar,'Stop',false);
 
     data = data_initialize(data,k,d,l,h);
     
     r_m = data.IndexReturns;
     r0_m = r_m - mean(r_m);
-    
-    bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
-    setappdata(bar,'Stop',false);
 
     try
         for i = 1:data.N
@@ -111,9 +111,7 @@ function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze
 
 end
 
-%%%%%%%%
-% DATA %
-%%%%%%%%
+%% DATA
 
 function data = data_initialize(data,k,d,l,s)
   
@@ -283,9 +281,7 @@ function write_results(out_temp,out_file,data)
 
 end
 
-%%%%%%%%%%%%
-% MEASURES %
-%%%%%%%%%%%%
+%% MEASURES
 
 function [covar,dcovar] = calculate_covar(a,r0_m,r0_x,var,state_variables)
 
@@ -379,9 +375,7 @@ function beta = quantile_regression(y,x,k)
 
 end
 
-%%%%%%%%%%%%
-% PLOTTING %
-%%%%%%%%%%%%
+%% PLOTTING
 
 function plot_index(data)
 

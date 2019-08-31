@@ -48,9 +48,6 @@ function result = run_network_internal(data,out_temp,out_file,bandwidth,signific
 
     result = [];
     
-    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
-    setappdata(bar,'Stop',false);
-    
     windows = extract_rolling_windows(data.FirmReturns,bandwidth);
     windows_len = length(windows);
 
@@ -61,8 +58,11 @@ function result = run_network_internal(data,out_temp,out_file,bandwidth,signific
     futures_results = cell(windows_len,1);
     
     for i = 1:windows_len
-       futures(i) = parfeval(@main_loop,1,windows{i},data.GroupDelimiters,significance,robust,lags,h,generalized);
+       futures(i) = parfeval(@main_loop,1,windows{i},data);
     end
+
+    bar = waitbar(0,'Calculating network measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
+    setappdata(bar,'Stop',false);
     
     try
         for i = 1:windows_len
@@ -363,7 +363,7 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(window,group_delimiters,significance,robust,lags,h,generalized)
+function window_results = main_loop(window,significance,robust)
 
     window_normalized = window;
 
@@ -377,10 +377,10 @@ function window_results = main_loop(window,group_delimiters,significance,robust,
 
     window_results = struct();
 
-    adjacency_matrix = causal_adjacency(window,significance,robust);
+    adjacency_matrix = causal_adjacency(window,significance,data.Robust);
     window_results.AdjacencyMatrix = adjacency_matrix;
 
-    [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,group_delimiters);
+    [dci,number_io,number_ioo] = calculate_connectedness(adjacency_matrix,data.GroupDelimiters);
     window_results.DCI = dci;
     window_results.ConnectionsInOut = number_io;
     window_results.ConnectionsInOutOther = number_ioo;
@@ -396,7 +396,7 @@ function window_results = main_loop(window,group_delimiters,significance,robust,
     window_results.DegreesOut = degrees_out;
     window_results.Degrees = degrees;
 
-    vd = variance_decomposition(window,lags,h,generalized);
+    vd = variance_decomposition(window,data.Lags,data.H,data.Generalized);
     window_results.VarianceDecomposition = vd;
 
     [spillover_index,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd);
