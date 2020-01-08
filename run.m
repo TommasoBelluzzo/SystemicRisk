@@ -67,6 +67,8 @@ addpath(paths_base);
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 data = parse_dataset(dataset);
 
+pause(1);
+
 out_temp_stochastic = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
 out_file_stochastic = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
 result_stochastic = run_stochastic(data,out_temp_stochastic,out_file_stochastic,0.95,0.40,0.08,0.40,true);
@@ -88,6 +90,8 @@ out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.x
 result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,2,4,true,true);
 mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
 save(mat_spillover,'result_spillover');
+
+pause(1);
 
 mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
 save(mat_dataset,'data');
