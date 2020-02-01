@@ -108,4 +108,6 @@ Datasets must be built following the structure of default ones included in every
 
 ![Connectedness Measures](https://i.imgur.com/yFBndPc.png)
 
-![Connectedness Network](https://i.imgur.com/rTnsYxa.png)
+![Network](https://i.imgur.com/rTnsYxa.png)
+
+![Spillover Measures](https://i.imgur.com/k7TcfYM.png)
