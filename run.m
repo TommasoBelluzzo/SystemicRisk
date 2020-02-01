@@ -1,13 +1,13 @@
 warning('off','all');
 
-spmd
-	warning('off','all')
-end
-
 close('all');
 clearvars();
 clc();
 delete(allchild(0));
+
+delete(gcp('nocreate'));
+parpool('SpmdEnabled',false);
+pctRunOnAll warning('off', 'all');
 
 [path_base,~,~] = fileparts(mfilename('fullpath'));
 
@@ -87,7 +87,7 @@ pause(2);
 
 out_temp_spillover = fullfile(path_base,['Templates' filesep() 'TemplateSpillover.xlsx']);
 out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.xlsx']);
-result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,2,4,true,true);
+result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,true,true);
 mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
 save(mat_spillover,'result_spillover');
 

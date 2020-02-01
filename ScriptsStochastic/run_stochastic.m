@@ -38,14 +38,14 @@ function result = run_stochastic(varargin)
 
 end
 
-function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,h,analyze)
+function result = run_stochastic_internal(data,out_temp,out_file,k,d,l,s,analyze)
 
     result = [];
     
     bar = waitbar(0,'Calculating stochastic measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
 
-    data = data_initialize(data,k,d,l,h);
+    data = data_initialize(data,k,d,l,s);
     
     r_m = data.IndexReturns;
     r0_m = r_m - mean(r_m);

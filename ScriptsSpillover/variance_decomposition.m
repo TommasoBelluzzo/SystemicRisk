@@ -1,7 +1,7 @@
 % [INPUT]
 % data = A numeric t-by-n matrix containing the time series.
-% lags = An integer [1,5] representing the number of lags of the VAR model (optional, default=2).
-% h = An integer [1,15] representing the prediction horizon (optional, default=12).
+% lags = An integer [1,3] representing the number of lags of the VAR model (optional, default=2).
+% h = An integer [1,10] representing the prediction horizon (optional, default=4).
 % generalized = A boolean indicating whether to use the Generalised FEVD (optional, default=true).
 %
 % [OUTPUT]
@@ -14,8 +14,8 @@ function vd = variance_decomposition(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty','real','finite'}));
-        ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',5}));
-        ip.addOptional('h',12,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',15}));
+        ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',3}));
+        ip.addOptional('h',4,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
         ip.addOptional('generalized',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -33,7 +33,19 @@ function vd = variance_decomposition_internal(data,lags,h,generalized)
     n = size(data,2);
     
     indices_null_variances = var(data,0,1) == 0;
-    data(:,indices_null_variances) = data(:,indices_null_variances) + (((1e-10 - 1e-8) .* rand(size(data,1),1)) + 1e-8);
+    
+    if (any(indices_null_variances))
+        data(:,indices_null_variances) = data(:,indices_null_variances) + (((1e-10 - 1e-8) .* rand(size(data,1),1)) + 1e-8);
+    end
+    
+    indices_illiquid = sum(data==0,1) >= round(size(data,1) * 0.7,0);
+    
+    if (any(indices_illiquid))
+        for i = find(indices_illiquid)
+            zeros_indices = find(~data(:,i));
+            data(zeros_indices,i) = (((1e-10 - 1e-8) .* rand(numel(zeros_indices),1)) + 1e-8);
+        end
+    end
 
     if (verLessThan('MATLAB','9.4'))
         spec = vgxset('n',n,'nAR',lags,'Constant',true);
@@ -83,7 +95,13 @@ function vd = variance_decomposition_internal(data,lags,h,generalized)
             end
         end
     else
-        p = chol(covariance,'lower');
+        try
+            p = chol(covariance,'lower');
+        catch
+            [v,d] = eig(covariance);  
+            covariance = (v * max(d,0)) / v;
+            p = chol(covariance,'lower');
+        end
 
         for i = 1:n
             indices = zeros(n,1);

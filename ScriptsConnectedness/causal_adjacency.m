@@ -42,7 +42,7 @@ function adjacency_matrix = causal_adjacency_internal(data,significance,robust)
     k = n^2 - n;
     result = zeros(k,1);
 
-    parfor y = 1:k
+    for y = 1:k
         in = d_in{y};
         out = d_out{y};
         
