@@ -11,12 +11,13 @@ This script calculates and analyses the following returns-based systemic risk me
   * `"In & Out" Connections`
   * `"In & Out - Other" Connections`
   * `Network Centralities`
-  * `Principal Component Analysis`
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillover Index (SI)`
   * `Spillovers From`
   * `Spillovers To`
   * `Net Spillovers`
+* `Component Measures`
+  * `Principal Component Analysis`
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
 
