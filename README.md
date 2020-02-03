@@ -17,7 +17,7 @@ This script calculates and analyses the following returns-based systemic risk me
   * `Spillovers To`
   * `Net Spillovers`
 * `Component Measures`
-  * `Absorption Ratio`
+  * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
   * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
   * `Turbulence Index`
   * `Principal Component Analysis`
