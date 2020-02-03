@@ -19,7 +19,7 @@ This script calculates and analyses the following returns-based systemic risk me
 * `Component Measures`
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
   * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
-  * `Turbulence Index`
+  * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
   * `Principal Component Analysis`
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
