@@ -17,6 +17,9 @@ This script calculates and analyses the following returns-based systemic risk me
   * `Spillovers To`
   * `Net Spillovers`
 * `Component Measures`
+  * `Absorption Ratio`
+  * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
+  * `Turbulence Index`
   * `Principal Component Analysis`
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
