@@ -2,26 +2,26 @@
 
 This script calculates and analyses the following returns-based systemic risk measures:
 
-* `Cross-Sectional Measures`
-  * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
-  * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
-  * `SES (Systemic Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
-  * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
-* `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `DCI (Dynamic Causality Index)`
-  * `"In & Out" Connections`
-  * `"In & Out - Other" Connections`
-  * `Network Centralities`
-* `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
-  * `Spillover Index (SI)`
-  * `Spillovers From`
-  * `Spillovers To`
-  * `Net Spillovers`
 * `Component Measures`
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
   * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
   * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
   * `Principal Component Analysis`
+* `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
+  * `DCI (Dynamic Causality Index)`
+  * `"In & Out" Connections`
+  * `"In & Out - Other" Connections`
+  * `Network Centralities`
+* `Cross-Sectional Measures`
+  * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
+  * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
+  * `SES (Systemic Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
+  * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
+* `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
+  * `Spillover Index (SI)`
+  * `Spillovers From`
+  * `Spillovers To`
+  * `Net Spillovers`
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great hub for systemic risk measurement.
 
