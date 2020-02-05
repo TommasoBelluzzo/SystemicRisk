@@ -109,10 +109,10 @@ Datasets must be built following the structure of default ones included in every
 
 ## Screenshots
 
-![Probabilistic Measures](https://i.imgur.com/VxmTnEs.png)
+![Cross-Sectional Measures](https://i.imgur.com/VxmTnEs.png)
 
 ![Connectedness Measures](https://i.imgur.com/yFBndPc.png)
 
 ![Network](https://i.imgur.com/rTnsYxa.png)
 
-![Spillover Measures](https://i.imgur.com/k7TcfYM.png)
+![Spillover Measures](https://i.imgur.com/jYCCoQr.png)
