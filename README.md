@@ -116,3 +116,5 @@ Datasets must be built following the structure of default ones included in every
 ![Network](https://i.imgur.com/rTnsYxa.png)
 
 ![Spillover Measures](https://i.imgur.com/jYCCoQr.png)
+
+![Component Measures](https://i.imgur.com/DENqkvH.png)
