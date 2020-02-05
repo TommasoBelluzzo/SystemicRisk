@@ -56,7 +56,7 @@ paths_base = strsplit(paths_base,';');
 for i = numel(paths_base):-1:1
     path_current = paths_base{i};
 
-    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'])))
+    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'])) && isempty(regexpi(path_current,[filesep() 'Utilities'])))
         paths_base(i) = [];
     end
 end
@@ -67,13 +67,18 @@ addpath(paths_base);
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 data = parse_dataset(dataset);
 
-pause(1);
+mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
+save(mat_dataset,'data');
 
-out_temp_stochastic = fullfile(path_base,['Templates' filesep() 'TemplateStochastic.xlsx']);
-out_file_stochastic = fullfile(path_base,['Results' filesep() 'ResultsStochastic.xlsx']);
-result_stochastic = run_stochastic(data,out_temp_stochastic,out_file_stochastic,0.95,0.40,0.08,0.40,true);
-mat_stochastic = fullfile(path_base,['Results' filesep() 'DataStochastic.mat']);
-save(mat_stochastic,'result_stochastic');
+analyze_dataset(data);
+
+pause(2);
+
+out_temp_cross_sectional = fullfile(path_base,['Templates' filesep() 'TemplateCrossSectional.xlsx']);
+out_file_cross_sectional = fullfile(path_base,['Results' filesep() 'ResultsCrossSectional.xlsx']);
+result_cross_sectional = run_cross_sectional(data,out_temp_cross_sectional,out_file_cross_sectional,0.95,0.40,0.08,0.40,true);
+mat_cross_sectional = fullfile(path_base,['Results' filesep() 'DataCrossSectional.mat']);
+save(mat_cross_sectional,'result_cross_sectional');
 
 pause(2);
 
@@ -87,11 +92,14 @@ pause(2);
 
 out_temp_spillover = fullfile(path_base,['Templates' filesep() 'TemplateSpillover.xlsx']);
 out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.xlsx']);
-result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,true,true);
+result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,'generalized',true);
 mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
 save(mat_spillover,'result_spillover');
 
-pause(1);
+pause(2);
 
-mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
-save(mat_dataset,'data');
+out_temp_component = fullfile(path_base,['Templates' filesep() 'TemplateComponent.xlsx']);
+out_file_component = fullfile(path_base,['Results' filesep() 'ResultsComponent.xlsx']);
+result_component = run_component(data,out_temp_component,out_file_component,252,0.2,true);
+mat_component = fullfile(path_base,['Results' filesep() 'DataComponent.mat']);
+save(mat_component,'result_component');
