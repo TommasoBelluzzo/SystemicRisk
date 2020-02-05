@@ -4,7 +4,7 @@
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k = A float [0.90,0.99] representing the confidence level used to calculate CoVaR, Delta CoVaR, MES and LRMES (optional, default=0.95).
 % d = A float [0.10,0.60] representing the six-month crisis threshold for the market index decline used to calculate LRMES (optional, default=0.40).
-% l = A float [0.03,0.15] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
+% l = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SRISK (optional, default=0.08).
 % s = A float [0.00,1.00] representing the fraction of separate accounts, if available, to include in liabilities during the SRISK calculation (optional, default=0.40).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -22,7 +22,7 @@ function result = run_cross_sectional(varargin)
         ip.addRequired('out_file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
         ip.addOptional('d',0.40,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.10,'<=',0.60}));
-        ip.addOptional('l',0.08,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.03,'<=',0.15}));
+        ip.addOptional('l',0.08,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.03,'<=',0.20}));
         ip.addOptional('s',0.40,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.00,'<=',1.00}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
