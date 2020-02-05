@@ -2,7 +2,7 @@
 % data = A numeric t-by-n matrix containing the time series.
 % lags = An integer [1,3] representing the number of lags of the VAR model (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon (optional, default=4).
-% generalized = A boolean indicating whether to use the Generalised FEVD (optional, default=true).
+% fevd = A string (either 'generalized or 'orthogonal') representing the FEVD type (optional, default='generalized').
 %
 % [OUTPUT]
 % vd = An numeric n-by-n matrix representing the variance decomposition of the network.
@@ -16,7 +16,7 @@ function vd = variance_decomposition(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty','real','finite'}));
         ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',3}));
         ip.addOptional('h',4,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
-        ip.addOptional('generalized',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('fevd','generalized',@(x)any(validatestring(x,{'generalized','orthogonal'})));
     end
 
     ip.parse(varargin{:});
@@ -24,28 +24,16 @@ function vd = variance_decomposition(varargin)
     
     nargoutchk(1,1);
     
-    vd = variance_decomposition_internal(ipr.data,ipr.lags,ipr.h,ipr.generalized);
+    vd = variance_decomposition_internal(ipr.data,ipr.lags,ipr.h,ipr.fevd);
 
 end
 
-function vd = variance_decomposition_internal(data,lags,h,generalized) 
+function vd = variance_decomposition_internal(data,lags,h,fevd) 
 
     n = size(data,2);
-    
-    indices_null_variances = var(data,0,1) == 0;
-    
-    if (any(indices_null_variances))
-        data(:,indices_null_variances) = data(:,indices_null_variances) + (((1e-10 - 1e-8) .* rand(size(data,1),1)) + 1e-8);
-    end
-    
-    indices_illiquid = sum(data==0,1) >= round(size(data,1) * 0.7,0);
-    
-    if (any(indices_illiquid))
-        for i = find(indices_illiquid)
-            zeros_indices = find(~data(:,i));
-            data(zeros_indices,i) = (((1e-10 - 1e-8) .* rand(numel(zeros_indices),1)) + 1e-8);
-        end
-    end
+
+    zeros_indices = find(~data);
+    data(zeros_indices) = (((1e-10 - 1e-8) .* rand(numel(zeros_indices),1)) + 1e-8);
 
     if (verLessThan('MATLAB','9.4'))
         spec = vgxset('n',n,'nAR',lags,'Constant',true);
@@ -83,7 +71,7 @@ function vd = variance_decomposition_internal(data,lags,h,generalized)
     irf = zeros(h,n,n);
     vds = zeros(h,n,n);
     
-    if (generalized)
+    if (strcmp(fevd,'generalized'))
         sigma = diag(covariance);
 
         for i = 1:n

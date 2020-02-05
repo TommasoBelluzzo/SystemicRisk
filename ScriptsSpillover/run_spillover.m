@@ -4,9 +4,9 @@
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % rw_bandwidth = An integer greater than or equal to 30 representing the bandwidth (dimension) of each rolling window (optional, default=252).
 % rw_steps = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
-% lags = An integer [1,3] representing the number of lags of the VAR model for the variance decomposition spillovers (optional, default=2).
-% h = An integer [1,10] representing the prediction horizon for the variance decomposition spillovers (optional, default=4).
-% generalized = A boolean indicating whether to use the Generalised FEVD for the variance decomposition spillovers (optional, default=true).
+% lags = An integer [1,3] representing the number of lags of the VAR model in the variance decomposition (optional, default=2).
+% h = An integer [1,10] representing the prediction horizon of the variance decomposition (optional, default=4).
+% fevd = A string (either 'generalized or 'orthogonal') representing the FEVD type of the variance decomposition (optional, default='generalized').
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -25,7 +25,7 @@ function result = run_spillover(varargin)
         ip.addOptional('rw_steps',10,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
         ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',3}));
         ip.addOptional('h',4,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
-        ip.addOptional('generalized',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('fevd','generalized',@(x)any(validatestring(x,{'generalized','orthogonal'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -37,11 +37,11 @@ function result = run_spillover(varargin)
     out_file = validate_output(ipr.out_file);
     rw_indices = validate_rw_steps(ipr.data,ipr.rw_bandwidth,ipr.rw_steps);
     
-    result = run_spillover_internal(data,out_temp,out_file,ipr.rw_bandwidth,ipr.rw_steps,rw_indices,ipr.lags,ipr.h,ipr.generalized,ipr.analyze);
+    result = run_spillover_internal(data,out_temp,out_file,ipr.rw_bandwidth,ipr.rw_steps,rw_indices,ipr.lags,ipr.h,ipr.fevd,ipr.analyze);
 
 end
 
-function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_steps,rw_indices,lags,h,generalized,analyze)
+function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd,analyze)
 
     result = [];
     
@@ -54,19 +54,23 @@ function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_
     windows = windows_original(rw_indices);
     windows_len = length(windows);
 
-    data = data_initialize(data,windows_original_len,rw_bandwidth,rw_steps,rw_indices,lags,h,generalized);
+    data = data_initialize(data,windows_original_len,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd);
+
+	rng_settings = rng();
+    rng(0);
+    
+    stopped = false;
+    e = [];
 
     futures(1:windows_len) = parallel.FevalFuture;
     futures_max = 0;
     futures_results = cell(windows_len,1);
     
     for i = 1:windows_len
-       futures(i) = parfeval(@main_loop,1,windows{i},lags,h,generalized);
+       futures(i) = parfeval(@main_loop,1,windows{i},lags,h,fevd);
     end
     
     try
-        stopped = false;
-        
         for i = 1:windows_len
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -84,36 +88,31 @@ function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_
                 break;
             end
         end
-
-        if (stopped)      
-            try
-                cancel(futures);
-                delete(bar);
-            catch
-            end
-
-            return;
-        end
-        
-        data = data_finalize(data,futures_results);
-
-        waitbar(100,bar,'Writing spillover measures...');
-        write_results(out_temp,out_file,data);
-
-        try
-            cancel(futures);
-            delete(bar);
-        catch
-        end
     catch e
-        try
-            cancel(futures);
-            delete(bar);
-        catch
-        end
-        
+    end
+    
+    try
+        cancel(futures);
+    catch
+    end
+    
+    rng(rng_settings);
+    
+    if (~isempty(e))
+        delete(bar);
         rethrow(e);
     end
+    
+    if (stopped)
+        delete(bar);
+        return;
+    end
+    
+    data = data_finalize(data,futures_results);
+
+    waitbar(100,bar,'Writing spillover measures...');
+    write_results(out_temp,out_file,data);
+    delete(bar);
 
     if (analyze)      
         plot_index(data);
@@ -126,9 +125,9 @@ end
 
 %% DATA
 
-function data = data_initialize(data,windows_len,rw_bandwidth,rw_steps,rw_indices,lags,h,generalized)
+function data = data_initialize(data,windows_len,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd)
 
-    data.Generalized = generalized;
+    data.FEVD = fevd;
     data.H = h;
     data.Lags = lags;
     data.Windows = windows_len;
@@ -172,14 +171,14 @@ function data = data_finalize(data,futures_results)
 
         for i = 1:data.N
             for j = 1:data.N
-                vdij = cellfun(@(vdf)vdf(i,j),vd);
-                vdij_spline = spline(x(~nans_check),vdij(~nans_check),x(nans_check));
-                vdij(nans_check) = vdij_spline;
+                vd_ij = cellfun(@(vdf)vdf(i,j),vd);
+                vdij_spline = spline(x(~nans_check),vd_ij(~nans_check),x(nans_check));
+                vd_ij(nans_check) = vdij_spline;
 
                 for k = nans_indices
-                    vdk = vd{k};
-                    vdk(i,j) = vdij(k);
-                    vd{k} = vdk;
+                    vd_k = vd{k};
+                    vd_k(i,j) = vd_ij(k);
+                    vd{k} = vd_k;
                 end
             end   
         end
@@ -187,12 +186,12 @@ function data = data_finalize(data,futures_results)
         for k = nans_indices
             offset = data.WindowsBandwidth + k - 1;
             
-            vdk = vd{k};
-            vdk = bsxfun(@rdivide,vdk,sum(vdk,2));
+            vd_k = vd{k};
+            vd_k = bsxfun(@rdivide,vd_k,sum(vd_k,2));
             
-            [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vdk);
+            [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd_k);
             
-            data.VarianceDecompositions{k} = vdk;
+            data.VarianceDecompositions{k} = vd_k;
             data.SI(offset) = si;
             data.SpilloversFrom(offset,:) = spillovers_from;
             data.SpilloversTo(offset,:) = spillovers_to;
@@ -324,11 +323,11 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(window,lags,h,generalized)
+function window_results = main_loop(window,lags,h,fevd)
 
     window_results = struct();
 
-    vd = variance_decomposition(window,lags,h,generalized);
+    vd = variance_decomposition(window,lags,h,fevd);
     window_results.VarianceDecomposition = vd;
 
     [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd);
@@ -372,14 +371,15 @@ function plot_index(data)
         datetick(ax,'x','yyyy','KeepLimits');
     end
     
-    t1 = title(ax,'Spillover Index');
+    if (strcmp(data.FEVD,'generalized'))
+        t1 = title(ax,'Spillover Index (Generalized FEVD)');
+    else
+        t1 = title(ax,'Spillover Index (Orthogonal FEVD)');
+    end
+
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
-
-    t = figure_title('Spillover Index');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -390,48 +390,38 @@ end
 function plot_spillovers(data)
 
     spillovers_from = data.SpilloversFrom;
+    spillovers_from = bsxfun(@rdivide, spillovers_from, sum(spillovers_from,2));
+    
     spillovers_to = data.SpilloversTo;
-    
-    for i = 1:data.N
-        spillovers_from(data.WindowsBandwidth:end,i) = smooth(spillovers_from(data.WindowsBandwidth:end,i),'rlowess');
-        spillovers_to(data.WindowsBandwidth:end,i) = smooth(spillovers_from(data.WindowsBandwidth:end,i),'rlowess');
-    end
+    spillovers_to = bsxfun(@rdivide, spillovers_to, sum(spillovers_to,2));
 
-    spillovers_from_cs = cumsum(spillovers_from,2);
-    spillovers_to_cs = cumsum(spillovers_to,2);
-    
-    spillovers_from = (spillovers_from_cs ./ repmat(spillovers_from_cs(:,end),1,data.N)) .* 100;
-    spillovers_to = (spillovers_to_cs ./ repmat(spillovers_to_cs(:,end),1,data.N)) .* 100;
-    
     spillovers_net = [min(data.SpilloversNet,[],2) max(data.SpilloversNet,[],2)];
     spillovers_net_avg = mean(spillovers_net,2);
     spillovers_net_avg(data.WindowsBandwidth:end) = smooth(spillovers_net_avg(data.WindowsBandwidth:end),'rlowess');
-    
-    spillovers_seq = 0:20:100;
-    spillovers_labels = arrayfun(@(x)sprintf('%d%%',x),spillovers_seq,'UniformOutput',false);
 
     f = figure('Name','Spillovers','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    sub_1 = subplot(1,3,1);
     colors = get(gca(),'ColorOrder');
-    plot(sub_1,data.DatesNum,spillovers_from(:,1:end-1),'Color',colors(1,:));
+    color = colors(1,:);
+    
+    sub_1 = subplot(2,2,1);
+    area(sub_1,data.DatesNum,spillovers_from,'EdgeColor',color,'FaceColor','none');
     t2 = title(sub_1,'Spillovers From Others');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    sub_2 = subplot(1,3,2);
-    colors = get(gca(),'ColorOrder');
-    plot(sub_2,data.DatesNum,spillovers_to(:,1:end-1),'Color',colors(1,:));
+    sub_2 = subplot(2,2,3);
+    area(sub_2,data.DatesNum,spillovers_to,'EdgeColor',color,'FaceColor','none');
     t3 = title(sub_2,'Spillovers To Others');
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
     
-    sub_3 = subplot(1,3,3);
+    sub_3 = subplot(2,2,[2 4]);
     fill(sub_3,[data.DatesNum(data.WindowsBandwidth:end); flipud(data.DatesNum(data.WindowsBandwidth:end))],[spillovers_net(data.WindowsBandwidth:end,1); fliplr(spillovers_net(data.WindowsBandwidth:end,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
     hold on;
-        plot(sub_3,data.DatesNum,spillovers_net_avg,'Color','r');
+        plot(sub_3,data.DatesNum,spillovers_net_avg,'Color',color);
     hold off;
     set(sub_3,'YLim',[-1 1]);
     t4 = title(sub_3,'Net Spillovers');
@@ -450,9 +440,15 @@ function plot_spillovers(data)
     end
     
     set([sub_1 sub_2 sub_3],'XLim',[data.DatesNum(data.WindowsBandwidth) data.DatesNum(end)]);
-    set([sub_1 sub_2 sub_3],'YTick',spillovers_seq,'YTickLabels',spillovers_labels);
-
-    t = figure_title('Spillovers');
+    set([sub_1 sub_2],'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) * 100,'UniformOutput',false));
+    set(sub_3,'YLim',[-1 1],'YTick',-1:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(-1:0.2:1) * 100,'UniformOutput',false));
+    
+    if (strcmp(data.FEVD,'generalized'))
+        t = figure_title('Spillovers (Generalized FEVD)');
+    else
+        t = figure_title('Spillovers (Orthogonal FEVD)');
+    end
+    
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     

@@ -6,9 +6,6 @@
 % significance = A float (0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=true).
 % k = A float (0.00,0.20] representing the Granger-causality threshold for no causal relationships (optional, default=0.06).
-% lags = An integer [1,5] representing the number of lags of the VAR model for the variance decomposition spillovers (optional, default=2).
-% h = An integer [1,15] representing the prediction horizon for the variance decomposition spillovers (optional, default=4).
-% generalized = A boolean indicating whether to use the Generalised FEVD for the variance decomposition spillovers (optional, default=true).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -53,17 +50,18 @@ function result = run_connectedness_internal(data,out_temp,out_file,bandwidth,si
 
     data = data_initialize(data,windows_len,bandwidth,significance,robust,k);
 
+    stopped = false;
+    e = [];
+    
     futures(1:windows_len) = parallel.FevalFuture;
     futures_max = 0;
     futures_results = cell(windows_len,1);
     
     for i = 1:windows_len
-       futures(i) = parfeval(@main_loop,1,windows{i},data.GroupDelimiters,significance,robust);
+        futures(i) = parfeval(@main_loop,1,windows{i},data.GroupDelimiters,significance,robust);
     end
     
     try
-        stopped = false;
-        
         for i = 1:windows_len
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -81,43 +79,35 @@ function result = run_connectedness_internal(data,out_temp,out_file,bandwidth,si
                 break;
             end
         end
-        
-        if (stopped)
-            try
-                cancel(futures);
-                delete(bar);
-            catch
-            end
-
-            return;
-        end
-
-        data = data_finalize(data,futures_results);
-
-        waitbar(100,bar,'Writing connectedness measures...');
-        write_results(out_temp,out_file,data);
-        
-        try
-            cancel(futures);
-            delete(bar);
-        catch
-        end
     catch e
-        try
-            cancel(futures);
-            delete(bar);
-        catch
-        end
+    end
+    
+    try
+        cancel(futures);
+    catch
+    end
 
+    if (~isempty(e))
+        delete(bar);
         rethrow(e);
     end
+    
+    if (stopped)
+        delete(bar);
+        return;
+    end
+
+    data = data_finalize(data,futures_results);
+
+    waitbar(100,bar,'Writing connectedness measures...');
+    write_results(out_temp,out_file,data);
+    delete(bar);
 
     if (analyze)        
         plot_indicators(data);
         plot_network(data);
         plot_adjacency_matrix(data);
         plot_centralities(data);
-        plot_pca(data);
     end
     
     result = data;
@@ -148,11 +138,6 @@ function data = data_initialize(data,windows_len,bandwidth,significance,robust,k
     data.DegreesOut = NaN(data.T,data.N);
     data.Degrees = NaN(data.T,data.N);
 
-    data.PCACoefficients = cell(windows_len,1);
-    data.PCAExplained = cell(windows_len,1);
-    data.PCAExplainedSums = NaN(data.T,4);
-    data.PCAScores = cell(windows_len,1);
-
 end
 
 function data = data_finalize(data,futures_results)
@@ -174,11 +159,6 @@ function data = data_finalize(data,futures_results)
         data.DegreesIn(futures_result_off,:) = futures_result.DegreesIn;
         data.DegreesOut(futures_result_off,:) = futures_result.DegreesOut;
         data.Degrees(futures_result_off,:) = futures_result.Degrees;
-        
-        data.PCACoefficients{i} = futures_result.PCACoefficients;
-        data.PCAExplained{i} = futures_result.PCAExplained;
-        data.PCAExplainedSums(futures_result_off,:) = fliplr([cumsum([futures_result.PCAExplained(1) futures_result.PCAExplained(2) exp(3)]) 100]);
-        data.PCAScores{i} = futures_result.PCAScores;
     end
 
     a = sum(cat(3,data.AdjacencyMatrices{:}),3) ./ data.Windows;
@@ -197,11 +177,6 @@ function data = data_finalize(data,futures_results)
     data.DegreesInAverage = degrees_in;
     data.DegreesOutAverage = degrees_out;
     data.DegreesAverage = degrees;
-    
-    [pca_coefficients,pca_scores,~,~,pca_explained] = pca(data.FirmReturns,'Economy',false);
-    data.PCACoefficientsOverall = pca_coefficients;
-    data.PCAExplainedOverall = pca_explained;
-    data.PCAScoresOverall = pca_scores;
 
 end
 
@@ -247,7 +222,7 @@ function out_temp = validate_template(out_temp)
         end
     end
     
-    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures'};
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
@@ -307,37 +282,12 @@ function write_results(out_temp,out_file,data)
     labels = {'Firms' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
     t3 = cell2table(vars,'VariableNames',labels);
     writetable(t3,out_file,'FileType','spreadsheet','Sheet','Average Centrality Measures','WriteRowNames',true);
-
-    vars = [num2cell(1:data.N)' num2cell(data.PCAExplainedOverall)];
-    labels = {'PC' 'ExplainedVariance'};
-    t4 = cell2table(vars,'VariableNames',labels);
-    writetable(t4,out_file,'FileType','spreadsheet','Sheet','PCA Overall Explained','WriteRowNames',true);
-
-    vars = [firm_names num2cell(data.PCACoefficientsOverall)];
-    labels = {'Firms' data.FirmNames{:,:}};
-    t5 = cell2table(vars,'VariableNames',labels);
-    writetable(t5,out_file,'FileType','spreadsheet','Sheet','PCA Overall Coefficients','WriteRowNames',true);
-    
-    vars = [data.DatesStr num2cell(data.PCAScoresOverall)];
-    labels = {'Date' data.FirmNames{:,:}};
-    t6 = cell2table(vars,'VariableNames',labels);
-    writetable(t6,out_file,'FileType','spreadsheet','Sheet','PCA Overall Scores','WriteRowNames',true);
     
 end
 
 %% MEASURES
 
 function window_results = main_loop(window,group_delimiters,significance,robust)
-
-    window_normalized = window;
-
-    for j = 1:size(window_normalized,2)
-        window_normalized_j = window_normalized(:,j);
-        window_normalized_j = window_normalized_j - mean(window_normalized_j);
-        window_normalized(:,j) = window_normalized_j / std(window_normalized_j);
-    end
-
-    window_normalized(isnan(window_normalized)) = 0;
 
     window_results = struct();
 
@@ -359,11 +309,6 @@ function window_results = main_loop(window,group_delimiters,significance,robust)
     window_results.DegreesIn = degrees_in;
     window_results.DegreesOut = degrees_out;
     window_results.Degrees = degrees;
-
-    [pca_coefficients,pca_scores,~,~,pca_explained] = pca(window_normalized,'Economy',false);
-    window_results.PCACoefficients = pca_coefficients;
-    window_results.PCAExplained = pca_explained;
-    window_results.PCAScores = pca_scores;
 
 end
 
@@ -595,7 +540,7 @@ function plot_indicators(data)
     threshold = NaN(data.T,1);
     threshold(threshold_indices) = connections_max;
 
-    f = figure('Name','Measures of Connectedness','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
     
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
@@ -634,7 +579,7 @@ function plot_indicators(data)
         datetick(sub_2,'x','yyyy','KeepLimits');
     end
     
-    t = figure_title('Measures of Connectedness');
+    t = figure_title('Connectedness Indicators');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
@@ -825,75 +770,6 @@ function plot_centralities(data)
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
 
     t = figure_title('Average Centrality Measures');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
-    
-    pause(0.01);
-    frame = get(f,'JavaFrame');
-    set(frame,'Maximized',true);
-
-end
-
-function plot_pca(data)
-
-    coefficients = data.PCACoefficientsOverall(:,1:3);
-    [coefficients_rows,coefficients_columns] = size(coefficients);
-    [~,indices] = max(abs(coefficients),[],1);
-    coefficients_max_len = sqrt(max(sum(coefficients.^2,2)));
-    coefficients_columns_sign = sign(coefficients(indices + (0:coefficients_rows:((coefficients_columns-1)*coefficients_rows))));
-    coefficients = bsxfun(@times,coefficients,coefficients_columns_sign);
-
-    scores = data.PCAScoresOverall(:,1:3);
-    scores_rows = size(scores,1);
-    scores = bsxfun(@times,(coefficients_max_len .* (scores ./ max(abs(scores(:))))),coefficients_columns_sign);
-    
-    area_begin = zeros(coefficients_rows,1);
-    area_end = NaN(coefficients_rows,1);
-    x_area = [area_begin coefficients(:,1) area_end].';
-    y_area = [area_begin coefficients(:,2) area_end].';
-    z_area = [area_begin coefficients(:,3) area_end].';
-    
-    area_end = NaN(scores_rows,1);
-    x_points = [scores(:,1) area_end]';
-    y_points = [scores(:,2) area_end]';
-    z_points = [scores(:,3) area_end]';
-
-    limits_high = 1.1 * max(abs(coefficients(:)));
-    limits_low = -limits_high;
-    
-    y_ticks = 0:10:100;
-    y_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
-    
-    f = figure('Name','Principal Component Analysis','Units','normalized');
-
-    sub_1 = subplot(1,2,1);
-    line_1 = line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'LineStyle','-','Marker','none');
-    line_2 = line(x_area(2:3,:),y_area(2:3,:),z_area(2:3,:),'LineStyle','none','Marker','.');
-    set([line_1 line_2],'Color','b');
-    line(x_points,y_points,z_points,'Color','r','LineStyle','none','Marker','.');
-    view(sub_1,coefficients_columns);
-    grid on;
-    line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color','k');
-    axis tight;
-    xlabel(sub_1,'PC 1');
-    ylabel(sub_1,'PC 2');
-    zlabel(sub_1,'PC 3');
-    title('Coefficients & Scores');
-
-    sub_2 = subplot(1,2,2);
-    area_1 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
-    hold on;
-        area_2 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,2),'FaceColor','g');
-        area_3 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,3),'FaceColor','b');
-        area_4 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,4),'FaceColor','r');
-    hold off;
-    datetick('x','yyyy','KeepLimits');
-    set([area_1 area_2 area_3 area_4],'EdgeColor','none');
-    set(sub_2,'XLim',[data.DatesNum(data.Bandwidth) data.DatesNum(end)],'XTick',[],'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
-    legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
-    title('Explained Variance');
-
-    t = figure_title('Principal Component Analysis');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
