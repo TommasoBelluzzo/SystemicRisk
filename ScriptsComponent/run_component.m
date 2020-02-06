@@ -3,7 +3,7 @@
 % out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bandwidth = An integer greater than or equal to 30 representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% f = A float (0.2:0.1:0.8) representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.20).
+% f = A float (0.2:0.1:0.8) representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.2).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
