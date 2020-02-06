@@ -1,7 +1,7 @@
 % [INPUT]
 % data = A structure representing the dataset.
 
-function result = analyze_dataset(varargin)
+function analyze_dataset(varargin)
 
     persistent ip;
 

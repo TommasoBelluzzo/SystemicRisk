@@ -3,7 +3,7 @@
 % out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bandwidth = An integer greater than or equal to 30 representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% f = A float (one of 0.2, 0.4, 0.6, 0.8) representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.20).
+% f = A float (0.2:0.1:0.8) representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.20).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -119,7 +119,7 @@ end
 function data = data_initialize(data,windows_len,bandwidth,f)
 
     data.Bandwidth = bandwidth;
-    data.Components = round(data.N * f,0);
+    data.Components = round(data.N * f);
     data.F = f;
     data.Windows = windows_len;
 
@@ -158,6 +158,16 @@ function data = data_finalize(data,futures_results)
 
 end
 
+function f = validate_f(f)
+
+    f_seq = 0.2:0.1:0.8;
+
+    if (~ismember(f,f_seq))
+        error(['The f parameter must have one of the following values: ' strjoin(arrayfun(@(x)sprintf('%.1f',x),0.2:0.1:0.8,'UniformOutput',false),', ') '.']);
+    end
+
+end
+
 function data = validate_data(data)
 
     fields = {'Full', 'T', 'N', 'DatesNum', 'DatesStr', 'MonthlyTicks', 'IndexName', 'IndexReturns', 'FirmNames', 'FirmReturns', 'Capitalizations', 'CapitalizationsLagged', 'Liabilities', 'SeparateAccounts', 'StateVariables', 'Groups', 'GroupDelimiters', 'GroupNames'};
@@ -168,14 +178,6 @@ function data = validate_data(data)
         end
     end
     
-end
-
-function f = validate_f(f)
-
-    if (~ismember(f,[0.2,0.4,0.6,0.8]))
-        error('The f parameter must be one of 0.2, 0.4, 0.6, 0.8.');
-    end
-
 end
 
 function out_file = validate_output(out_file)
