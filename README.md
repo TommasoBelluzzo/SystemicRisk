@@ -14,8 +14,7 @@ This script calculates and analyses the following risk measures:
   * `Network Centralities`
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillover Index`
-  * `Spillovers From`
-  * `Spillovers To`
+  * `Spillovers From & To`
   * `Net Spillovers`
 * `Component Measures`
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
