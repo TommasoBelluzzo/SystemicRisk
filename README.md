@@ -1,6 +1,6 @@
 # Systemic Risk
 
-This script calculates and analyses the following systemic risk measures:
+This script calculates and analyses the following risk measures:
 
 * `Cross-Sectional Measures`
   * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
