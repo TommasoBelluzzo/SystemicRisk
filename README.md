@@ -6,6 +6,7 @@ This script calculates and analyses the following systemic risk measures:
   * `CoVaR and Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
+  * `Non-Systemic: Beta, Value-at-Risk & Expected Shortfall`
 * `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `DCI (Dynamic Causality Index)`
   * `"In & Out" Connections`
