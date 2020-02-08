@@ -8,7 +8,7 @@ This script calculates and analyses the following risk measures:
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
 * `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `DCI (Dynamic Causality Index)`
+  * `Dynamic Causality Index (DCI)`
   * `"In & Out" Connections`
   * `"In & Out - Other" Connections`
   * `Network Centralities`
