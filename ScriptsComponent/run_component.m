@@ -342,6 +342,10 @@ function plot_indicators(data)
     alpha = 2 / (data.Bandwidth + 1);
     nans = NaN(data.Bandwidth-1,1);
 
+    ar = data.AbsorptionRatio;
+    ar_max = max(ar);
+    ar_max_sign = sign(ar_max);
+    
     ti = data.TurbulenceIndex(data.Bandwidth:end);
     ti_ma = filter(alpha,[1 (alpha - 1)],ti(2:end,:),(1 - alpha) * ti(1,:));
 	ti_ma = [nans; ti(1,:); ti_ma];
@@ -357,6 +361,7 @@ function plot_indicators(data)
 
     sub_1 = subplot(2,2,[1 3]);
     plot(sub_1,data.DatesNum,data.AbsorptionRatio,'Color',color);
+    set(gca(),'YLim',[0 ((abs(ar_max) * 1.1) * ar_max_sign)]);
     t1 = title(sub_1,['Absorption Ratio (f=' sprintf('%.1f',data.F) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');

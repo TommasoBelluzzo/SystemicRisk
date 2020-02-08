@@ -358,12 +358,17 @@ end
 
 function plot_index(data)
 
+    si = data.SI;
+    si_max = max(si);
+    si_max_sign = sign(si_max);
+
     f = figure('Name','Spillover Index','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    plot(data.DatesNum,data.SI);
-    
+    plot(data.DatesNum,si);
     ax = gca();
-    set(ax,'XLim',[data.DatesNum(data.WindowsBandwidth) data.DatesNum(end)],'XTickLabelRotation',45);
+
+    y_limits = get(ax,'YLim');
+    set(ax,'XLim',[data.DatesNum(data.WindowsBandwidth) data.DatesNum(end)],'XTickLabelRotation',45,'YLim',[y_limits(1) ((abs(si_max) * 1.1) * si_max_sign)]);
     
     if (data.MonthlyTicks)
         datetick(ax,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -372,14 +377,13 @@ function plot_index(data)
     end
     
     if (strcmp(data.FEVD,'generalized'))
-        t1 = title(ax,'Spillover Index (Generalized FEVD)');
+        t = figure_title('Spillover Index (Generalized FEVD)');
     else
-        t1 = title(ax,'Spillover Index (Orthogonal FEVD)');
+        t = figure_title('Spillover Index (Orthogonal FEVD)');
     end
 
-    set(t1,'Units','normalized');
-    t1_position = get(t1,'Position');
-    set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
     frame = get(f,'JavaFrame');

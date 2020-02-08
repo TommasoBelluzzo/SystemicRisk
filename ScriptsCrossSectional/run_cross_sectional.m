@@ -70,18 +70,17 @@ function result = run_cross_sectional_internal(data,out_temp,out_file,k,d,l,s,an
             s_x = sqrt(h(:,2));
             rho = squeeze(p(1,2,:));
 
-            beta = rho .* (s_x ./ s_m);
-            var = s_x * quantile((r0_x ./ s_x),data.A);
-
+            [beta,var,es] = calculate_plain(data.A,s_m,r0_x,s_x,rho);
             [covar,dcovar] = calculate_covar(data.A,r0_m,r0_x,var,data.StateVariables);
             [mes,lrmes] = calculate_mes(data.A,data.D,r0_m,s_m,r0_x,s_x,rho,beta);
             srisk = calculate_srisk(data.L,data.S,lrmes,data.Liabilities(:,i),data.Capitalizations(:,i),data.SeparateAccounts(:,i));
 
             data.Beta(:,i) = beta;
-            data.VaR(:,i) = -1 .* var;
-            data.CoVaR(:,i) = -1 .* covar;
-            data.DeltaCoVaR(:,i) = -1 .* dcovar;
-            data.MES(:,i) = -1 .* mes;
+            data.VaR(:,i) = -1 * var;
+            data.ES(:,i) = -1 * es;
+            data.CoVaR(:,i) = -1 * covar;
+            data.DeltaCoVaR(:,i) = -1 * dcovar;
+            data.MES(:,i) = -1 * mes;
             data.SRISK(:,i) = srisk;
             
             if (getappdata(bar,'Stop'))
@@ -133,11 +132,12 @@ function data = data_initialize(data,k,d,l,s)
     k_label = sprintf('%.0f%%',(data.K * 100));
     l_label = sprintf('%.0f%%',(data.L * 100));
     s_label = sprintf('%.0f%%',(data.S * 100));
-    data.Labels = {'Beta' ['VaR (k=' k_label ')'] ['CoVaR (k=' k_label ')'] ['Delta CoVaR (k=' k_label ')'] ['MES (k=' k_label ')'] ['SRISK (d=' d_label ', l=' l_label ', s=' s_label ')'] 'Averages'};
-    data.LabelsSimple = {'Beta' 'VaR' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};  
+    data.Labels = {'Beta' ['VaR (k=' k_label ')'] ['ES (k=' k_label ')'] ['CoVaR (k=' k_label ')'] ['Delta CoVaR (k=' k_label ')'] ['MES (k=' k_label ')'] ['SRISK (d=' d_label ', l=' l_label ', s=' s_label ')'] 'Averages'};
+    data.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};  
     
     data.Beta = NaN(data.T,data.N);
     data.VaR = NaN(data.T,data.N);
+    data.ES = NaN(data.T,data.N);
     data.CoVaR = NaN(data.T,data.N);
     data.DeltaCoVaR = NaN(data.T,data.N);
     data.MES = NaN(data.T,data.N);
@@ -152,12 +152,13 @@ function data = data_finalize(data)
 
     beta_avg = sum(data.Beta .* weights,2) .* factors;
     var_avg = sum(data.VaR .* weights,2) .* factors;
+    es_avg = sum(data.ES .* weights,2) .* factors;
     covar_avg = sum(data.CoVaR .* weights,2) .* factors;
     dcovar_avg = sum(data.DeltaCoVaR .* weights,2) .* factors;
     mes_avg = sum(data.MES .* weights,2) .* factors;
     srisk_avg = sum(data.SRISK .* weights,2);
 
-    data.Averages = [beta_avg var_avg covar_avg dcovar_avg mes_avg srisk_avg];
+    data.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg srisk_avg];
 
 end
 
@@ -265,7 +266,7 @@ function write_results(out_temp,out_file,data)
     t4 = [dates_str array2table(data.SRISK,'VariableNames',data.FirmNames)];
     writetable(t4,out_file,'FileType','spreadsheet','Sheet','SRISK','WriteRowNames',true);  
     
-    t5 = [dates_str array2table(data.Averages(:,3:end),'VariableNames',strrep(data.LabelsSimple(3:end-1),' ','_'))];
+    t5 = [dates_str array2table(data.Averages(:,4:end),'VariableNames',strrep(data.LabelsSimple(4:end-1),' ','_'))];
     writetable(t5,out_file,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
 
     if (ispc())
@@ -273,10 +274,10 @@ function write_results(out_temp,out_file,data)
             excel = actxserver('Excel.Application');
             exc_wb = excel.Workbooks.Open(out_file,0,false);
 
-            exc_wb.Sheets.Item('CoVaR').Name = data.Labels{3};
-            exc_wb.Sheets.Item('Delta CoVaR').Name = data.Labels{4};
-            exc_wb.Sheets.Item('MES').Name = data.Labels{5};
-            exc_wb.Sheets.Item('SRISK').Name = data.Labels{6};
+            exc_wb.Sheets.Item('CoVaR').Name = data.Labels{4};
+            exc_wb.Sheets.Item('Delta CoVaR').Name = data.Labels{5};
+            exc_wb.Sheets.Item('MES').Name = data.Labels{6};
+            exc_wb.Sheets.Item('SRISK').Name = data.Labels{7};
             
             exc_wb.Save();
             exc_wb.Close();
@@ -329,6 +330,16 @@ function [mes,lrmes] = calculate_mes(a,d,r0_m,s_m,r0_x,s_x,rho,beta)
 
     mes = (s_x .* rho .* k1) + (s_x .* z .* k2);
     lrmes = 1 - exp(log(1 - d) .* beta);
+
+end
+
+function [beta,var,es] = calculate_plain(a,s_m,r0_x,s_x,rho)
+
+	beta = rho .* (s_x ./ s_m);
+    
+    c = quantile((r0_x ./ s_x),a);
+	var = s_x * c;
+	es = s_x * -(normpdf(c) / a);
 
 end
 
@@ -387,7 +398,7 @@ end
 
 function plot_averages(data)
 
-    averages = data.Averages(:,3:end);
+    averages = data.Averages(:,4:end);
     averages_len = size(averages,2);
 
     x_max = max(max(averages));
@@ -406,7 +417,7 @@ function plot_averages(data)
         xlabel(sub,'Time');
         ylabel(sub,'Value');
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'XTickLabelRotation',45);
-        title(sub,data.Labels(i+2));
+        title(sub,data.Labels(i+3));
         
         if (data.MonthlyTicks)
             datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -439,6 +450,8 @@ function plot_correlations(data)
     z = bsxfun(@minus,data.Averages,m);
     z = bsxfun(@rdivide,z,s);
     z_limits = [nanmin(z(:)) nanmax(z(:))];
+    
+    n = numel(data.LabelsSimple) - 1;
 
     f = figure('Name','Cross-Sectional Measures Correlation Matrix','Units','normalized');
     
@@ -447,18 +460,22 @@ function plot_correlations(data)
     set(frame,'Maximized',true);
 
     pause(0.01);
-    set(0,'CurrentFigure',f);
-    [handles,axes,big_axes] = gplotmatrix(data.Averages,[],[],[],'o',2,[],'hist',data.LabelsSimple(1:end-1),data.LabelsSimple(1:end-1));
+    [handles,axes,big_axes] = gplotmatrix(f,data.Averages,[],[],[],'o',2,[],'hist',data.LabelsSimple(1:end-1),data.LabelsSimple(1:end-1));
     set(handles(logical(eye(size(data.Averages,2)))),'FaceColor',[0.678 0.922 1]);
-    
     drawnow();
 
     x_labels = get(axes,'XLabel');
     y_labels = get(axes,'YLabel');
     set([x_labels{:}; y_labels{:}],'FontWeight','bold');
+    
+    x_labels_grey = arrayfun(@(l)l{1},x_labels);
+    x_labels_grey_indices = ismember({x_labels_grey.String},data.LabelsSimple(1:3));
+    y_labels_grey = arrayfun(@(l)l{1},y_labels);
+    y_labels_grey_indices = ismember({y_labels_grey.String},data.LabelsSimple(1:3));
+    set([x_labels{x_labels_grey_indices}; y_labels{y_labels_grey_indices}],'Color',[0.5 0.5 0.5]);
 
-    for i = 1:6
-        for j = 1:6
+    for i = 1:n
+        for j = 1:n
             ax_ij = axes(i,j);
             
             z_limits_current = 1.1 .* z_limits;
