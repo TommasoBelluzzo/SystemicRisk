@@ -360,7 +360,7 @@ function plot_indicators(data)
     color = colors(1,:);
 
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,data.DatesNum,data.AbsorptionRatio,'Color',color);
+    plot(sub_1,data.DatesNum,ar,'Color',color);
     set(gca(),'YLim',[0 ((abs(ar_max) * 1.1) * ar_max_sign)]);
     t1 = title(sub_1,['Absorption Ratio (f=' sprintf('%.1f',data.F) ')']);
     set(t1,'Units','normalized');
