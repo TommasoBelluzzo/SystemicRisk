@@ -24,7 +24,7 @@ This script calculates and analyses the following risk measures:
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source for systemic risk measurement.
 
-`**_The project has been published in "MATLAB Digest - Financial Services" of May 2019._**`
+**_`The project has been published in "MATLAB Digest - Financial Services" of May 2019.`_**
 
 ## Requirements
 
