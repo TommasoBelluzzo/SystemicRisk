@@ -24,6 +24,8 @@ This script calculates and analyses the following risk measures:
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source for systemic risk measurement.
 
+**The project has been published in "MATLAB Digest - Financial Services" of May 2019.**
+
 ## Requirements
 
 The minimum Matlab version required is `R2014a`. In addition, the following products and toolboxes must be installed in order to properly execute the script:
