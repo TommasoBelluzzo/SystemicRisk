@@ -17,6 +17,8 @@ function data = parse_dataset(varargin)
 
     ip.parse(varargin{:});
     ipr = ip.Results;
+    
+    nargoutchk(1,1);
 
     data = parse_dataset_internal(ipr.file,ipr.date_format);
 

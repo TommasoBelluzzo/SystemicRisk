@@ -14,6 +14,8 @@ function analyze_dataset(varargin)
 
     ipr = ip.Results;
     data = validate_data(ipr.data);
+    
+    nargoutchk(0,0);
 
     analyze_dataset_internal(data);
 
@@ -46,7 +48,7 @@ end
 
 function plot_index(data)
 
-    f = figure('Name',['Index (' data.IndexName ')'],'Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.IndexReturns);
@@ -92,7 +94,7 @@ end
 
 function plot_returns(data)
 
-    f = figure('Name','Firms Returns','Units','normalized','Position',[100 100 0.85 0.85]);    
+    f = figure('Name','Dataset > Returns','Units','normalized','Position',[100 100 0.85 0.85]);    
 
     boxplot(data.FirmReturns,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
@@ -111,7 +113,7 @@ function plot_returns(data)
     
     set(gca(),'TickLength',[0 0],'XTick',1:data.N,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YLim',[y_low y_high]);
 
-    t = figure_title('Firms Returns');
+    t = figure_title('Returns');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
 
@@ -123,7 +125,7 @@ end
 
 function plot_capitalizations(data)
 
-    f = figure('Name','Firms Market Capitalizations','Units','normalized','Position',[100 100 0.85 0.85]);    
+    f = figure('Name','Dataset > Market Capitalization','Units','normalized','Position',[100 100 0.85 0.85]);    
 
     boxplot(data.Capitalizations,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
@@ -142,7 +144,7 @@ function plot_capitalizations(data)
     
     set(gca(),'TickLength',[0 0],'XTick',1:data.N,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YLim',[y_low y_high]);
 
-    t = figure_title('Firms Market Capitalizations');
+    t = figure_title('Market Capitalization');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
 
@@ -154,7 +156,7 @@ end
 
 function plot_liabilities(data)
 
-    f = figure('Name','Firms Liabilities','Units','normalized','Position',[100 100 0.85 0.85]);    
+    f = figure('Name','Dataset > Liabilities','Units','normalized','Position',[100 100 0.85 0.85]);    
 
     boxplot(data.Liabilities,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
@@ -173,7 +175,7 @@ function plot_liabilities(data)
     
     set(gca(),'TickLength',[0 0],'XTick',1:data.N,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YLim',[y_low y_high]);
 
-    t = figure_title('Firms Liabilities');
+    t = figure_title('Liabilities');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
 

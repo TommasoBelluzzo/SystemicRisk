@@ -8,8 +8,9 @@
 %
 % [OUTPUT]
 % result = A structure representing the original dataset inclusive of intermediate and final calculations.
+% stopped = A boolean that indicates whether the process has been stopped through user input.
 
-function result = run_component(varargin)
+function [result,stopped] = run_component(varargin)
 
     persistent ip;
 
@@ -31,13 +32,16 @@ function result = run_component(varargin)
     out_file = validate_output(ipr.out_file);
     f = validate_f(ipr.f);
     
-    result = run_component_internal(data,out_temp,out_file,ipr.bandwidth,f,ipr.analyze);
+	nargoutchk(1,2);
+    
+    [result,stopped] = run_component_internal(data,out_temp,out_file,ipr.bandwidth,f,ipr.analyze);
 
 end
 
-function result = run_component_internal(data,out_temp,out_file,bandwidth,f,analyze)
+function [result,stopped] = run_component_internal(data,out_temp,out_file,bandwidth,f,analyze)
 
     result = [];
+    stopped = false;
     
     bar = waitbar(0,'Calculating component measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -49,8 +53,7 @@ function result = run_component_internal(data,out_temp,out_file,bandwidth,f,anal
     
 	rng_settings = rng();
     rng(0);
-    
-    stopped = false;
+ 
     e = [];
 
     futures(1:windows_len) = parallel.FevalFuture;
@@ -354,7 +357,7 @@ function plot_indicators(data)
     cs_ma = filter(alpha,[1 (alpha - 1)],cs(2:end,:),(1 - alpha) * cs(1,:));
 	cs_ma = [nans; cs(1,:); cs_ma];
 
-    f = figure('Name','Component Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Component Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
     
     colors = get(gca(),'ColorOrder');
     color = colors(1,:);
@@ -401,7 +404,7 @@ function plot_indicators(data)
         datetick(sub_3,'x','yyyy','KeepLimits');
     end
 
-    t = figure_title('Component Indicators');
+    t = figure_title('Indicators');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
@@ -441,7 +444,7 @@ function plot_pca(data)
     y_ticks = 0:10:100;
     y_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
     
-    f = figure('Name','Principal Component Analysis','Units','normalized');
+    f = figure('Name','Component Measures > Principal Component Analysis','Units','normalized');
 
     sub_1 = subplot(1,2,1);
     line_1 = line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'LineStyle','-','Marker','none');

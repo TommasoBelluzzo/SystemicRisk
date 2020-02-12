@@ -10,8 +10,9 @@
 %
 % [OUTPUT]
 % result = A structure representing the original dataset inclusive of intermediate and final calculations.
+% stopped = A boolean that indicates whether the process has been stopped through user input.
 
-function result = run_connectedness(varargin)
+function [result,stopped] = run_connectedness(varargin)
 
     persistent ip;
 
@@ -34,13 +35,16 @@ function result = run_connectedness(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
     
-    result = run_connectedness_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.k,ipr.analyze);
+	nargoutchk(1,2);
+    
+    [result,stopped] = run_connectedness_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.k,ipr.analyze);
 
 end
 
-function result = run_connectedness_internal(data,out_temp,out_file,bandwidth,significance,robust,k,analyze)
+function [result,stopped] = run_connectedness_internal(data,out_temp,out_file,bandwidth,significance,robust,k,analyze)
 
     result = [];
+    stopped = false;
     
     bar = waitbar(0,'Calculating connectedness measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -50,7 +54,6 @@ function result = run_connectedness_internal(data,out_temp,out_file,bandwidth,si
 
     data = data_initialize(data,windows_len,bandwidth,significance,robust,k);
 
-    stopped = false;
     e = [];
     
     futures(1:windows_len) = parallel.FevalFuture;
@@ -540,7 +543,7 @@ function plot_indicators(data)
     threshold = NaN(data.T,1);
     threshold(threshold_indices) = connections_max;
 
-    f = figure('Name','Connectedness Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
     
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
@@ -579,7 +582,7 @@ function plot_indicators(data)
         datetick(sub_2,'x','yyyy','KeepLimits');
     end
     
-    t = figure_title('Connectedness Indicators');
+    t = figure_title('Indicators');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
@@ -636,7 +639,7 @@ function plot_network(data)
     x = [xy(i,1) xy(j,1)].';
     y = [xy(i,2) xy(j,2)].';
 
-    f = figure('Name','Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub = subplot(100,1,10:100);
 
@@ -698,7 +701,7 @@ function plot_adjacency_matrix(data)
 
     off = data.N + 0.5;
 
-    f = figure('Name','Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85]);
 
     pcolor(a);
     colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
@@ -735,7 +738,7 @@ function plot_centralities(data)
     [clustering_coefficients,order] = sort(data.ClusteringCoefficientsAverage);
     clustering_coefficients_names = data.FirmNames(order);
 
-    f = figure('Name','Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,3,1);
     bar(sub_1,seq,bc,'FaceColor',[0.749 0.862 0.933]);

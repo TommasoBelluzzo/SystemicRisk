@@ -11,8 +11,9 @@
 %
 % [OUTPUT]
 % result = A structure representing the original dataset inclusive of intermediate and final calculations.
+% stopped = A boolean that indicates whether the process has been stopped through user input.
 
-function result = run_spillover(varargin)
+function [result,stopped] = run_spillover(varargin)
 
     persistent ip;
 
@@ -37,13 +38,16 @@ function result = run_spillover(varargin)
     out_file = validate_output(ipr.out_file);
     rw_indices = validate_rw_steps(ipr.data,ipr.rw_bandwidth,ipr.rw_steps);
     
-    result = run_spillover_internal(data,out_temp,out_file,ipr.rw_bandwidth,ipr.rw_steps,rw_indices,ipr.lags,ipr.h,ipr.fevd,ipr.analyze);
+	nargoutchk(1,2);
+    
+    [result,stopped] = run_spillover_internal(data,out_temp,out_file,ipr.rw_bandwidth,ipr.rw_steps,rw_indices,ipr.lags,ipr.h,ipr.fevd,ipr.analyze);
 
 end
 
-function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd,analyze)
+function [result,stopped] = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd,analyze)
 
     result = [];
+    stopped = false;
     
     bar = waitbar(0,'Calculating spillover measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -58,8 +62,7 @@ function result = run_spillover_internal(data,out_temp,out_file,rw_bandwidth,rw_
 
 	rng_settings = rng();
     rng(0);
-    
-    stopped = false;
+
     e = [];
 
     futures(1:windows_len) = parallel.FevalFuture;
@@ -362,7 +365,7 @@ function plot_index(data)
     si_max = max(si);
     si_max_sign = sign(si_max);
 
-    f = figure('Name','Spillover Index','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Spillover Measures > Index','Units','normalized','Position',[100 100 0.85 0.85]);
 
     plot(data.DatesNum,si);
     ax = gca();
@@ -403,7 +406,7 @@ function plot_spillovers(data)
     spillovers_net_avg = mean(spillovers_net,2);
     spillovers_net_avg(data.WindowsBandwidth:end) = smooth(spillovers_net_avg(data.WindowsBandwidth:end),'rlowess');
 
-    f = figure('Name','Spillovers','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Spillover Measures > Spillovers','Units','normalized','Position',[100 100 0.85 0.85]);
 
     colors = get(gca(),'ColorOrder');
     color = colors(1,:);

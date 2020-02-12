@@ -72,34 +72,64 @@ save(mat_dataset,'data');
 
 analyze_dataset(data);
 
-pause(2);
+switches = [true, true, true, true];
 
-out_temp_cross_sectional = fullfile(path_base,['Templates' filesep() 'TemplateCrossSectional.xlsx']);
-out_file_cross_sectional = fullfile(path_base,['Results' filesep() 'ResultsCrossSectional.xlsx']);
-result_cross_sectional = run_cross_sectional(data,out_temp_cross_sectional,out_file_cross_sectional,0.95,0.40,0.08,0.40,true);
-mat_cross_sectional = fullfile(path_base,['Results' filesep() 'DataCrossSectional.mat']);
-save(mat_cross_sectional,'result_cross_sectional');
+if (switches(1))
+    pause(2);
+    
+    out_temp_cross_sectional = fullfile(path_base,['Templates' filesep() 'TemplateCrossSectional.xlsx']);
+    out_file_cross_sectional = fullfile(path_base,['Results' filesep() 'ResultsCrossSectional.xlsx']);
+    [result_cross_sectional,stopped] = run_cross_sectional(data,out_temp_cross_sectional,out_file_cross_sectional,0.95,0.40,0.08,0.40,true);
+    
+    if (stopped)
+        return;
+    end
+    
+    mat_cross_sectional = fullfile(path_base,['Results' filesep() 'DataCrossSectional.mat']);
+    save(mat_cross_sectional,'result_cross_sectional');
+end
 
-pause(2);
+if (switches(2))
+    pause(2);
 
-out_temp_connectedness = fullfile(path_base,['Templates' filesep() 'TemplateConnectedness.xlsx']);
-out_file_connectedness = fullfile(path_base,['Results' filesep() 'ResultsConnectedness.xlsx']);
-result_connectedness = run_connectedness(data,out_temp_connectedness,out_file_connectedness,252,0.05,true,0.06,true);
-mat_connectedness = fullfile(path_base,['Results' filesep() 'DataConnectedness.mat']);
-save(mat_connectedness,'result_connectedness');
+    out_temp_connectedness = fullfile(path_base,['Templates' filesep() 'TemplateConnectedness.xlsx']);
+    out_file_connectedness = fullfile(path_base,['Results' filesep() 'ResultsConnectedness.xlsx']);
+    [result_connectedness,stopped] = run_connectedness(data,out_temp_connectedness,out_file_connectedness,252,0.05,true,0.06,true);
+    
+    if (stopped)
+        return;
+    end
 
-pause(2);
+    mat_connectedness = fullfile(path_base,['Results' filesep() 'DataConnectedness.mat']);
+    save(mat_connectedness,'result_connectedness');
+end
 
-out_temp_spillover = fullfile(path_base,['Templates' filesep() 'TemplateSpillover.xlsx']);
-out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.xlsx']);
-result_spillover = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,'generalized',true);
-mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
-save(mat_spillover,'result_spillover');
+if (switches(3))
+    pause(2);
 
-pause(2);
+    out_temp_spillover = fullfile(path_base,['Templates' filesep() 'TemplateSpillover.xlsx']);
+    out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.xlsx']);
+    [result_spillover,stopped] = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,'generalized',true);
+    
+    if (stopped)
+        return;
+    end
+    
+    mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
+    save(mat_spillover,'result_spillover');
+end
 
-out_temp_component = fullfile(path_base,['Templates' filesep() 'TemplateComponent.xlsx']);
-out_file_component = fullfile(path_base,['Results' filesep() 'ResultsComponent.xlsx']);
-result_component = run_component(data,out_temp_component,out_file_component,252,0.2,true);
-mat_component = fullfile(path_base,['Results' filesep() 'DataComponent.mat']);
-save(mat_component,'result_component');
+if (switches(4))
+    pause(2);
+
+    out_temp_component = fullfile(path_base,['Templates' filesep() 'TemplateComponent.xlsx']);
+    out_file_component = fullfile(path_base,['Results' filesep() 'ResultsComponent.xlsx']);
+    [result_component,stopped] = run_component(data,out_temp_component,out_file_component,252,0.2,true);
+    
+    if (stopped)
+        return;
+    end
+    
+    mat_component = fullfile(path_base,['Results' filesep() 'DataComponent.mat']);
+    save(mat_component,'result_component');
+end

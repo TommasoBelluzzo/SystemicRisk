@@ -14,14 +14,14 @@ function t = figure_title(varargin)
     end
 
     ip.parse(varargin{:});
-
     ipr = ip.Results;
-    s = ipr.s;
+    
+    nargoutchk(0,1);
 
     if (nargout == 0)
-        figure_title_internal(s);
+        figure_title_internal(ipr.s);
     else
-        t = figure_title_internal(s);
+        t = figure_title_internal(ipr.s);
     end
 
 end

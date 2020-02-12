@@ -21,6 +21,8 @@ function windows = extract_rolling_windows(varargin)
     ip.parse(varargin{:});
     ipr = ip.Results;
     
+    nargoutchk(1,1);
+    
     windows = get_rolling_windows_internal(ipr.data,ipr.bandwidth);
 
 end
