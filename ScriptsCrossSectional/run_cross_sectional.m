@@ -116,6 +116,7 @@ function [result,stopped] = run_cross_sectional_internal(data,out_temp,out_file,
         plot_idiosyncratic_averages(data);
         plot_systemic_averages(data);
         plot_correlations(data);
+        plot_rankings(data);
     end
     
     result = data;
@@ -137,7 +138,7 @@ function data = data_initialize(data,k,d,l,s)
     l_label = sprintf('%.0f%%',(data.L * 100));
     s_label = sprintf('%.0f%%',(data.S * 100));
     data.Labels = {'Beta' ['VaR (k=' k_label ')'] ['ES (k=' k_label ')'] ['CoVaR (k=' k_label ')'] ['Delta CoVaR (k=' k_label ')'] ['MES (k=' k_label ')'] ['SRISK (d=' d_label ', l=' l_label ', s=' s_label ')'] 'Averages'};
-    data.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};  
+    data.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};
     
     data.Beta = NaN(data.T,data.N);
     data.VaR = NaN(data.T,data.N);
@@ -164,39 +165,45 @@ function data = data_finalize(data)
 
     data.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg srisk_avg];
     
-    data.KendallTaus = zeros(1,7);
+    measures = numel(data.LabelsSimple) - 1;
+    measures_pairs = nchoosek(1:measures,2);
+    
+    data.RankingConcordance = zeros(measures,measures);
+    data.RankingStability = zeros(1,measures);
+    
+    for i = 1:size(measures_pairs,1)
+        pair = measures_pairs(i,:);
 
-    for i = data.T:-1:2
-        [~,rank_previous] = sort(data.Beta(i-1,:));
-        [~,rank_current] = sort(data.Beta(i,:));
-        data.KendallTaus(1) = data.KendallTaus(1) + corr(rank_current.',rank_previous.','Type','Kendall');
+        index_1 = pair(1);
+        field_1 = strrep(data.LabelsSimple{index_1},' ','');
+        measure_1 = data.(field_1);
         
-        [~,rank_previous] = sort(data.VaR(i-1,:));
-        [~,rank_current] = sort(data.VaR(i,:));
-        data.KendallTaus(2) = data.KendallTaus(2) + corr(rank_current.',rank_previous.','Type','Kendall');
+        index_2 = pair(2);
+        field_2 = strrep(data.LabelsSimple{index_2},' ','');
+        measure_2 = data.(field_2);
         
-        [~,rank_previous] = sort(data.ES(i-1,:));
-        [~,rank_current] = sort(data.ES(i,:));
-        data.KendallTaus(3) = data.KendallTaus(3) + corr(rank_current.',rank_previous.','Type','Kendall');
-        
-        [~,rank_previous] = sort(data.CoVaR(i-1,:));
-        [~,rank_current] = sort(data.CoVaR(i,:));
-        data.KendallTaus(4) = data.KendallTaus(4) + corr(rank_current.',rank_previous.','Type','Kendall');
-        
-        [~,rank_previous] = sort(data.DeltaCoVaR(i-1,:));
-        [~,rank_current] = sort(data.DeltaCoVaR(i,:));
-        data.KendallTaus(5) = data.KendallTaus(5) + corr(rank_current.',rank_previous.','Type','Kendall');
-        
-        [~,rank_previous] = sort(data.MES(i-1,:));
-        [~,rank_current] = sort(data.MES(i,:));
-        data.KendallTaus(6) = data.KendallTaus(6) + corr(rank_current.',rank_previous.','Type','Kendall');
-        
-        [~,rank_previous] = sort(data.SRISK(i-1,:));
-        [~,rank_current] = sort(data.SRISK(i,:));
-        data.KendallTaus(7) = data.KendallTaus(7) + corr(rank_current.',rank_previous.','Type','Kendall');
+        for j = 1:data.T
+            [~,rank_1] = sort(measure_1(j,:));
+            [~,rank_2] = sort(measure_2(j,:));
+
+            data.RankingConcordance(index_1,index_2) = data.RankingConcordance(index_1,index_2) + kendall_concordance_coefficient(rank_1.',rank_2.');
+        end
     end
+    
+    for i = 1:measures
+        field = strrep(data.LabelsSimple{i},' ','');
+        measure = data.(field);
+        
+        for j = data.T:-1:2
+            [~,rank_previous] = sort(measure(j-1,:));
+            [~,rank_current] = sort(measure(j,:));
 
-    data.KendallTaus = data.KendallTaus ./ (data.T - 1);
+            data.RankingStability(i) = data.RankingStability(i) + kendall_concordance_coefficient(rank_current.',rank_previous.');
+        end
+    end
+    
+    data.RankingConcordance = ((data.RankingConcordance + data.RankingConcordance.') / data.T) + eye(measures);
+    data.RankingStability = data.RankingStability ./ (data.T - 1);
 
 end
 
@@ -292,29 +299,16 @@ function write_results(out_temp,out_file,data)
 
     dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
 
-    t1 = [dates_str array2table(data.Beta,'VariableNames',data.FirmNames)];
-    writetable(t1,out_file,'FileType','spreadsheet','Sheet','Beta','WriteRowNames',true);
-    
-    t2 = [dates_str array2table(data.VaR,'VariableNames',data.FirmNames)];
-    writetable(t2,out_file,'FileType','spreadsheet','Sheet','VaR','WriteRowNames',true);
-    
-    t3 = [dates_str array2table(data.ES,'VariableNames',data.FirmNames)];
-    writetable(t3,out_file,'FileType','spreadsheet','Sheet','ES','WriteRowNames',true);
-    
-    t4 = [dates_str array2table(data.CoVaR,'VariableNames',data.FirmNames)];
-    writetable(t4,out_file,'FileType','spreadsheet','Sheet','CoVaR','WriteRowNames',true);
+    for i = 1:(numel(data.LabelsSimple) - 1)
+        sheet = data.LabelsSimple{i};
+        measure = strrep(sheet,' ','');
 
-    t5 = [dates_str array2table(data.DeltaCoVaR,'VariableNames',data.FirmNames)];
-    writetable(t5,out_file,'FileType','spreadsheet','Sheet','Delta CoVaR','WriteRowNames',true);
-    
-    t6 = [dates_str array2table(data.MES,'VariableNames',data.FirmNames)];
-    writetable(t6,out_file,'FileType','spreadsheet','Sheet','MES','WriteRowNames',true);
+        tab = [dates_str array2table(data.(measure),'VariableNames',data.FirmNames)];
+        writetable(tab,out_file,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
+    end
 
-    t7 = [dates_str array2table(data.SRISK,'VariableNames',data.FirmNames)];
-    writetable(t7,out_file,'FileType','spreadsheet','Sheet','SRISK','WriteRowNames',true);  
-    
-    t8 = [dates_str array2table(data.Averages,'VariableNames',strrep(data.LabelsSimple(1:end-1),' ','_'))];
-    writetable(t8,out_file,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
+    tab = [dates_str array2table(data.Averages,'VariableNames',strrep(data.LabelsSimple(1:end-1),' ','_'))];
+    writetable(tab,out_file,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
 
     if (ispc())
         try
@@ -397,6 +391,26 @@ function srisk = calculate_srisk(l,s,lrmes,liabilities,equity,separate_accounts)
 
     srisk = (l .* liabilities) - ((1 - l) .* (1 - lrmes) .* equity);
     srisk(srisk < 0) = 0;
+
+end
+
+function kcc = kendall_concordance_coefficient(rank_1,rank_2)
+
+	m = [rank_1 rank_2];
+	[n,k] = size(m);
+
+    rm = zeros(n,k);
+
+    for i = 1:k
+        x_i = m(:,i);
+        [~,b] = sortrows(x_i);
+        rm(b,i) = 1:n;
+    end
+
+    rm_sum = sum(rm,2);
+    s = sum(rm_sum .^ 2,1) - ((sum(rm_sum) ^ 2) / n);
+
+    kcc = (12 * s) / ((k ^ 2) * (( n^ 3) - n));
 
 end
 
@@ -555,6 +569,7 @@ function plot_correlations(data)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+    drawnow();
 
     pause(0.01);
     [handles,axes,big_axes] = gplotmatrix(f,data.Averages,[],[],[],'o',2,[],'hist',data.LabelsSimple(1:end-1),data.LabelsSimple(1:end-1));
@@ -599,5 +614,102 @@ function plot_correlations(data)
     end
 
     annotation('TextBox',[0 0 1 1],'String','Correlation Matrix','EdgeColor','none','FontName','Helvetica','FontSize',14,'HorizontalAlignment','center');
+
+end
+
+function plot_rankings(data)
+
+    labels = data.LabelsSimple(1:end-1);
+    n = numel(labels);
+    seq = 1:n;
+    off = seq + 0.5;
+
+    [rs,order] = sort(data.RankingStability);
+    rs_names = labels(order);
+    
+    rc = data.RankingConcordance;
+    rc(rc <= 0.5) = 0.0;
+    rc(rc > 0.5) = 1.0;
+    rc(logical(eye(n))) = 0.5;
+    
+    [rc_x,rc_y] = meshgrid(seq,seq);
+    rc_x = rc_x(:) + 0.5;
+    rc_y = rc_y(:) + 0.5;
+    rc_text = cellstr(num2str(data.RankingConcordance(:),'%.2f'));
+
+    f = figure('Name','Cross-Sectional Measures > Rankings','Units','normalized','Position',[100 100 0.85 0.85]);
+
+    sub_1 = subplot(1,2,1);
+    bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);
+    set(sub_1,'XTickLabel',rs_names,'YLim',[0 1]);
+    title(sub_1,'Ranking Stability');
+
+    if (~verLessThan('MATLAB','8.4'))
+        tl = get(sub_1,'XTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
+            else
+                tl_new{i} = ['\bf{' tl_i '}'];
+            end
+        end
+
+        set(sub_1,'XTickLabel',tl_new);
+    end
+    
+    sub_2 = subplot(1,2,2);
+    pcolor(padarray(rc,[1 1],'post'));
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
+    axis image;
+    text(rc_x, rc_y, rc_text,'FontSize',9,'HorizontalAlignment','center');
+    set(sub_2,'FontWeight','bold','XAxisLocation','bottom','TickLength',[0 0],'YDir','reverse');
+    set(sub_2,'XTick',off,'XTickLabels',labels,'XTickLabelRotation',45,'YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
+    t2 = title(sub_2,'Ranking Concordance');
+    t2_position = get(t2,'Position');
+    set(t2,'Position',[t2_position(1) 0.2897 t2_position(3)]);
+
+    if (~verLessThan('MATLAB','8.4'))
+        tl = get(sub_2,'XTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
+            else
+                tl_new{i} = ['\bf{' tl_i '}'];
+            end
+        end
+
+        set(sub_2,'XTickLabel',tl_new);
+        
+        tl = get(sub_2,'YTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '} '];
+            else
+                tl_new{i} = ['\bf{' tl_i '} '];
+            end
+        end
+
+        set(sub_2,'YTickLabel',tl_new);
+    end
+    
+    t = figure_title('Rankings (Kendall''s W)');
+    t_position = get(t,'Position');
+    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
 
 end

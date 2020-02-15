@@ -66,10 +66,8 @@ addpath(paths_base);
 
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 data = parse_dataset(dataset);
-
 mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
 save(mat_dataset,'data');
-
 analyze_dataset(data);
 
 switches = [true, true, true, true];
