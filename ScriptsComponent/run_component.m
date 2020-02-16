@@ -3,7 +3,8 @@
 % out_temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out_file = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bandwidth = An integer greater than or equal to 30 representing the bandwidth (dimension) of each rolling window (optional, default=252).
-% f = A float (0.2:0.1:0.8) representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.2).
+% f = A float {0.2:0.1:0.8} representing the percentage of components to include in the computation of the absorption ratio (optional, default=0.2).
+% q = A float (0.5,1.0) representing the turbulence threshold (optional, default=0.75).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -21,6 +22,7 @@ function [result,stopped] = run_component(varargin)
         ip.addRequired('out_file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',30}));
         ip.addOptional('f',0.2,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>=',0.2,'<=',0.8}));
+        ip.addOptional('q',0.75,@(x)validateattributes(x,{'double','single'},{'scalar','real','finite','>',0.5,'<',1}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -34,11 +36,11 @@ function [result,stopped] = run_component(varargin)
     
 	nargoutchk(1,2);
     
-    [result,stopped] = run_component_internal(data,out_temp,out_file,ipr.bandwidth,f,ipr.analyze);
+    [result,stopped] = run_component_internal(data,out_temp,out_file,ipr.bandwidth,f,ipr.q,ipr.analyze);
 
 end
 
-function [result,stopped] = run_component_internal(data,out_temp,out_file,bandwidth,f,analyze)
+function [result,stopped] = run_component_internal(data,out_temp,out_file,bandwidth,f,q,analyze)
 
     result = [];
     stopped = false;
@@ -49,7 +51,7 @@ function [result,stopped] = run_component_internal(data,out_temp,out_file,bandwi
     windows = extract_rolling_windows(data.FirmReturns,bandwidth);
     windows_len = length(windows);
 
-    data = data_initialize(data,windows_len,bandwidth,f);
+    data = data_initialize(data,windows_len,bandwidth,f,q);
     
 	rng_settings = rng();
     rng(0);
@@ -119,11 +121,12 @@ end
 
 %% DATA
 
-function data = data_initialize(data,windows_len,bandwidth,f)
+function data = data_initialize(data,windows_len,bandwidth,f,q)
 
     data.Bandwidth = bandwidth;
     data.Components = round(data.N * f);
     data.F = f;
+    data.Q = q;
     data.Windows = windows_len;
 
     data.AbsorptionRatio = NaN(data.T,1);
@@ -152,6 +155,8 @@ function data = data_finalize(data,futures_results)
         data.PCAExplainedSums(futures_result_off,:) = fliplr([cumsum([futures_result.PCAExplained(1) futures_result.PCAExplained(2) futures_result.PCAExplained(3)]) 100]);
         data.PCAScores{i} = futures_result.PCAScores;
     end
+    
+    data.TurbulenceThreshold = quantile(data.TurbulenceIndex(data.Bandwidth:end),data.Q);
 
     [coefficients,scores,explained] = calculate_pca(data.FirmReturns);
     data.PCACoefficientsOverall = coefficients;
@@ -345,10 +350,6 @@ function plot_indicators(data)
     alpha = 2 / (data.Bandwidth + 1);
     nans = NaN(data.Bandwidth-1,1);
 
-    ar = data.AbsorptionRatio;
-    ar_max = max(ar);
-    ar_max_sign = sign(ar_max);
-    
     ti = data.TurbulenceIndex(data.Bandwidth:end);
     ti_ma = filter(alpha,[1 (alpha - 1)],ti(2:end,:),(1 - alpha) * ti(1,:));
 	ti_ma = [nans; ti(1,:); ti_ma];
@@ -363,8 +364,8 @@ function plot_indicators(data)
     color = colors(1,:);
 
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,data.DatesNum,ar,'Color',color);
-    set(gca(),'YLim',[0 ((abs(ar_max) * 1.1) * ar_max_sign)]);
+    plot(sub_1,data.DatesNum,data.AbsorptionRatio,'Color',color);
+    set(gca(),'YLim',[0 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) * 100,'UniformOutput',false));
     t1 = title(sub_1,['Absorption Ratio (f=' sprintf('%.1f',data.F) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
@@ -374,9 +375,14 @@ function plot_indicators(data)
     p2 = plot(sub_2,data.DatesNum,data.TurbulenceIndex,'Color',[0.65 0.65 0.65]);
     p2.Color(4) = 0.35;
     hold on;
-        plot(sub_2,data.DatesNum,ti_ma,'Color',color);
+        p21 = plot(sub_2,data.DatesNum,ti_ma,'Color',color);
+        p22 = plot(sub_2,data.DatesNum,repmat(data.TurbulenceThreshold,[data.T 1]),'Color',[1 0.4 0.4]);
     hold off;
-    t2 = title(sub_2,'Turbulence Index (EWMA)');
+    l2 = legend(sub_2,[p21 p22],'EWMA','Threshold','Location','best');
+    set(l2,'NumColumns',2,'Units','normalized');
+    l2_position = get(l2,'Position');
+    set(l2,'Position',[0.6710 0.4888 l2_position(3) l2_position(4)]);
+    t2 = title(sub_2,['Turbulence Index (q=' sprintf('%.2f',data.Q) ')']);
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
@@ -387,7 +393,7 @@ function plot_indicators(data)
     hold on;
         plot(sub_3,data.DatesNum,cs_ma,'Color',color);
     hold off;
-    t3 = title(sub_3,'Correlation Surprise (EWMA)');
+    t3 = title(sub_3,'Correlation Surprise');
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
