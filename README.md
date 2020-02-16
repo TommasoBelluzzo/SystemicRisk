@@ -119,4 +119,4 @@ Datasets must be built following the structure of default ones included in every
 
 ![Spillover Measures](https://i.imgur.com/jYCCoQr.png)
 
-![Component Measures](https://i.imgur.com/DENqkvH.png)
+![Component Measures](https://i.imgur.com/m11XsbX.png)
