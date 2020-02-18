@@ -35,7 +35,7 @@ function [result,stopped] = run_cross_sectional(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
     
-	nargoutchk(1,2);
+    nargoutchk(1,2);
 
     [result,stopped] = run_cross_sectional_internal(data,out_temp,out_file,ipr.k,ipr.d,ipr.l,ipr.s,ipr.analyze);
 
