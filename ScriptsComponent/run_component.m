@@ -34,7 +34,7 @@ function [result,stopped] = run_component(varargin)
     out_file = validate_output(ipr.out_file);
     f = validate_f(ipr.f);
     
-	nargoutchk(1,2);
+    nargoutchk(1,2);
     
     [result,stopped] = run_component_internal(data,out_temp,out_file,ipr.bandwidth,f,ipr.q,ipr.analyze);
 
