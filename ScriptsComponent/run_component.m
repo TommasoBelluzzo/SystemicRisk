@@ -53,7 +53,7 @@ function [result,stopped] = run_component_internal(data,out_temp,out_file,bandwi
 
     data = data_initialize(data,windows_len,bandwidth,f,q);
     
-	rng_settings = rng();
+    rng_settings = rng();
     rng(0);
  
     e = [];
