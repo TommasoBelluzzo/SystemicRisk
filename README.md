@@ -95,10 +95,10 @@ Datasets must be built following the structure of default ones included in every
 * Data concerning state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
   > Firms in the Returns Sheet: A, B, C, D, E, F, G, H  
-  > Insurance Companies - 2  
-  > Investment Banks - 2  
-  > Commercial Banks - 3  
-  > Government-sponsored Enterprises - 1
+  > Insurance Companies: 2  
+  > Investment Banks: 2  
+  > Commercial Banks: 3  
+  > Government-sponsored Enterprises: 1
 
   produces the following outcome:
 
