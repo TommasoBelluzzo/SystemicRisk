@@ -38,7 +38,7 @@ function [result,stopped] = run_spillover(varargin)
     out_file = validate_output(ipr.out_file);
     rw_indices = validate_rw_steps(ipr.data,ipr.rw_bandwidth,ipr.rw_steps);
     
-	nargoutchk(1,2);
+    nargoutchk(1,2);
     
     [result,stopped] = run_spillover_internal(data,out_temp,out_file,ipr.rw_bandwidth,ipr.rw_steps,rw_indices,ipr.lags,ipr.h,ipr.fevd,ipr.analyze);
 
@@ -60,7 +60,7 @@ function [result,stopped] = run_spillover_internal(data,out_temp,out_file,rw_ban
 
     data = data_initialize(data,windows_original_len,rw_bandwidth,rw_steps,rw_indices,lags,h,fevd);
 
-	rng_settings = rng();
+    rng_settings = rng();
     rng(0);
 
     e = [];

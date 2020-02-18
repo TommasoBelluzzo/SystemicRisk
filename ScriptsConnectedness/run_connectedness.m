@@ -35,7 +35,7 @@ function [result,stopped] = run_connectedness(varargin)
     out_temp = validate_template(ipr.out_temp);
     out_file = validate_output(ipr.out_file);
     
-	nargoutchk(1,2);
+    nargoutchk(1,2);
     
     [result,stopped] = run_connectedness_internal(data,out_temp,out_file,ipr.bandwidth,ipr.significance,ipr.robust,ipr.k,ipr.analyze);
 

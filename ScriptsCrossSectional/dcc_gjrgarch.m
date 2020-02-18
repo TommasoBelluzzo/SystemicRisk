@@ -32,7 +32,7 @@ function [p,s] = dcc_gjrgarch(varargin)
     ip.parse(varargin{:});
     ipr = ip.Results;
 
-    nargoutchk(1,2);
+    nargoutchk(2,2);
 
     [p,s] = dcc_gjrgarch_internal(ipr.data,ipr.dcc_q,ipr.dcc_p,ipr.arch_q,ipr.garch_p);
 

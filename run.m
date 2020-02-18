@@ -64,7 +64,7 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-scripts_switches = [false false false true];
+scripts_switches = [true true true true];
 analysis_switches = [false true true true true];
 
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
