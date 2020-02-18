@@ -20,7 +20,7 @@ function adjacency_matrix = causal_adjacency(varargin)
     ip.parse(varargin{:});
     ipr = ip.Results;
     
-    nargoutchk(1,3);
+    nargoutchk(1,1);
     
     adjacency_matrix = causal_adjacency_internal(ipr.data,ipr.significance,ipr.robust);
 
