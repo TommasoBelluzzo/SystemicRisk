@@ -81,6 +81,7 @@ Datasets must be built following the structure of default ones included in every
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
 * **CREDIT_SPREAD:** the difference between the BAA corporate bond rate and the 10Y treasury bond rate.
 * **LIQUIDITY_SPREAD:** the difference between the 3M treasury bill rate and the federal funds rate.
+* **TED_SPREAD:** the difference between the 3M USD LIBOR and the 3M treasury bill rate.
 * **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
 * **DJ_CA:** the DJ US Composite Average log-returns as a proxy of industrial returns.
 * **DJ_RESI:** the DJ US Select Real Estate Securities Index log-returns as a proxy of real estate returns.
