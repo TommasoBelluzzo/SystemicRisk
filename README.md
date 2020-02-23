@@ -91,7 +91,7 @@ Datasets must be built following the structure of default ones included in every
 #### Notes
 
 * Financial time series must contain a benchmark index and at least 3 firms. They must have a daily frequency and contain enough observations to run consistent calculations (the minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the time series). They must have been previously validated and preprocessed by:
-  * discarding illiquid series with too many zeroes (unless necessary);
+  * discarding illiquid series with too many zeros (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
 * In accordance with all the systemic risk indicators, returns must be expressed on a logarithmic scale. Market capitalizations, total liabilities and separate accounts must be expressed in the same currency and scale. Following the SRISK methodology, it is recommended to roll forward liabilities by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
