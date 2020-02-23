@@ -78,12 +78,14 @@ Datasets must be built following the structure of default ones included in every
   * Federal National Mortgage Association / Fannie Mae (FNMA)
 
 #### State Variables (6):
-* **RESI:** the DJ US Select RESI as a proxy of real estate returns.
+* **TBILL_3M:** the 3M treasury bill rate.
+* **CREDIT_SPREAD:** the change in the credit spread (the BAA corporate bond rate minus the 10Y treasury bond rate).
+* **LIQUIDITY_SPREAD:** the change in the liquidity spread (the 3M treasury bill rate minus the federal funds rate).
+* **YIELD_SPREAD:** the change in the yield spread (the 10Y treasury bond rate minus the 3M treasury bond rate).
+* **DJ_CA:** the DJ US Composite Average as a proxy of industrial returns.
+* **DJ_RESI:** the DJ US Select Real Estate Securities Index as a proxy of real estate returns.
 * **VIX:** the implied volatility index.
-* **TBR3M:** the 3M treasury bill rate.
-* **CRESPR:** the change in the credit spread (the BAA corporate bond rate minus the 10Y treasury bond rate).
-* **LIQSPR:** the change in the liquidity spread (the 3M treasury bill rate minus the federal funds rate).
-* **YIESPR:** the change in the yield spread (the 10Y treasury bond rate minus the 3M treasury bond rate).
+
 
 #### Notes
 
