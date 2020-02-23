@@ -78,7 +78,7 @@ Datasets must be built following the structure of default ones included in every
   * Federal National Mortgage Association / Fannie Mae (FNMA)
 
 #### State Variables (6):
-* **TBILL_3M:** the 3M treasury bill rate.
+* **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
 * **CREDIT_SPREAD:** the change in the credit spread (BAA corporate bond rate minus 10Y treasury bond rate).
 * **LIQUIDITY_SPREAD:** the change in the liquidity spread (3M treasury bill rate minus federal funds rate).
 * **YIELD_SPREAD:** the change in the yield spread (10Y treasury bond rate minus 3M treasury bond rate).
