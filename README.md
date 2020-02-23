@@ -77,7 +77,7 @@ Datasets must be built following the structure of default ones included in every
   * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
   * Federal National Mortgage Association / Fannie Mae (FNMA)
 
-#### State Variables (6):
+#### State Variables (8):
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
 * **CREDIT_SPREAD:** the difference between the BAA corporate bond rate and the 10Y treasury bond rate.
 * **LIQUIDITY_SPREAD:** the difference between the 3M treasury bill rate and the federal funds rate.
