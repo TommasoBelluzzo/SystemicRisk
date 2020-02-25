@@ -47,9 +47,9 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Dataset
 
-Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). The main one (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities over a period of time ranging from `2000` to `2014`:
+Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). The main one (`Datasets\Example_Main.xlsx`), based on the US financial sector, defines the following entities over a period of time ranging from `2002` to `2019`:
 
-#### Benchmark: S&P 500
+#### Benchmark Index: S&P 500
 
 #### Financial Institutions (20):
 * **Group 1: Insurance Companies (5)**
@@ -83,19 +83,24 @@ Datasets must be built following the structure of default ones included in every
 * **LIQUIDITY_SPREAD:** the difference between the 3M treasury bill rate and the federal funds rate.
 * **TED_SPREAD:** the difference between the 3M USD LIBOR rate and the 3M treasury bill rate.
 * **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
-* **DJ_CA:** the DJ US Composite Average log-returns as a proxy of industrial returns.
-* **DJ_RESI:** the DJ US Select Real Estate Securities Index log-returns as a proxy of real estate returns.
+* **DJ_CA:** the excess returns between the S&P 500 and the DJ US Composite Average.
+* **DJ_RESI:** the excess returns between the S&P 500 and the DJ US Select Real Estate Securities Index.
 * **VIX:** the implied volatility index.
-
 
 #### Notes
 
-* Financial time series must contain a benchmark index and at least 3 firms. They must have a daily frequency and contain enough observations to run consistent calculations (the minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the time series). They must have been previously validated and preprocessed by:
-  * discarding illiquid series with too many zeros (unless necessary);
+* The minimum allowed dataset must define financial time series of shares for a benchmark index and at least 3 firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the period. They must have been previously validated and preprocessed by:
+  * discarding illiquid series (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
-* In accordance with all the systemic risk indicators, returns must be expressed on a logarithmic scale. Market capitalizations, total liabilities and separate accounts must be expressed in the same currency and scale. Following the SRISK methodology, it is recommended to roll forward liabilities by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
-* Data concerning state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
+* Below a list of required and optional time series for every category of measures:
+  * Cross-Sectional Measures
+    * Required: shares, market capitalization, assets, equity.
+    * Optional: separate accounts, state variables.
+  
+* Data concerning market capitalization, assets, equity, separate accounts, state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary.
+* In accordance with all the systemic risk indicators, returns are expressed on a logarithmic scale. Data concerning market capitalization, assets, equity and separate accounts, if present, must be expressed in the same currency and scale. Following the SRISK methodology, liabilities are rolled forward by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
+* Data concerning separate accounts, state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
   > Firms in the Returns Sheet: A, B, C, D, E, F, G, H  
   > Insurance Companies: 2  
