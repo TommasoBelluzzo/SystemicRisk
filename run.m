@@ -1,4 +1,5 @@
 warning('off','all');
+warning('on','MATLAB:SystemicRisk');
 
 close('all');
 clearvars();
@@ -6,8 +7,9 @@ clc();
 delete(allchild(0));
 
 delete(gcp('nocreate'));
-parpool('SpmdEnabled',false);
-pctRunOnAll warning('off', 'all');
+parpool('local','SpmdEnabled',false);
+pctRunOnAll warning('off','all');
+pctRunOnAll warning('on','MATLAB:SystemicRisk');
 
 [path_base,~,~] = fileparts(mfilename('fullpath'));
 
@@ -65,10 +67,10 @@ paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
 scripts_switches = [true true true true];
-analysis_switches = [false true true true true];
+analysis_switches = [true true true true true];
 
 dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-data = parse_dataset(dataset);
+data = parse_dataset(dataset,'dd/MM/yyyy','QQ yyyy','prices',3);
 mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
 save(mat_dataset,'data');
 
