@@ -83,8 +83,8 @@ Datasets must be built following the structure of default ones included in every
 * **LIQUIDITY_SPREAD:** the difference between the 3M treasury bill rate and the federal funds rate.
 * **TED_SPREAD:** the difference between the 3M USD LIBOR rate and the 3M treasury bill rate.
 * **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
-* **DJ_CA:** the excess returns between the S&P 500 and the DJ US Composite Average.
-* **DJ_RESI:** the excess returns between the S&P 500 and the DJ US Select Real Estate Securities Index.
+* **DJ_CA_EXC:** the excess returns between the S&P 500 and the DJ US Composite Average.
+* **DJ_RESI_EXC:** the excess returns between the S&P 500 and the DJ US Select Real Estate Securities Index.
 * **VIX:** the implied volatility index.
 
 #### Notes
