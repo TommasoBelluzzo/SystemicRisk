@@ -94,11 +94,19 @@ Datasets must be built following the structure of default ones included in every
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
 * Below a list of required and optional time series for every category of measures:
-  * Cross-Sectional Measures
-    * Required: shares, market capitalization, assets, equity.
-    * Optional: separate accounts, state variables.
-  
-* Data concerning market capitalization, assets, equity, separate accounts, state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary.
+  * Cross-Sectional Measures:
+    * *Required:* shares, market capitalization, assets, equity.
+    * *Optional:* separate accounts, state variables.
+  * Connectedness Measures
+    * *Required:* shares.
+    * *Optional:* market capitalization, groups.
+  * Spillover Measures
+    * *Required:* shares.
+    * *Optional:* none.
+  * Component Measures
+    * *Required:* shares.
+    * *Optional:* none.
+  Data concerning market capitalization, assets, equity, separate accounts, state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary.
 * In accordance with all the systemic risk indicators, returns are expressed on a logarithmic scale. Data concerning market capitalization, assets, equity and separate accounts, if present, must be expressed in the same currency and scale. Following the SRISK methodology, liabilities are rolled forward by at least 3 months in order to simulate the difficulty of renegotiating debt in case of financial distress.
 * Data concerning separate accounts, state variables and firm groups are optional, hence their respective sheets must be removed from the dataset if the related computations aren't necessary. Groups are based on key-value pairs where the Name field represents the group names and the Count field represents the number of firms to include in the group. The sum of the Count fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
