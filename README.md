@@ -95,18 +95,18 @@ Datasets must be built following the structure of default ones included in every
   * removing rows with NaNs or filling the gaps through interpolation.
 
 * It is not mandatory to include financial time series used by measures that are excluded from computations. Optional financial time series used by measures that are included in computations can be omitted, as long as their related contributions aren't necessary. Below a list of required and optional time series for every category of measures:
- * **Cross-Sectional Measures:**
-  * *Required:* shares, market capitalization, assets, equity.
-  * *Optional:* separate accounts, state variables.
- * **Connectedness Measures:**
-  * *Required:* shares.
-  * *Optional:* market capitalization, groups.
- * **Spillover Measures:**
-  * *Required:* shares.
-  * *Optional:* none.
- * **Component Measures:**
-  * *Required:* shares.
-  * *Optional:* none.
+  * **Cross-Sectional Measures:**
+    * *Required:* shares, market capitalization, assets, equity.
+    * *Optional:* separate accounts, state variables.
+  * **Connectedness Measures:**
+    * *Required:* shares.
+    * *Optional:* market capitalization, groups.
+  * **Spillover Measures:**
+    * *Required:* shares.
+    * *Optional:* none.
+  * **Component Measures:**
+    * *Required:* shares.
+    * *Optional:* none.
   
 * In accordance with all the systemic risk indicators, returns must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale.
   
