@@ -47,7 +47,9 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 ## Dataset
 
-Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). The main one (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities over a period of time ranging from `2002` to `2019`:
+Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). Below a list of the supported Excel sheets and their respective content:
+
+The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
 
 #### Benchmark Index: S&P 500
 
