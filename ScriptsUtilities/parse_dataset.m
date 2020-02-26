@@ -273,11 +273,11 @@ function tab = parse_table_balance(file,sheet,name,date_format,dates_num,firm_na
     end
     
     if (any(any(ismissing(tab_partial))))
-        error(['The ''' tab_name ''' sheet contains invalid or missing values.']);
+        error(['The ''' name ''' sheet contains invalid or missing values.']);
     end
 
     if (check_negatives && any(any(tab_partial{:,2:end} < 0)))
-        error(['The ''' tab_name ''' sheet contains negative values.']);
+        error(['The ''' name ''' sheet contains negative values.']);
     end
 
     t_current = height(tab_partial);
@@ -285,22 +285,22 @@ function tab = parse_table_balance(file,sheet,name,date_format,dates_num,firm_na
     tab_partial.Date = [];
     
     if (t_current ~= numel(unique(dates_num_current)))
-        error(['The ''' tab_name ''' sheet contains duplicate observation dates.']);
+        error(['The ''' name ''' sheet contains duplicate observation dates.']);
     end
     
     if (any(dates_num_current ~= sort(dates_num_current)))
-        error(['The ''' tab_name ''' sheet contains unsorted observation dates.']);
+        error(['The ''' name ''' sheet contains unsorted observation dates.']);
     end
     
     if (~isequal(tab_partial.Properties.VariableNames,firm_names))
-        error(['The firm names between the ''Shares'' sheet and the ''' tab_name ''' sheet are mismatching.']);
+        error(['The firm names between the ''Shares'' sheet and the ''' name ''' sheet are mismatching.']);
     end
     
     dates_from = cellstr(datestr(dates_num_current,date_format)).';
     dates_to = cellstr(datestr(dates_num,date_format)).';
     
     if (any(~ismember(dates_to,dates_from)))
-        error(['The ''' tab_name ''' sheet observation dates do not cover all the ''Shares'' sheet observation dates.']);
+        error(['The ''' name ''' sheet observation dates do not cover all the ''Shares'' sheet observation dates.']);
     end
     
 	t = numel(dates_num);
@@ -402,34 +402,34 @@ function tab = parse_table_standard(file,sheet,name,date_format,dates_num,firm_n
     end
     
     if (any(any(ismissing(tab))))
-        error(['The ''' tab_name ''' sheet contains invalid or missing values.']);
+        error(['The ''' name ''' sheet contains invalid or missing values.']);
     end
 
     if (check_negatives && any(any(tab{:,2:end} < 0)))
-        error(['The ''' tab_name ''' sheet contains negative values.']);
+        error(['The ''' name ''' sheet contains negative values.']);
     end
     
     t_current = height(tab);
     dates_num_current = datenum(tab.Date);
     
     if (t_current ~= numel(unique(dates_num_current)))
-        error(['The ''' tab_name ''' sheet contains duplicate observation dates.']);
+        error(['The ''' name ''' sheet contains duplicate observation dates.']);
     end
     
     if (any(dates_num_current ~= sort(dates_num_current)))
-        error(['The ''' tab_name ''' sheet contains unsorted observation dates.']);
+        error(['The ''' name ''' sheet contains unsorted observation dates.']);
     end
     
     if (~isempty(dates_num))
         if ((t_current ~= numel(dates_num)) || any(dates_num_current ~= dates_num))
-            error(['The observation dates between the ''Shares'' sheet and the ''' tab_name ''' sheet are mismatching.']);
+            error(['The observation dates between the ''Shares'' sheet and the ''' name ''' sheet are mismatching.']);
         end
         
         tab.Date = [];
     end
 
     if (~isempty(firm_names) && ~isequal(tab.Properties.VariableNames,firm_names))
-        error(['The firm names between the ''Shares'' sheet and the ''' tab_name ''' sheet are mismatching.']);
+        error(['The firm names between the ''Shares'' sheet and the ''' name ''' sheet are mismatching.']);
     end
 
 end
