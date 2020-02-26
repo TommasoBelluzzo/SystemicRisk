@@ -125,6 +125,8 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
+* If the dataset parsing process is too slow, the best way to solve the issue is to provide an unformatted Excel spreadsheet. Another possible workaround is to modify the calls to the `readtable` function by adding the name-value pair argument `Basic` set to `true`.
+
 * While stochastic measures are very fast to compute even for huge datasets, connectedness and spillover measures may take very long time to finish. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores available for parallel computing.
 
 ## Screenshots
