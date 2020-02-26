@@ -89,7 +89,7 @@ Datasets must be built following the structure of default ones included in every
 
 #### Notes
 
-* The minimum allowed dataset must define financial time series of shares for a benchmark index and at least 3 firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the period. They must have been previously validated and preprocessed by:
+* The minimum allowed dataset must define financial time series of the `Shares` sheet for a benchmark index and at least 3 firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the period. They must have been previously validated and preprocessed by:
   * discarding illiquid series (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
