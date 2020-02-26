@@ -51,7 +51,7 @@ Datasets must be built following the structure of default ones included in every
 
 * **Shares:** prices or log-returns of the benchmark index and the firms, with daily frequency.
 * **Market Capitalization:** market capitalizations of the firms, with daily frequency.
-* **CDS:** credit default swap spreads of the firms, with daily frequency and expressed in basis points.
+* **CDS:** credit default swap spreads expressed in basis points of the firms, with daily frequency.
 * **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
 * **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
 * **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
