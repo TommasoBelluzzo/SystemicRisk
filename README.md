@@ -49,6 +49,15 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). Below a list of the supported Excel sheets and their respective content:
 
+* **Shares:** prices or log-returns of the benchmark index and the firms, with daily frequency.
+* **Market Capitalization:** market capitalizations of the firms, with daily frequency.
+* **CDS:** credit default swap spreads of the firms, with daily frequency and expressed in basis points.
+* **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
+* **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
+* **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
+* **State Variables:** systemic state variables, with daily frequency.
+* **Groups:** group definitions.
+
 The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
 
 #### Benchmark Index: S&P 500
