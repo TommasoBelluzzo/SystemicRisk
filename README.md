@@ -51,7 +51,7 @@ Datasets must be built following the structure of default ones included in every
 
 * **Shares:** prices or log-returns of the benchmark index and the firms, with daily frequency.
 * **Market Capitalization:** market capitalizations of the firms, with daily frequency.
-* **CDS:** credit default swap spreads expressed in basis points of the firms, with daily frequency.
+* **CDS:** the risk free rate and the credit default swap spreads (expressed in basis points) of the firms, with daily frequency.
 * **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
 * **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
 * **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
@@ -59,6 +59,8 @@ Datasets must be built following the structure of default ones included in every
 * **Groups:** group definitions.
 
 The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
+
+#### Risk Free Rate: 3M Treasury Bill Rate
 
 #### Benchmark Index: S&P 500
 
