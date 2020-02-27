@@ -49,9 +49,9 @@ The minimum Matlab version required is `R2014a`. In addition, the following prod
 
 Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). Below a list of the supported Excel sheets and their respective content:
 
-* **Shares:** prices or returns of the benchmark index and the firms, with daily frequency.
+* **Shares:** prices or returns of the benchmark index (the time series can have any desired name and must be placed in the second column of the sheet just after the observation dates) and the firms, with daily frequency.
 * **Market Capitalization:** market capitalizations of the firms, with daily frequency.
-* **CDS:** the risk free rate and the credit default swap spreads of the firms, with daily frequency.
+* **CDS:** the risk free rate (the time series must be called `RF` and must be placed in the second column of the sheet just after the observation dates) and the credit default swap spreads of the firms, with daily frequency.
 * **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
 * **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
 * **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
@@ -102,7 +102,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 #### Notes
 
-* The minimum allowed dataset must define financial time series of the `Shares` sheet for a benchmark index and at least 3 firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the period. They must have been previously validated and preprocessed by:
+* The minimum allowed dataset must include the `Shares` sheet with a benchmark index and at least 3 firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is 253, which translates into a full business year plus an additional observation at the beginning of the period. They must have been previously validated and preprocessed by:
   * discarding illiquid series (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
@@ -121,7 +121,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Required:* shares.
     * *Optional:* none.
   
-* If the `Shares` sheet defines returns instead of prices, values must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
+* If the `Shares` sheet contains returns instead of prices, values must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
   
 * Groups are based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
