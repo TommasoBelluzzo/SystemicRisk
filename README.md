@@ -60,8 +60,6 @@ Datasets must be built following the structure of default ones included in every
 
 The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
 
-#### Risk Free Rate: 3M Treasury Bill Rate
-
 #### Benchmark Index: S&P 500
 
 #### Financial Institutions (20):
@@ -89,6 +87,8 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 * **Group 4: Government-sponsored Enterprises (2)**
   * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
   * Federal National Mortgage Association / Fannie Mae (FNMA)
+
+#### Risk Free Rate: 3M Treasury Bill Rate
 
 #### State Variables (8):
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
