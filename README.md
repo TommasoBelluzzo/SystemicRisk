@@ -51,7 +51,7 @@ Datasets must be built following the structure of default ones included in every
 
 * **Shares:** prices or returns of the benchmark index (the time series can have any desired name and must be placed in the second column of the sheet just after the observation dates) and the firms, with daily frequency.
 * **Market Capitalization:** market capitalizations of the firms, with daily frequency.
-* **CDS:** the risk free rate (the time series must be called `RF` and must be placed in the second column of the sheet just after the observation dates) and the credit default swap spreads of the firms, with daily frequency.
+* **CDS:** the risk-free rate (the time series must be called `RF` and must be placed in the second column of the sheet just after the observation dates) and the credit default swap spreads of the firms, with daily frequency.
 * **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
 * **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
 * **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
@@ -88,7 +88,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
   * Federal National Mortgage Association / Fannie Mae (FNMA)
 
-#### Risk Free Rate: Inflation-adjusted 3M Treasury Bill Rate
+#### Risk-Free Rate: Inflation-adjusted 3M Treasury Bill Rate
 
 #### State Variables (8):
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
@@ -121,7 +121,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Required:* shares.
     * *Optional:* none.
   
-* If the `Shares` sheet contains returns instead of prices, values must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
+* If the `Shares` sheet contains returns instead of prices, values must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk-free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
   
 * Groups are based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
