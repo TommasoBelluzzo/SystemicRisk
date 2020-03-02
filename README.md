@@ -96,8 +96,8 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 * **LIQUIDITY_SPREAD:** the difference between the 3M treasury bill rate and the federal funds rate.
 * **TED_SPREAD:** the difference between the 3M USD LIBOR rate and the 3M treasury bill rate.
 * **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
-* **DJ_CA_EXC:** the excess returns between the S&P 500 and the DJ US Composite Average.
-* **DJ_RESI_EXC:** the excess returns between the S&P 500 and the DJ US Select Real Estate Securities Index.
+* **DJ_CA_EXC:** the excess returns of the DJ US Composite Average with respect to the S&P 500.
+* **DJ_RESI_EXC:** the excess returns of the DJ US Select Real Estate Securities Index with respect to the S&P 500.
 * **VIX:** the implied volatility index.
 
 #### Notes
