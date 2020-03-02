@@ -88,7 +88,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
   * Federal National Mortgage Association / Fannie Mae (FNMA)
 
-#### Risk-Free Rate: Inflation-adjusted 3M Treasury Bill Rate
+#### Risk-Free Rate: 3M Treasury Bill Rate
 
 #### State Variables (8):
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
