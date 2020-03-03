@@ -7,13 +7,13 @@ This script calculates and analyses the following risk measures:
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
+* `Default Measures`
+  * `D2D (Distance To Default)` by [Merton (1974)](https://doi.org/10.1111/j.1540-6261.1974.tb03058.x)
 * `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `DCI (Dynamic Causality Index)`
   * `"In & Out" Connections`
   * `"In & Out - Other" Connections`
   * `Network Centralities`
-* `Default Measures`
-  * `D2D (Distance To Default)` by [Merton (1974)](https://doi.org/10.1111/j.1540-6261.1974.tb03058.x)
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `SI (Spillover Index)`
   * `Spillovers From & To`
