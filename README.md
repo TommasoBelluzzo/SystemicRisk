@@ -9,7 +9,7 @@ This script calculates and analyses the following risk measures:
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
 * `Default Measures`
   * `D2C (Distance To Capital)` by [Chan-Lau & Sy (2007)](https://doi.org/10.1057/palgrave.jbr.2350056)
-  * `D2D (Distance To Default)` by [Merton (1974)](https://doi.org/10.1111/j.1540-6261.1974.tb03058.x)
+  * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
 * `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `DCI (Dynamic Causality Index)`
   * `"In & Out" Connections`
