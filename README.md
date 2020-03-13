@@ -31,7 +31,7 @@ _`The project has been published in "MATLAB Digest - Financial Services" of May 
 
 ## Requirements
 
-The minimum Matlab version required is `R2014a`. In addition, the following products and toolboxes must be installed in order to properly execute the script:
+The minimum required Matlab version is `R2014a`. In addition, the following products and toolboxes must be installed in order to properly execute the script:
 
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
