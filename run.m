@@ -1,3 +1,11 @@
+%% VERSION CHECK
+
+if (verLessThan('MATLAB','8.3'))
+    error('The minimum required Matlab version is R2014a.');
+end
+
+%% CLEANUP
+
 warning('off','all');
 warning('on','MATLAB:SystemicRisk');
 
@@ -5,8 +13,10 @@ close('all');
 clearvars();
 clc();
 delete(allchild(0));
-
 delete(gcp('nocreate'));
+
+%% INITIALIZATION
+
 parpool('local','SpmdEnabled',false);
 pctRunOnAll warning('off','all');
 pctRunOnAll warning('on','MATLAB:SystemicRisk');
@@ -29,7 +39,7 @@ if (~isempty(regexpi(path_base,'Editor')))
         end
         
         while (true) 
-            answer = inputdlg('It looks like the program is being executed in a non-standard mode. Please, confirm or change the root folder of this package:','Manual Input Required',1,{pwd_current});
+            answer = inputdlg('The script is being executed in live mode. Please, confirm or change its root folder:','Manual Input Required',1,{pwd_current});
     
             if (isempty(answer))
                 return;
@@ -66,74 +76,50 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-scripts_switches = [true true true true];
-analysis_switches = [true true true true true];
+%% DATASET
 
-dataset = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-data = parse_dataset(dataset,'dd/MM/yyyy','QQ yyyy','prices',3);
-mat_dataset = fullfile(path_base,['Results' filesep() 'Dataset.mat']);
-save(mat_dataset,'data');
+file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
+data = parse_dataset(file,'dd/MM/yyyy','QQ yyyy','P',3);
 
-if (analysis_switches(1))
-    analyze_dataset(data);
-end
+mat = fullfile(path_base,['Results' filesep() 'Data.mat']);
+save(mat,'data');
 
-if (scripts_switches(1))
-    pause(2);
+analyze_dataset(data);
+
+%% MEASURES
+
+setup = {
+    'CrossSectional' false true @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
+    'Default'        true true @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,0.95,analysis);
+    'Connectedness'  false true @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,true,0.06,analysis);
+    'Spillover'      false true @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
+    'Component'      false true @(data,temp,file,analysis)run_component(data,temp,file,252,0.2,0.75,analysis);
+};
+
+for i = 1:size(setup,1)
+    enabled = setup{i,2};
     
-    out_temp_cross_sectional = fullfile(path_base,['Templates' filesep() 'TemplateCrossSectional.xlsx']);
-    out_file_cross_sectional = fullfile(path_base,['Results' filesep() 'ResultsCrossSectional.xlsx']);
-    [result_cross_sectional,stopped] = run_cross_sectional(data,out_temp_cross_sectional,out_file_cross_sectional,0.95,0.40,0.08,0.40,analysis_switches(2));
-    
-    if (stopped)
-        return;
+    if (enabled)
+        category = setup{i,1};
+        analysis = setup{i,3};
+        run_function = setup{i,4};
+        
+        pause(2);
+
+        temp = fullfile(path_base,['Templates' filesep() 'Template' category '.xlsx']);
+        out = fullfile(path_base,['Results' filesep() 'Results' category '.xlsx']);
+        [result,stopped] = run_function(data,temp,out,analysis);
+
+        if (stopped)
+            return;
+        end
+        
+        category_reference = ['result' lower(regexprep(category,'([A-Z])','_$1'))];
+
+        eval([category_reference ' = result;']);
+        clear('result','stopped');
+
+        mat = fullfile(path_base,['Results' filesep() 'Results' category '.mat']);
+        save(mat,category_reference);
     end
-    
-    mat_cross_sectional = fullfile(path_base,['Results' filesep() 'DataCrossSectional.mat']);
-    save(mat_cross_sectional,'result_cross_sectional');
-end
-
-if (scripts_switches(2))
-    pause(2);
-
-    out_temp_connectedness = fullfile(path_base,['Templates' filesep() 'TemplateConnectedness.xlsx']);
-    out_file_connectedness = fullfile(path_base,['Results' filesep() 'ResultsConnectedness.xlsx']);
-    [result_connectedness,stopped] = run_connectedness(data,out_temp_connectedness,out_file_connectedness,252,0.05,true,0.06,analysis_switches(3));
-    
-    if (stopped)
-        return;
-    end
-
-    mat_connectedness = fullfile(path_base,['Results' filesep() 'DataConnectedness.mat']);
-    save(mat_connectedness,'result_connectedness');
-end
-
-if (scripts_switches(3))
-    pause(2);
-
-    out_temp_spillover = fullfile(path_base,['Templates' filesep() 'TemplateSpillover.xlsx']);
-    out_file_spillover = fullfile(path_base,['Results' filesep() 'ResultsSpillover.xlsx']);
-    [result_spillover,stopped] = run_spillover(data,out_temp_spillover,out_file_spillover,252,10,2,4,'generalized',analysis_switches(4));
-    
-    if (stopped)
-        return;
-    end
-    
-    mat_spillover = fullfile(path_base,['Results' filesep() 'DataSpillover.mat']);
-    save(mat_spillover,'result_spillover');
-end
-
-if (scripts_switches(4))
-    pause(2);
-
-    out_temp_component = fullfile(path_base,['Templates' filesep() 'TemplateComponent.xlsx']);
-    out_file_component = fullfile(path_base,['Results' filesep() 'ResultsComponent.xlsx']);
-    [result_component,stopped] = run_component(data,out_temp_component,out_file_component,252,0.2,0.75,analysis_switches(5));
-    
-    if (stopped)
-        return;
-    end
-    
-    mat_component = fullfile(path_base,['Results' filesep() 'DataComponent.mat']);
-    save(mat_component,'result_component');
 end
