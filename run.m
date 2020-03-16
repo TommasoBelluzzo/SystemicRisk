@@ -89,11 +89,11 @@ analyze_dataset(data);
 %% MEASURES
 
 setup = {
-    'CrossSectional' false true @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
-    'Default'        true true @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,0.95,analysis);
-    'Connectedness'  false true @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,true,0.06,analysis);
-    'Spillover'      false true @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
-    'Component'      false true @(data,temp,file,analysis)run_component(data,temp,file,252,0.2,0.75,analysis);
+    'CrossSectional' true true @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
+    'Default'        true true @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,'BSM',0.95,analysis);
+    'Connectedness'  true true @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,true,0.06,0.08,analysis);
+    'Spillover'      true true @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
+    'Component'      true true @(data,temp,file,analysis)run_component(data,temp,file,252,0.2,0.75,analysis);
 };
 
 for i = 1:size(setup,1)

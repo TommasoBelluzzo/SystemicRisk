@@ -6,6 +6,7 @@
 % rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
 % lst = A float (0,INF) representing the long-term to short-term liabilities ratio used for the calculation of default barriers (optional, default=0.6).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
+% op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model used within the Systemic CCA framework (optional, default='BSM').
 % k = A float [0.90,0.99] representing the confidence level used within the Systemic CCA framework (optional, default=0.95).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -26,6 +27,7 @@ function [result,stopped] = run_default(varargin)
         ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0,'<=',1}));
         ip.addOptional('lst',0.6,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.03,'<=',0.20}));
+        ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM','GC'})));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -39,17 +41,17 @@ function [result,stopped] = run_default(varargin)
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_default_internal(data,temp,out,ipr.bandwidth,ipr.rr,ipr.lst,ipr.car,ipr.k,ipr.analyze);
+    [result,stopped] = run_default_internal(data,temp,out,ipr.bandwidth,ipr.rr,ipr.lst,ipr.car,ipr.op,ipr.k,ipr.analyze);
 
 end
 
-function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,car,k,analyze)
+function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,car,op,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    data = data_initialize(data,bandwidth,rr,lst,car,k);
+    data = data_initialize(data,bandwidth,rr,lst,car,op,k);
     n = data.N;
     t = data.T;
     
@@ -71,7 +73,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
         futures_results = cell(n,1);
 
         for i = 1:n
-            futures(i) = parfeval(@main_loop_1,1,firms_data{i},data.FirmDefaults(i),r,data.ST,data.DT,data.LCAR);
+            futures(i) = parfeval(@main_loop_1,1,firms_data{i},data.FirmDefaults(i),r,data.ST,data.DT,data.LCAR,data.OP);
         end
 
         for i = 1:n
@@ -219,7 +221,7 @@ end
 
 %% DATA
 
-function data = data_initialize(data,bandwidth,rr,lst,car,k)
+function data = data_initialize(data,bandwidth,rr,lst,car,op,k)
 
     q = [0.900:0.025:0.975 0.99];
 
@@ -231,6 +233,7 @@ function data = data_initialize(data,bandwidth,rr,lst,car,k)
     data.LCAR = 1 / (1 - car);
     data.LGD = 1 - rr;
     data.LST = lst;
+    data.OP = op;
     data.Q = q(q >= k);
     data.RR = rr;
     data.ST =  1 / (1 + lst);
@@ -275,11 +278,11 @@ function data = data_finalize_1(data,window_results)
     db = (lb .* data.ST) + (data.DT .* (lb .* (1 - data.ST)));
     r = max(0,data.RiskFreeRate);
 
-    [va,va_s] = kmv_model(cap,db,r,1);
+    [va,va_m] = kmv_model(cap,db,r,1,data.OP);
 
     d2d_avg = sum(data.D2D .* weights,2,'omitnan');
     d2c_avg = sum(data.D2C .* weights,2,'omitnan');
-	[d2d_por,d2c_por] = calculate_distances(va,va_s,db,r,1,data.LCAR);
+	[d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,data.LCAR);
     
     data.Indicators(:,1) = d2d_avg;
     data.Indicators(:,2) = d2c_avg;
@@ -413,7 +416,7 @@ end
 
 %% MEASURES
 
-function window_results = main_loop_1(firm_data,firm_default,r,st,dt,lcar)
+function window_results = main_loop_1(firm_data,firm_default,r,st,dt,lcar,op)
 
     offset = min(firm_default - 1,size(firm_data,1));
 
@@ -439,16 +442,14 @@ function window_results = main_loop_1(firm_data,firm_default,r,st,dt,lcar)
     r = r(1:offset);
     cds = firm_data(1:offset,4);
     
-    [va,va_s] = kmv_model(cap,db,r,1);
+    [va,va_m] = kmv_model(cap,db,r,1,op);
 
-    [d2d,d2c] = calculate_distances(va,va_s,db,r,1,lcar);
-    [el,cl,a] = calculate_scca_values(va,va_s,db,r,cds,1);
+    [d2d,d2c] = calculate_distances(va,va_m,db,r,1,lcar);
+    [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,1,op);
 
     window_results.Offset = offset;
-    
     window_results.D2D = d2d;
     window_results.D2C = d2c;
-
     window_results.SCCAAlphas = a;
     window_results.SCCAContingentLiabilities = cl;
     window_results.SCCAExpectedLosses = el;
@@ -465,10 +466,11 @@ function window_results = main_loop_2(window,q)
 
 end
 
-function [d2d,d2c] = calculate_distances(va,va_s,db,r,t,lcar)
+function [d2d,d2c] = calculate_distances(va,va_m,db,r,t,lcar)
 
-    rst = (r + (0.5 * va_s^2)) * t;
-    st = va_s * sqrt(t);
+    s = va_m(1);
+    rst = (r + (0.5 * s^2)) * t;
+    st = s * sqrt(t);
 
     d1 = (log(va ./ db) + rst) ./ st;
     d2d = d1 - st;
@@ -567,15 +569,28 @@ function [joint_vars,joint_es] = calculate_scca_indicators(data,q)
 
 end
 
-function [el,cl,a] = calculate_scca_values(va,va_s,db,r,cds,t)
+function [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,t,op)
+
+    s = va_m(1);
+    st = s * sqrt(t);
 
     dbd = db .* exp(-r.* t);
-    st = va_s * sqrt(t);
 
-    d1 = (log(va ./ db) + ((r + (0.5 * va_s^2)) .* t)) ./ st;
+    d1 = (log(va ./ db) + ((r + (0.5 * s^2)) .* t)) ./ st;
 	d2 = d1 - st;
 
     put_price = (dbd .* normcdf(-d2)) - (va .* normcdf(-d1));
+    
+    if (strcmp(op,'GC'))
+        g = va_m(2);
+        k = va_m(3);
+
+        t1 = (g / 6) .* ((2 * s) - d1);
+        t2 = (k / 24) .* (1 - d1.^2 + (3 .* d1 .* s) - (3 * s^2));
+        
+        put_price = put_price - (va .* normcdf(d1) .* s .* (t1 - t2));
+    end
+
     put_price = max(0,put_price);
 
 	rd = dbd - put_price;
@@ -591,7 +606,7 @@ function [el,cl,a] = calculate_scca_values(va,va_s,db,r,cds,t)
 
 end
 
-function [va,va_s] = kmv_model(eq,db,r,t)
+function [va,va_m] = kmv_model(eq,db,r,t,op)
 
     df = exp(-r.* t);
 
@@ -600,7 +615,7 @@ function [va,va_s] = kmv_model(eq,db,r,t)
 
     va = eq + (db .* df);
     va_r = diff(log(va));
-    va_s = sqrt(252) * sqrt((1 / (k - 2)) * sum((va_r - mean(va_r)).^2));
+    va_s = sqrt(252) * std(va_r);
 
     sst = va_s * sqrt(t);
     d1 = (log(va ./ db) + ((r + (0.5 * va_s^2)) .* t)) ./ sst;
@@ -624,10 +639,19 @@ function [va,va_s] = kmv_model(eq,db,r,t)
         va_old = va;
         va = eq + ((va .* (1 - n1)) + (db .* df .* n2));
         va_r = diff(log(va));
-        va_s = sqrt(252) * sqrt((1 / (k - 2)) * sum((va_r - mean(va_r)).^2));
+        va_s = sqrt(252) * std(va_r);
 
         count = count + 1;
         error = norm(va - va_old) / sk;
+    end
+    
+    if (strcmp(op,'BSM'))
+        va_m = [va_s NaN(1,2)];
+    else
+        va_g = skewness(va_r,0) / sqrt(252);
+        va_k = (kurtosis(va_r,0) - 3) / 252;
+        
+        va_m = [va_s va_g va_k];
     end
 
 end
@@ -748,7 +772,7 @@ function f = plot_scca(data)
     
     set([sub_1 sub_2 sub_3],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
 
-    t = figure_title('Systemic CCA');
+    t = figure_title(['Systemic CCA (' data.OP ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
 

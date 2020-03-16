@@ -518,7 +518,6 @@ function plot_spillovers(data)
 
     spillovers_net = [min(data.SpilloversNet,[],2) max(data.SpilloversNet,[],2)];
     spillovers_net_avg = mean(spillovers_net,2);
-    spillovers_net_avg(data.Bandwidth:end) = smooth(spillovers_net_avg(data.Bandwidth:end),'rlowess');
 
     f = figure('Name','Spillover Measures > Spillovers','Units','normalized','Position',[100 100 0.85 0.85]);
 

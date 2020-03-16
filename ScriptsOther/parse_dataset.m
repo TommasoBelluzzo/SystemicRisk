@@ -3,7 +3,7 @@
 % date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except the balance sheet ones (optional, default='dd/MM/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
 % shares_type = A string (either 'P' for prices or 'R' for returns) representing the type of data included in the Shares sheet (optional, default='P').
-% forward_rolling = An integer [3,6] representing the number of months used by the forward rolling of liabilities, which simulates the difficulty of renegotiating debt in case of financial distress (optional, default=3).
+% forward_rolling = An integer [0,6] representing the number of months of liabilities forward-rolling, which simulates the difficulty of renegotiating debt in case of financial distress (optional, default=3).
 %
 % [OUTPUT]
 % data = A structure containing the parsed dataset.
@@ -18,7 +18,7 @@ function data = parse_dataset(varargin)
         ip.addOptional('date_format_base','dd/MM/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P','R'})));
-        ip.addOptional('forward_rolling',3,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',3,'<=',6}));
+        ip.addOptional('forward_rolling',3,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',0,'<=',6}));
     end
 
     ip.parse(varargin{:});
@@ -527,19 +527,24 @@ end
 function [liabilities,liabilities_rolled] = compute_liabilities(assets,equity,dates_num,forward_rolling)
 
     liabilities = assets - equity;
-    liabilities_unique = unique(liabilities,'rows','stable');
+    
+    if (forward_rolling > 0)
+        liabilities_unique = unique(liabilities,'rows','stable');
 
-    dates_num = dates_num(2:end);
-    [~,a] = unique(cellstr(datestr(dates_num,'mm/yyyy')),'stable');
+        dates_num = dates_num(2:end);
+        [~,a] = unique(cellstr(datestr(dates_num,'mm/yyyy')),'stable');
 
-    seq = a(1:forward_rolling:numel(a)) - 1;
-    seq(end+1) = numel(dates_num);
+        seq = a(1:forward_rolling:numel(a)) - 1;
+        seq(end+1) = numel(dates_num);
 
-    liabilities_rolled = NaN(size(liabilities));
+        liabilities_rolled = NaN(size(liabilities));
 
-    for i = 2:numel(seq)
-        indices = (seq(i-1) + 1):seq(i);
-        liabilities_rolled(indices,:) = repmat(liabilities_unique(i-1,:),numel(indices),1);
+        for i = 2:numel(seq)
+            indices = (seq(i-1) + 1):seq(i);
+            liabilities_rolled(indices,:) = repmat(liabilities_unique(i-1,:),numel(indices),1);
+        end
+    else
+        liabilities_rolled = liabilities;
     end
 
 end
