@@ -37,6 +37,7 @@ The minimum required Matlab version is `R2014a`. In addition, the following prod
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
 * Econometrics Toolbox
+* Financial Toolbox
 * Image Processing Toolbox
 * Optimization Toolbox
 * Parallel Computing Toolbox
