@@ -36,7 +36,6 @@ The minimum required Matlab version is `R2014a`. In addition, the following prod
 
 * Computer Vision System Toolbox
 * Curve Fitting Toolbox
-* MATLAB Distributed Computing Server
 * Optimization Toolbox
 * Parallel Computing Toolbox
 * Simulink Control Design
