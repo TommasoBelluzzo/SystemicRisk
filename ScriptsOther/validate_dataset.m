@@ -23,6 +23,14 @@ end
 
 function data = validate_dataset_internal(data,measures)
 
+    validate_field(data,'TimeSeries',{'cellstr'},{'nonempty','size',[1 9]});
+    
+    validate_field(data,'SupportsComponent',{'logical'},{'scalar'});
+    validate_field(data,'SupportsConnectedness',{'logical'},{'scalar'});
+    validate_field(data,'SupportsCrossSectional',{'logical'},{'scalar'});
+    validate_field(data,'SupportsDefault',{'logical'},{'scalar'});
+    validate_field(data,'SupportsSpillover',{'logical'},{'scalar'});
+
     n = validate_field(data,'N',{'numeric'},{'scalar','integer','real','finite','>=',3});
     t = validate_field(data,'T',{'numeric'},{'scalar','integer','real','finite','>=',252});
 
@@ -41,7 +49,7 @@ function data = validate_dataset_internal(data,measures)
     validate_field(data,'CapitalizationLagged',{'double'},{'optional','real','finite','nonnegative','nonempty','size',[t n]});
 
     validate_field(data,'CDS',{'double'},{'optional','real','finite','nonnegative','nonempty','size',[t n]});
-    validate_field(data,'RiskFreeRate',{'double'},{'real','finite','nonempty','size',[t 1]});
+    validate_field(data,'RiskFreeRate',{'double'},{'optional','real','finite','nonempty','size',[t 1]});
 
     validate_field(data,'Assets',{'double'},{'optional','real','finite','nonnegative','nonempty','size',[t n]});
     validate_field(data,'Equity',{'double'},{'optional','real','finite','nonempty','size',[t n]});
@@ -66,12 +74,6 @@ function data = validate_dataset_internal(data,measures)
         validate_field(data,'GroupNames',{'cellstr'},{'nonempty','size',[groups 1]});
     end
 
-    validate_field(data,'SupportsComponent',{'logical'},{'scalar'});
-    validate_field(data,'SupportsConnectedness',{'logical'},{'scalar'});
-    validate_field(data,'SupportsCrossSectional',{'logical'},{'scalar'});
-    validate_field(data,'SupportsDefault',{'logical'},{'scalar'});
-    validate_field(data,'SupportsSpillover',{'logical'},{'scalar'});
-    
     if (~isempty(measures))
         measuresfinal = [upper(measures(1)) measures(2:end)];
         measures_underscore = strfind(measuresfinal,'-');

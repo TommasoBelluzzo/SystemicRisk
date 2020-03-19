@@ -186,10 +186,18 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     separate_accounts = apply_defaults(firm_defaults,separate_accounts,false);
 
     data = struct();
+    
+    data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'FirmReturns' 'Liabilities' 'LiabilitiesRolled' 'SeparateAccounts'};
 
+ 	data.SupportsComponent = true;
+	data.SupportsConnectedness = true;
+	data.SupportsCrossSectional = supports_cross_sectional;
+	data.SupportsDefault = supports_default;
+	data.SupportsSpillover = true;
+    
     data.N = n;
     data.T = t;
-    
+
     data.DatesNum = dates_num(2:end);
     data.DatesStr = dates_str(2:end);
     data.MonthlyTicks = length(unique(year(data.DatesNum))) <= 3;
@@ -220,12 +228,7 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     data.GroupDelimiters = group_delimiters;
     data.GroupNames = group_names;
 
- 	data.SupportsComponent = true;
-	data.SupportsConnectedness = true;
-	data.SupportsCrossSectional = supports_cross_sectional;
-	data.SupportsDefault = supports_default;
-	data.SupportsSpillover = true;
-    data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'FirmReturns' 'Liabilities' 'LiabilitiesRolled' 'SeparateAccounts'};
+
 
 end
 
