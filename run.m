@@ -86,7 +86,6 @@ mat = fullfile(file_path,[file_name '.mat']);
 if (exist(mat,'file') == 2)
     file_dir = dir(file);
     file_lmd = datetime(file_dir.datenum,'ConvertFrom','datenum');
-    
     mat_dir = dir(mat);
     mat_lmd = datetime(mat_dir.datenum,'ConvertFrom','datenum');
     
@@ -96,7 +95,7 @@ if (exist(mat,'file') == 2)
         dataset_process = false;
     end
 else
-	dataset_process = true;
+    dataset_process = true;
 end
 
 if (dataset_process)
