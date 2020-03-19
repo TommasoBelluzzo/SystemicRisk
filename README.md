@@ -22,6 +22,7 @@ This script calculates and analyses the following risk measures:
   * `Net Spillovers`
 * `Component Measures`
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
+  * `CATFIN` by [Allen et al. (2012)](https://doi.org/10.1093/rfs/hhs094)
   * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
   * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
   * `Principal Component Analysis`
