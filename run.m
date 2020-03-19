@@ -79,12 +79,33 @@ addpath(paths_base);
 %% DATASET
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-data = parse_dataset(file,'dd/MM/yyyy','QQ yyyy','P',3);
+[file_path,file_name,file_extension] = fileparts(file);
 
-mat = fullfile(path_base,['Results' filesep() 'Data.mat']);
-save(mat,'data');
+mat = fullfile(file_path,[file_name '.mat']);
 
-analyze_dataset(data);
+if (exist(mat,'file') == 2)
+    file_dir = dir(file);
+    file_lmd = datetime(file_dir.datenum,'ConvertFrom','datenum');
+    
+    mat_dir = dir(mat);
+    mat_lmd = datetime(mat_dir.datenum,'ConvertFrom','datenum');
+    
+    if (file_lmd > mat_lmd)
+        dataset_process = true;
+    else
+        dataset_process = false;
+    end
+else
+	dataset_process = true;
+end
+
+if (dataset_process)
+    data = parse_dataset(file,'dd/MM/yyyy','QQ yyyy','P',3);
+    save(mat,'data');
+    analyze_dataset(data);
+else
+    load(mat);
+end
 
 %% MEASURES
 
@@ -93,7 +114,7 @@ setup = {
     'Default'        true true @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,'BSM',0.95,analysis);
     'Connectedness'  true true @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,true,0.06,0.08,analysis);
     'Spillover'      true true @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
-    'Component'      true true @(data,temp,file,analysis)run_component(data,temp,file,252,0.2,0.75,analysis);
+    'Component'      true true @(data,temp,file,analysis)run_component(data,temp,file,252,0.99,0.2,0.75,analysis);
 };
 
 for i = 1:size(setup,1)

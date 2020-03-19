@@ -397,6 +397,11 @@ function write_results(temp,out,data)
     if (ispc())
         try
             excel = actxserver('Excel.Application');
+        catch
+            return;
+        end
+
+        try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
             for i = 1:numel(data.LabelsSheet)
@@ -406,7 +411,10 @@ function write_results(temp,out,data)
             exc_wb.Save();
             exc_wb.Close();
             excel.Quit();
-            
+        catch
+        end
+        
+        try
             delete(excel);
         catch
         end

@@ -83,7 +83,7 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
             r_x = data.FirmReturns(:,i);
             r0_x = r_x - mean(r_x);
 
-            [p,h] = dcc_gjrgarch([r0_m r0_x]);
+            [~,p,h,~] = dcc_gjrgarch([r0_m r0_x]);
             s_m = sqrt(h(:,1));
             s_x = sqrt(h(:,2));
             rho = squeeze(p(1,2,:));
@@ -365,6 +365,11 @@ function write_results(temp,out,data)
     if (ispc())
         try
             excel = actxserver('Excel.Application');
+        catch
+            return;
+        end
+
+        try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
             for i = 1:numel(data.LabelsSimple)
@@ -374,7 +379,10 @@ function write_results(temp,out,data)
             exc_wb.Save();
             exc_wb.Close();
             excel.Quit();
-            
+        catch
+        end
+        
+        try
             delete(excel);
         catch
         end

@@ -10,13 +10,15 @@
 %   - A vector of integers greater than or equal to 1, of length n, containing the lag of each innovation term in the GARCH estimator.
 %
 % [OUTPUT]
+% params = A vector containing the GARCH and DCC parameters..
 % p = An n-by-n-by-t matrix of floats containing the DCC coefficients.
-% s = A t-by-n matrix of floats containing the conditional variances.
+% h = A t-by-n matrix of floats containing the conditional variances.
+% e = A t-by-n matrix of floats containing the standardized residuals.
 %
 % [NOTES]
 % Credit goes to Kevin Sheppard, the author of the original code.
 
-function [p,s] = dcc_gjrgarch(varargin)
+function [params,p,h,e] = dcc_gjrgarch(varargin)
 
     persistent ip;
 
@@ -32,63 +34,68 @@ function [p,s] = dcc_gjrgarch(varargin)
     ip.parse(varargin{:});
     ipr = ip.Results;
 
-    nargoutchk(2,2);
+    nargoutchk(3,4);
 
-    [p,s] = dcc_gjrgarch_internal(ipr.data,ipr.dcc_q,ipr.dcc_p,ipr.arch_q,ipr.garch_p);
+    [params,p,h,e] = dcc_gjrgarch_internal(ipr.data,ipr.dcc_q,ipr.dcc_p,ipr.arch_q,ipr.garch_p);
 
 end
 
-function [p,s] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
+function [params,p,h,e] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
 
-    [t,k] = size(data);
+    [t,n] = size(data);
 
     if (length(arch_q) == 1)
-        arch_q = ones(1,k) * arch_q;
+        arch_q = ones(1,n) * arch_q;
     end
 
     if (length(garch_p) == 1)
-        garch_p = ones(1,k) * garch_p;
+        garch_p = ones(1,n) * garch_p;
     end
+    
+    options_lim = 1000 * max(arch_q + garch_p + 1);
+	options = optimset(optimset(@fmincon),'Diagnostics','off','Display','off','LargeScale','off');
+	options = optimset(options,'MaxFunEvals',options_lim,'MaxIter',options_lim,'MaxSQPIter',1000,'TolFun',1e-6);
 
-    gjr = cell(k,1);
+    gjr = cell(n,1);
     gjr_params = 0;
 
-    rsd = zeros(t,k);
+    e = zeros(t,n);
 
-    parfor i = 1:k
+    parfor i = 1:n
         data_i = data(:,i);
 
-        [gjr_param,gjr_s] = gjrgarch(data_i,arch_q(i),garch_p(i));
-
+        [gjr_param,gjr_s] = gjrgarch(data_i,arch_q(i),garch_p(i),options);
         gjr_params = gjr_params + length(gjr_param);
-        
-        gjr{i} = struct('param',gjr_param,'s',gjr_s);
-        rsd(:,i) = data_i ./ sqrt(gjr_s);
+        gjr{i} = struct('Params',gjr_param,'Variance',gjr_s);
+
+        e(:,i) = data_i ./ sqrt(gjr_s);
     end
-
-    dcc_param = dcc(dcc_q,dcc_p,rsd);
     
-    param = NaN(gjr_params,1);
-    param_off = 1;
+    options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off');
+    dcc_params = dcc(dcc_q,dcc_p,e,options);
     
-    s = zeros(t,k);
+    params = NaN(gjr_params,1);
+    params_offset = 1;
+    
+    h = zeros(t,n);
 
-    for i = 1:k
+    for i = 1:n
         gjr_i = gjr{i};
-        gjr_i_param = gjr_i.param;
+        gjr_i_params = gjr_i.Params;
 
-        param2_off_nxt = param_off + length(gjr_i_param);
-        param(param_off:param2_off_nxt-1,1) = gjr_i_param;
-        param_off = param2_off_nxt;
+        params_next = params_offset + length(gjr_i_params);
+        params(params_offset:params_next-1,1) = gjr_i_params;
+        params_offset = params_next;
         
-        s(:,i) = gjr_i.s;
+        h(:,i) = gjr_i.Variance;
     end
 
-    p = dcc_gjrgarch_fulllikelihood([param; dcc_param'],data,dcc_q,dcc_p,arch_q,garch_p);
+    params = [params; dcc_params.'];
+    p = dcc_gjrgarch_fulllikelihood(params,data,dcc_q,dcc_p,arch_q,garch_p);
 
 end
 
-function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
+function p = dcc_gjrgarch_fulllikelihood(params,data,dcc_q,dcc_p,arch_q,garch_p)
 
     [t,k] = size(data);
     data_var = var(data(:,1));
@@ -103,11 +110,11 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
         qqp_i = qq_i + p_i;
         m_i = max(q_i,p_i);
 
-        al_i = param(idx:idx+q_i-1);
+        al_i = params(idx:idx+q_i-1);
         al_i_sum = sum(al_i);
-        ga_i = param(idx+q_i:idx+qq_i-1);
+        ga_i = params(idx+q_i:idx+qq_i-1);
         ga_i_sum = sum(ga_i);
-        be_i = param(idx+qq_i:idx+qqp_i-1);
+        be_i = params(idx+qq_i:idx+qqp_i-1);
         be_i_sum = sum(be_i);
 
         s_i = zeros(size(data,1),1);
@@ -130,8 +137,8 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
     m1 = m + 1;
     mt = m + t;
 
-    al = param(idx:idx+dcc_q-1);
-    be = param(idx+dcc_q:idx+dcc_q+dcc_p-1);
+    al = params(idx:idx+dcc_q-1);
+    be = params(idx+dcc_q:idx+dcc_q+dcc_p-1);
     om = 1 - sum(al) - sum(be);
 
     q_bar = cov(rsd);
@@ -167,9 +174,7 @@ function p = dcc_gjrgarch_fulllikelihood(param,data,dcc_q,dcc_p,arch_q,garch_p)
 
 end
 
-function param = dcc(dcc_q,dcc_p,rsd)
-
-	options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off');
+function params = dcc(dcc_q,dcc_p,e,options)
 
     m = max(dcc_q,dcc_p);
     m1 = m + 1;
@@ -177,47 +182,43 @@ function param = dcc(dcc_q,dcc_p,rsd)
     x0 = [((ones(1,dcc_q) * 0.01) / dcc_q) ((ones(1,dcc_p) * 0.97) / dcc_p)];
     a = ones(size(x0));
     b = 1 - (2 * options.TolCon);
-    a_eq = [];
-    b_eq = [];
     lb = zeros(size(x0)) + (2 * options.TolCon);
-    ub = [];
-    nlc = [];
 
     cache = [m; m1];
 
-    param = fmincon(@dcc_likelihood,x0,a,b,a_eq,b_eq,lb,ub,nlc,options,dcc_q,dcc_p,rsd,cache);
+    params = fmincon(@dcc_likelihood,x0,a,b,[],[],lb,[],[],options,dcc_q,dcc_p,e,cache);
 
 end
 
-function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
+function x = dcc_likelihood(param,dcc_q,dcc_p,e,cache)
 
-    [t,k] = size(rsd);
-    m = cache(1);
-    m1 = cache(2);
+    [t,n] = size(e);
+
+    [m,m1] = deal(cache(1),cache(2));
     mt = t + m;
 
     al = param(1:dcc_q);
     be = param(dcc_q+1:dcc_q+dcc_p);
     om = 1 - sum(al) - sum(be);
 
-    q_bar = cov(rsd);
+    q_bar = cov(e);
     q_bar_om = q_bar * om;
 
-    rsd = [zeros(m,k); rsd];
+    e = [zeros(m,n); e];
 
-    qt = zeros(k,k,mt);
+    qt = zeros(n,n,mt);
     qt(:,:,1:m) = repmat(q_bar,[1 1 m]);
 
     x = 0;
 
     for i = m1:mt
-        rsd_i = rsd(i,:);
+        e_i = e(i,:);
 
         qt(:,:,i) = q_bar_om;
 
         for j = 1:dcc_q
-            rsd_off = rsd(i-j,:);
-            qt(:,:,i) = qt(:,:,i) + (al(j) * (rsd_off.' * rsd_off));
+            e_offset = e(i-j,:);
+            qt(:,:,i) = qt(:,:,i) + (al(j) * (e_offset.' * e_offset));
         end
 
         for j = 1:dcc_p
@@ -228,18 +229,14 @@ function x = dcc_likelihood(param,dcc_q,dcc_p,rsd,cache)
         qt_i_sd = sqrt(diag(qt_i));
         pt_i = qt_i ./ (qt_i_sd * qt_i_sd.');
 
-        x = x + log(det(pt_i)) + ((rsd_i / pt_i) * rsd_i.');
+        x = x + log(det(pt_i)) + ((e_i / pt_i) * e_i.');
     end
 
     x = 0.5 * x;
 
 end
 
-function [param,s] = gjrgarch(data,arch_q,garch_p)
-
-    options_lim = 1000 * max(arch_q + garch_p + 1);
-	options = optimset(optimset(@fmincon),'Diagnostics','off','Display','off','LargeScale','off');
-	options = optimset(options,'MaxFunEvals',options_lim,'MaxIter',options_lim,'MaxSQPIter',1000,'TolFun',1e-6);
+function [params,h] = gjrgarch(data,arch_q,garch_p,options)
 
     q2 = 2 * arch_q;
     qqp = arch_q + arch_q + garch_p;
@@ -247,63 +244,53 @@ function [param,s] = gjrgarch(data,arch_q,garch_p)
 	m = max(garch_p,arch_q);
     m1 = m + 1;
 
-    al = (0.05 * ones(arch_q,1)) / arch_q;
-    ga = (0.05 * ones(arch_q,1)) / arch_q;
-    be = (0.75 * ones(garch_p,1)) / garch_p;
+    a = (0.05 * ones(arch_q,1)) / arch_q;
+    g = (0.05 * ones(arch_q,1)) / arch_q;
+    b = (0.75 * ones(garch_p,1)) / garch_p;
+    x0 = [a; g; b];
 
-    x0 = [al; ga; be];
-    a = [-eye(qqp); ones(1,arch_q) (0.5 * ones(1,arch_q)) ones(1,garch_p)];
-    b = [(zeros(qqp,1) + (2 * options.TolCon)); (1 - (2 * options.TolCon))];
-    a_eq = [];
-    b_eq = [];
+    ac = [-eye(qqp); ones(1,arch_q) (0.5 * ones(1,arch_q)) ones(1,garch_p)];
+    bc = [(zeros(qqp,1) + (2 * options.TolCon)); (1 - (2 * options.TolCon))];
     lb = zeros(1,qqp) + (2 * options.TolCon);     
-    ub = [];
-    nlc = [];
 
     data_dev = std(data,1);
     data = [data_dev(ones(m,1)); data];
     data_var = var(data);
-    [t,k] = size(data);
+    [t,n] = size(data);
 
-    cache = [t; k; data_dev; data_var; q2; m; m1];
+    cache = [t; n; data_dev; data_var; q2; m; m1];
 
-    param = fmincon(@gjrgarch_likelihood,x0,a,b,a_eq,b_eq,lb,ub,nlc,options,data,arch_q,garch_p,cache);
-    [~,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache);
+    params = fmincon(@gjrgarch_likelihood,x0,ac,bc,[],[],lb,[],[],options,data,arch_q,garch_p,cache);
+    [~,h] = gjrgarch_likelihood(params,data,arch_q,garch_p,cache);
 
 end
 
-function [x,s] = gjrgarch_likelihood(param,data,arch_q,garch_p,cache)
+function [x,h] = gjrgarch_likelihood(params,data,arch_q,garch_p,cache)
 
-    t = cache(1);
-    k = cache(2);
-    data_dev = cache(3);
-    data_var = cache(4);
-    q2 = cache(5);
-    m = cache(6);
-    m1 = cache(7);
+    [t,n,data_dev,data_var,q2,m,m1] = deal(cache(1),cache(2),cache(3),cache(4),cache(5),cache(6),cache(7));
 
-    al = param(1:arch_q);
-    al_sum = sum(al);
-    ga = param(arch_q+1:q2);
-    ga_sum = sum(ga);
-    be = param(q2+1:q2+garch_p);
-    be_sum = sum(be);
+    a = params(1:arch_q);
+    a_sum = sum(a);
+    g = params(arch_q+1:q2);
+    g_sum = sum(g);
+    b = params(q2+1:q2+garch_p);
+    b_sum = sum(b);
 
-    s = zeros(t,k);
-    s(1:m,1) = data_dev ^ 2;
+    h = zeros(t,n);
+    h(1:m,1) = data_dev^2;
 
     for i = m1:t
         data_lag = data(i-arch_q:i-1);
         data_lag_m = data_lag .* data_lag;
 
-        al_i = data_lag_m.' * al;
-        ga_i = (data_lag_m .* (data_lag<0)).' * ga;
-        be_i = s(i-garch_p:i-1).' * be;
+        a_i = data_lag_m.' * a;
+        g_i = (data_lag_m .* (data_lag < 0)).' * g;
+        b_i = h(i-garch_p:i-1).' * b;
 
-        s(i) = ((1 - (al_sum + (0.5 * ga_sum) + be_sum)) * data_var) + al_i + ga_i + be_i;
+        h(i) = ((1 - (a_sum + (0.5 * g_sum) + b_sum)) * data_var) + a_i + g_i + b_i;
     end
 
-    s = s(m1:t);
-    x = 0.5 * ((sum(log(s)) + sum(data(m1:t).^2 ./ s)) + ((t - m) * log(2 * pi)));
+    h = h(m1:t);
+    x = 0.5 * ((sum(log(h)) + sum(data(m1:t).^2 ./ h)) + ((t - m) * log(2 * pi)));
 
 end
