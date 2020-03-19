@@ -58,7 +58,7 @@ function data = validate_dataset_internal(data,measures)
     validate_field(data,'SeparateAccounts',{'double'},{'optional','real','finite','nonnegative','nonempty','size',[t n]});
 
     state_variables = validate_field(data,'StateVariables',{'double'},{'optional','real','finite','nonempty','size',[t NaN]});
-    validate_field(data,'StateVariablesNames',{'cellstr'},{'nonempty','size',[1 size(state_variables,2)]});
+    validate_field(data,'StateVariablesNames',{'cellstr'},{'optional','nonempty','size',[1 size(state_variables,2)]});
 
     groups = validate_field(data,'Groups',{'numeric'},{'scalar','integer','real','finite','>=',0});
 
@@ -99,39 +99,36 @@ function value = validate_field(data,field_name,field_type,field_validator)
     end
 
     value = data.(field_name);
-    
-    if ((numel(field_type) == 1) && strcmp(field_type{1},'cellstr'))
-        if (~iscellstr(value) || any(cellfun(@length,value) <= 0)) %#ok<ISCLSTR>
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be a cell array of non-empty character vectors.']);
-        end
-        
-        field_type{1} = 'cell';
-    end
-    
+    value_iscell = (numel(field_type) == 1) && strcmp(field_type{1},'cellstr');
+
     if (strcmp(field_validator{1},'optional'))
         empty = false;
-        
+
         try
-            validateattributes(value,{'numeric'},{'size',[0,0]})
+            validateattributes(value,{'numeric'},{'size',[0 0]});
             empty = true;
         catch
         end
         
-        if (~empty)
-            field_validator = field_validator(2:end);
-            
-            try
-                validateattributes(value,field_type,field_validator)
-            catch e
-                error(['The dataset field ''' field_name ''' is invalid.' newline() strrep(e.message,'Expected input','Expected value')]);
-            end
+        if (empty)
+            return;
         end
-    else
-        try
-            validateattributes(value,field_type,field_validator)
-        catch e
-            error(['The dataset field ''' field_name ''' is invalid.' newline() strrep(e.message,'Expected input','Expected value')]);
+        
+        field_validator = field_validator(2:end);
+    end
+    
+    if (value_iscell)
+        if (~iscellstr(value) || any(cellfun(@length,value) == 0)) %#ok<ISCLSTR>
+            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be a cell array of non-empty character vectors.']);
         end
+
+        field_type{1} = 'cell';
+    end
+
+    try
+        validateattributes(value,field_type,field_validator);
+    catch e
+        error(['The dataset field ''' field_name ''' is invalid.' newline() strrep(e.message,'Expected input','Expected value')]);
     end
 
 end

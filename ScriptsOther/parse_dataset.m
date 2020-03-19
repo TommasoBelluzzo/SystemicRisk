@@ -228,8 +228,6 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     data.GroupDelimiters = group_delimiters;
     data.GroupNames = group_names;
 
-
-
 end
 
 %% VALIDATION
