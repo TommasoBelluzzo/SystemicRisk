@@ -17,7 +17,7 @@ function windows = extract_rolling_windows(varargin)
         ip = inputParser();
         ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty'}));
         ip.addRequired('bandwidth',@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
-        ip.addOptional('truncate',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addRequired('truncate',@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -25,11 +25,11 @@ function windows = extract_rolling_windows(varargin)
     
     nargoutchk(1,1);
     
-    windows = get_rolling_windows_internal(ipr.data,ipr.bandwidth,ipr.truncate);
+    windows = extract_rolling_windows_internal(ipr.data,ipr.bandwidth,ipr.truncate);
 
 end
 
-function windows = get_rolling_windows_internal(data,bandwidth,truncate)
+function windows = extract_rolling_windows_internal(data,bandwidth,truncate)
 
     t = size(data,1);
     

@@ -24,27 +24,26 @@ end
 function analyze_dataset_internal(data)
 
     plot_index(data);
-    plot_boxes('Returns',data.FirmReturns,data.FirmNames,data.FirmDefaults);
+    plot_boxes('Returns',data.Returns,data.FirmNames);
     
     if (~isempty(data.Capitalization))
-        plot_boxes('Market Capitalization',data.Capitalization,data.FirmNames,data.FirmDefaults);
+        plot_boxes('Market Capitalization',data.Capitalization,data.FirmNames);
     end
     
     if (~isempty(data.CDS))
         plot_risk_free_rate(data);
-        plot_boxes('CDS Spreads',data.CDS,data.FirmNames,data.FirmDefaults);
+        plot_boxes('CDS Spreads',data.CDS,data.FirmNames);
     end
     
     if (~isempty(data.Assets) && ~isempty(data.Equity))
-        plot_boxes('Assets',data.Assets,data.FirmNames,data.FirmDefaults);
-        plot_boxes('Equity',data.Equity,data.FirmNames,data.FirmDefaults);
+        plot_boxes('Assets',data.Assets,data.FirmNames);
+        plot_boxes('Equity',data.Equity,data.FirmNames);
     end
 
 end
 
-function plot_boxes(name,x,firm_names,firm_defaults)
+function plot_boxes(name,x,firm_names)
 
-    x = handle_defaulted_firms(x,firm_defaults);
     n = numel(firm_names);
 
     f = figure('Name',['Dataset > ' name],'Units','normalized','Position',[100 100 0.85 0.85]);    
@@ -78,11 +77,23 @@ end
 
 function plot_index(data)
 
+    index = data.Index;
+
+    index_obs = numel(index);
+    index_max = max(index);
+    index_min = min(index);
+    
+    index_avg = mean(index);
+    index_med = median(index);
+    index_std = std(index);
+    index_ske = skewness(index,0);
+    index_kur = kurtosis(index,0);
+
     f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85]);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.IndexReturns);
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(data.IndexReturns) - 0.01) (max(data.IndexReturns) + 0.01)],'XTickLabelRotation',45);
+    plot(sub_1,data.DatesNum,data.Index);
+    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(index_min - 0.01) (index_max + 0.01)],'XTickLabelRotation',45);
     t1 = title(sub_1,'Log Returns');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
@@ -95,11 +106,11 @@ function plot_index(data)
     end
     
     sub_2 = subplot(2,1,2);
-    hist = histogram(sub_2,data.IndexReturns,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
+    hist = histogram(sub_2,data.Index,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
     edges = get(hist,'BinEdges');
     edges_max = max(edges);
     edges_min = min(edges);
-    [values,points] = ksdensity(data.IndexReturns);
+    [values,points] = ksdensity(data.Index);
     hold on;
         plot(sub_2,points,values,'-b','LineWidth',1.5);
     hold off;
@@ -113,7 +124,7 @@ function plot_index(data)
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
-    annotation_strings = {sprintf('Observations: %d',size(data.IndexReturns,1)) sprintf('Kurtosis: %.4f',kurtosis(data.IndexReturns)) sprintf('Mean: %.4f',mean(data.IndexReturns)) sprintf('Median: %.4f',median(data.IndexReturns)) sprintf('Skewness: %.4f',skewness(data.IndexReturns)) sprintf('Standard Deviation: %.4f',std(data.IndexReturns))};
+    annotation_strings = {sprintf('Observations: %d',index_obs) sprintf('Mean: %.4f',index_avg) sprintf('Median: %.4f',index_med) sprintf('Standard Deviation: %.4f',index_std) sprintf('Skewness: %.4f',index_ske) sprintf('Kurtosis: %.4f',index_kur)};
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',annotation_strings,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     
     pause(0.01);

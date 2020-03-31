@@ -93,16 +93,18 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
         tab_shares(~isfinite(tab_shares)) = 0;
         
         index_name = tab_shares_headers{1};
-        index_returns = tab_shares(:,1);
         firm_names = tab_shares_headers(2:end);
-        firm_returns = tab_shares(:,2:end);
+
+        index = tab_shares(:,1);
+        returns = tab_shares(:,2:end);
     else
         tab_shares_headers = strtrim(tab_shares.Properties.VariableNames);
         
         index_name = tab_shares_headers{1};
-        index_returns = tab_shares{2:end,1};
         firm_names = tab_shares_headers(2:end);
-        firm_returns = tab_shares{2:end,2:end};
+        
+        index = tab_shares{2:end,1};
+        returns = tab_shares{2:end,2:end};
     end
 
     capitalization = [];
@@ -143,7 +145,7 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
 
             case 'CDS'
                 tab_cds = parse_table_standard(file,tab_index,tab_name,date_format_base,dates_num,[{'RF'} firm_names],true);
-                cds = tab_cds{2:end,2:end};
+                cds = tab_cds{2:end,2:end} ./ 10000;
                 risk_free_rate = tab_cds{2:end,1};
                 
             case 'Assets'
@@ -172,29 +174,30 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     end
     
     if (~isempty(assets) && ~isempty(equity))
-        [liabilities,liabilities_rolled] = compute_liabilities(assets,equity,dates_num,forward_rolling);
+        [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling);
     end
     
-    firm_defaults = detect_defaults(firm_returns);
-    assets = apply_defaults(firm_defaults,assets,false);
-    capitalization = apply_defaults(firm_defaults,capitalization,false);
-    capitalization_lagged = apply_defaults(firm_defaults,capitalization_lagged,true);
-    cds = apply_defaults(firm_defaults,cds,false);
-    equity = apply_defaults(firm_defaults,equity,false);
-    liabilities = apply_defaults(firm_defaults,liabilities,false);
-    liabilities_rolled = apply_defaults(firm_defaults,liabilities_rolled,false);
-    separate_accounts = apply_defaults(firm_defaults,separate_accounts,false);
+    [defaults,insolvencies] = detect_distress(returns,equity);
+    
+    if (any(defaults == 1))
+        error('The dataset contains firms defaulted since the beginning of the observation period, consider removing them.');
+    end
+
+    returns = handle_firms_distress(defaults,returns,false);
+    capitalization = handle_firms_distress(defaults,capitalization,false);
+    capitalization_lagged = handle_firms_distress(defaults,capitalization_lagged,true);
+    cds = handle_firms_distress(defaults,cds,false);
+    assets = handle_firms_distress(defaults,assets,false);
+    equity = handle_firms_distress(defaults,equity,false);
+    liabilities = handle_firms_distress(defaults,liabilities,false);
+    liabilities_rolled = handle_firms_distress(defaults,liabilities_rolled,false);
+    separate_accounts = handle_firms_distress(defaults,separate_accounts,false);
 
     data = struct();
     
-    data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'FirmReturns' 'Liabilities' 'LiabilitiesRolled' 'SeparateAccounts'};
+    data.BinaryVersion = 1.0;
+    data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'Liabilities' 'LiabilitiesRolled' 'Returns' 'SeparateAccounts'};
 
- 	data.SupportsComponent = true;
-	data.SupportsConnectedness = true;
-	data.SupportsCrossSectional = supports_cross_sectional;
-	data.SupportsDefault = supports_default;
-	data.SupportsSpillover = true;
-    
     data.N = n;
     data.T = t;
 
@@ -203,17 +206,16 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     data.MonthlyTicks = length(unique(year(data.DatesNum))) <= 3;
 
     data.IndexName = index_name;
-    data.IndexReturns = index_returns;
-
     data.FirmNames = firm_names;
-    data.FirmReturns = firm_returns;
-    data.FirmDefaults = firm_defaults;
+    
+    data.Index = index;
+    data.Returns = returns;
     
     data.Capitalization = capitalization;
     data.CapitalizationLagged = capitalization_lagged;
 
-    data.CDS = cds;
     data.RiskFreeRate = risk_free_rate;
+    data.CDS = cds;
 
     data.Assets = assets;
     data.Equity = equity;
@@ -227,6 +229,15 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     data.Groups = numel(group_names);
     data.GroupDelimiters = group_delimiters;
     data.GroupNames = group_names;
+    
+    data.Defaults = defaults;
+    data.Insolvencies = insolvencies;
+    
+ 	data.SupportsComponent = true;
+	data.SupportsConnectedness = true;
+	data.SupportsCrossSectional = supports_cross_sectional;
+	data.SupportsDefault = supports_default;
+	data.SupportsSpillover = true;
 
 end
 
@@ -505,27 +516,49 @@ end
 
 %% COMPUTATIONS
 
-function time_series = apply_defaults(firm_defaults,time_series,lagged)
+function [defaults,insolvencies] = detect_distress(returns,equity)
 
-    if (~isempty(time_series))
-        for i = 1:numel(firm_defaults)
-            firm_default = firm_defaults(i);
+    n = size(returns,2);
+    t = size(returns,1);
+    threshold = round(t * 0.05,0);
+    
+    defaults = NaN(1,n);
+    insolvencies = NaN(1,n);
 
-            if (isnan(firm_default))
-                continue;
-            end
+    for i = 1:n
+        r = returns(:,i);
 
-            if (lagged)
-                time_series(firm_default-1:end,i) = 0;
-            else
-                time_series(firm_default:end,i) = 0;
-            end
+        f = find(diff([1; r; 1] == 0));
+        indices = f(1:2:end-1);
+        counts = f(2:2:end) - indices;
+
+        index_last = indices(end);
+        count_last = counts(end);
+
+        if (((index_last + count_last - 1) == t) && (count_last >= threshold))
+            defaults(i) = index_last;
         end
+        
+        eq = equity(:,i);
+        
+        f = find(diff([false; eq < 0; false] ~= 0));
+        indices = f(1:2:end-1);
+
+        if (~isempty(indices))
+            counts = f(2:2:end) - indices;
+
+            index_last = indices(end);
+            count_last = counts(end);
+
+            if (((index_last + count_last - 1) == numel(eq)) && (count_last >= threshold))
+                insolvencies(i) = index_last;
+            end
+        end   
     end
 
 end
 
-function [liabilities,liabilities_rolled] = compute_liabilities(assets,equity,dates_num,forward_rolling)
+function [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling)
 
     liabilities = assets - equity;
     
@@ -546,30 +579,6 @@ function [liabilities,liabilities_rolled] = compute_liabilities(assets,equity,da
         end
     else
         liabilities_rolled = liabilities;
-    end
-
-end
-
-function firm_defaults = detect_defaults(firm_returns)
-
-    n = size(firm_returns,2);
-    t = size(firm_returns,1);
-    
-    firm_defaults = NaN(1,n);
-
-    for i = 1:n
-        x = firm_returns(:,i);
-
-        f = find(diff([1; x; 1] == 0));
-        indices = f(1:2:end-1);
-        counts = f(2:2:end) - indices;
-
-        index_last = indices(end);
-        count_last = counts(end);
-
-        if (((index_last + count_last - 1) == t) && (count_last >= 252))
-            firm_defaults(i) = index_last;
-        end
     end
 
 end
