@@ -49,9 +49,11 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
 
     data = data_initialize(data,k,d,car,sf);
     n = data.N;
+    t = data.T;
 
     bar = waitbar(0,'Initializing cross-sectional measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
+	cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating cross-sectional measures...');
@@ -59,16 +61,12 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
 
     try
 
-        r0_m = data.IndexReturns - mean(data.IndexReturns);
-        
+        idx = data.Index - mean(data.Index);
+
+        r = data.Returns;
         eq = data.Capitalization;
         lb = data.Liabilities;
-        
-        if (isempty(data.SeparateAccounts))
-            sa = zeros(0,n);
-        else
-            sa = data.SeparateAccounts;
-        end
+        sa = data.SeparateAccounts;
         
         sv = data.StateVariables;
         
@@ -80,26 +78,43 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
                 break;
             end
             
-            r_x = data.FirmReturns(:,i);
-            r0_x = r_x - mean(r_x);
+            offset = min(data.Defaults(i) - 1,t);
+
+            r0_x = r(1:offset,i) - mean(r(1:offset,i));
+            r0_m = idx(1:offset);
+            
+            eq_x = eq(1:offset,i);
+            lb_x = lb(1:offset,i);
+            
+            if (isempty(sa))
+                sa_x = [];
+            else
+                sa_x = sa(1:offset,i);
+            end
+            
+            if (isempty(sv))
+                sv_x = [];
+            else
+                sv_x = sv(1:offset,:);
+            end
 
             [~,p,h,~] = dcc_gjrgarch([r0_m r0_x]);
             s_m = sqrt(h(:,1));
             s_x = sqrt(h(:,2));
             rho = squeeze(p(1,2,:));
 
-            [beta,var,es] = calculate_idiosyncratic(data.A,s_m,r0_x,s_x,rho);
-            [covar,dcovar] = calculate_covar(data.A,r0_m,r0_x,var,sv);
-            [mes,lrmes] = calculate_mes(data.A,data.D,r0_m,s_m,r0_x,s_x,rho,beta);
-            srisk = calculate_srisk(data.CAR,data.SF,lrmes,lb(:,i),eq(:,i),sa(:,i));
+            [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,data.A);
+            [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv_x,data.A);
+            [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,data.A,data.D);
+            srisk = calculate_srisk(lb_x,eq_x,sa_x,lrmes,data.CAR,data.SF);
 
-            data.Beta(:,i) = beta;
-            data.VaR(:,i) = -1 * var;
-            data.ES(:,i) = -1 * es;
-            data.CoVaR(:,i) = -1 * covar;
-            data.DeltaCoVaR(:,i) = -1 * dcovar;
-            data.MES(:,i) = -1 * mes;
-            data.SRISK(:,i) = srisk;
+            data.Beta(1:offset,i) = beta;
+            data.VaR(1:offset,i) = -1 * var;
+            data.ES(1:offset,i) = -1 * es;
+            data.CoVaR(1:offset,i) = -1 * covar;
+            data.DeltaCoVaR(1:offset,i) = -1 * dcovar;
+            data.MES(1:offset,i) = -1 * mes;
+            data.SRISK(1:offset,i) = srisk;
             
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -146,29 +161,10 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
     end
     
     if (analyze)
-        try
-            plot_idiosyncratic_averages(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_idiosyncratic_averages'' produced errors.');
-        end
-        
-        try
-            plot_systemic_averages(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_systemic_averages'' produced errors.');
-        end
-        
-        try
-            plot_correlations(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_correlations'' produced errors.');
-        end
-        
-        try
-            plot_rankings(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_rankings'' produced errors.');
-        end
+        safe_plot(@(id)plot_idiosyncratic_averages(data,id));
+        safe_plot(@(id)plot_systemic_averages(data,id));
+        safe_plot(@(id)plot_correlations(data,id));
+        safe_plot(@(id)plot_rankings(data,id));
     end
     
     result = data;
@@ -203,30 +199,16 @@ end
 
 function data = data_finalize(data)
 
-    factors = sum(data.Capitalization,2);
-    weights = data.CapitalizationLagged ./ repmat(sum(data.CapitalizationLagged,2),1,data.N);
-
-    data.Beta = handle_defaulted_firms(data.Beta,data.FirmDefaults);
-    beta_avg = sum(data.Beta .* weights,2,'omitnan');
+    factors = sum(data.Capitalization,2,'omitnan');
+    weights = max(0,data.CapitalizationLagged ./ repmat(sum(data.CapitalizationLagged,2,'omitnan'),1,data.N));
     
-    data.VaR = handle_defaulted_firms(data.VaR,data.FirmDefaults);
+	beta_avg = sum(data.Beta .* weights,2,'omitnan');
     var_avg = sum(data.VaR .* weights,2,'omitnan') .* factors;
-
-    data.ES = handle_defaulted_firms(data.ES,data.FirmDefaults);
     es_avg = sum(data.ES .* weights,2,'omitnan') .* factors;
-    
-    data.CoVaR = handle_defaulted_firms(data.CoVaR,data.FirmDefaults);
     covar_avg = sum(data.CoVaR .* weights,2,'omitnan') .* factors;
-    
-    data.DeltaCoVa = handle_defaulted_firms(data.DeltaCoVaR,data.FirmDefaults);
-    dcovar_avg = sum(data.DeltaCoVa .* weights,2,'omitnan') .* factors;
-
-    data.MES = handle_defaulted_firms(data.MES,data.FirmDefaults);
+    dcovar_avg = sum(data.DeltaCoVaR .* weights,2,'omitnan') .* factors;
     mes_avg = sum(data.MES .* weights,2,'omitnan') .* factors;
-    
-    data.SRISK = handle_defaulted_firms(data.SRISK,data.FirmDefaults);
     srisk_avg = sum(data.SRISK .* weights,2,'omitnan');
-
     data.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg srisk_avg];
     
     measures = numel(data.LabelsSimple) - 1;
@@ -247,8 +229,8 @@ function data = data_finalize(data)
         measure_2 = data.(field_2);
         
         for j = 1:data.T
-            [~,rank_1] = sort(measure_1(j,:));
-            [~,rank_2] = sort(measure_2(j,:));
+            [~,rank_1] = sort(measure_1(j,:),'ascend');
+            [~,rank_2] = sort(measure_2(j,:),'ascend');
 
             data.RankingConcordance(index_1,index_2) = data.RankingConcordance(index_1,index_2) + kendall_concordance_coefficient(rank_1.',rank_2.');
         end
@@ -259,8 +241,8 @@ function data = data_finalize(data)
         measure = data.(field);
         
         for j = data.T:-1:2
-            [~,rank_previous] = sort(measure(j-1,:));
-            [~,rank_current] = sort(measure(j,:));
+            [~,rank_previous] = sort(measure(j-1,:),'ascend');
+            [~,rank_current] = sort(measure(j,:),'ascend');
 
             data.RankingStability(i) = data.RankingStability(i) + kendall_concordance_coefficient(rank_current.',rank_previous.');
         end
@@ -392,7 +374,7 @@ end
 
 %% MEASURES
 
-function [covar,dcovar] = calculate_covar(a,r0_m,r0_x,var,sv)
+function [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv,a)
 
     if (isempty(sv))
         b = quantile_regression(r0_m,r0_x,a);
@@ -410,7 +392,7 @@ function [covar,dcovar] = calculate_covar(a,r0_m,r0_x,var,sv)
 
 end
 
-function [beta,var,es] = calculate_idiosyncratic(a,s_m,r0_x,s_x,rho)
+function [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,a)
 
 	beta = rho .* (s_x ./ s_m);
     
@@ -420,7 +402,7 @@ function [beta,var,es] = calculate_idiosyncratic(a,s_m,r0_x,s_x,rho)
 
 end
 
-function [mes,lrmes] = calculate_mes(a,d,r0_m,s_m,r0_x,s_x,rho,beta)
+function [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,a,d)
 
     c = quantile(r0_m,a);
     z = sqrt(1 - rho.^2);
@@ -443,10 +425,10 @@ function [mes,lrmes] = calculate_mes(a,d,r0_m,s_m,r0_x,s_x,rho,beta)
 
 end
 
-function srisk = calculate_srisk(l,s,lrmes,lb,eq,sa)
+function srisk = calculate_srisk(lb,eq,sa,lrmes,l,sf)
 
     if (~isempty(sa))
-        lb = lb - ((1 - s) .* sa);
+        lb = lb - ((1 - sf) .* sa);
     end
 
     srisk = (l .* lb) - ((1 - l) .* (1 - lrmes) .* eq);
@@ -485,37 +467,36 @@ function beta = quantile_regression(y,x,k)
     beta = ones(m,1);
 
     diff = 1;
-    iter = 0;
+    i = 0;
 
-    while ((diff > 1e-6) && (iter < 1000))
+    while ((diff > 1e-6) && (i < 1000))
         x_star_t = x_star.';
         beta_0 = beta;
 
         beta = ((x_star_t * x) \ x_star_t) * y;
 
         residuals = y - (x * beta);
-        residuals(abs(residuals) < 0.000001) = 0.000001;
+        residuals(abs(residuals) < 1e-06) = 1e-06;
         residuals(residuals < 0) = k * residuals(residuals < 0);
         residuals(residuals > 0) = (1 - k) * residuals(residuals > 0);
         residuals = abs(residuals);
 
         z = zeros(n,m);
 
-        for i = 1:m 
-            z(:,i) = x(:,i) ./ residuals;
+        for j = 1:m 
+            z(:,j) = x(:,j) ./ residuals;
         end
 
         x_star = z;
         beta_1 = beta;
         
         diff = max(abs(beta_1 - beta_0));
-        iter = iter + 1;
+        i = i + 1;
     end
 
 end
 
 %% PLOTTING
-
 
 function [ax,big_ax] = gplotmatrix_stable(f,x,labels)
 
@@ -621,7 +602,7 @@ function [ax,big_ax] = gplotmatrix_stable(f,x,labels)
 
 end
 
-function plot_idiosyncratic_averages(data)
+function plot_idiosyncratic_averages(data,id)
 
     averages = data.Averages(:,1:3);
     
@@ -635,7 +616,7 @@ function plot_idiosyncratic_averages(data)
     
     y_limits = [y_limits_beta; y_limits_other; y_limits_other];
 
-    f = figure('Name','Cross-Sectional Measures > Idiosyncratic Averages','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Cross-Sectional Measures > Idiosyncratic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     subs = NaN(3,1);
 
@@ -669,7 +650,7 @@ function plot_idiosyncratic_averages(data)
 
 end
 
-function plot_systemic_averages(data)
+function plot_systemic_averages(data,id)
 
     averages = data.Averages(:,4:end);
 
@@ -677,7 +658,7 @@ function plot_systemic_averages(data)
     y_max = max(max(averages));
     y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
 
-    f = figure('Name','Cross-Sectional Measures > Systemic Averages','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Cross-Sectional Measures > Systemic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     subs = NaN(4,1);
     
@@ -711,7 +692,7 @@ function plot_systemic_averages(data)
 
 end
 
-function plot_correlations(data)
+function plot_correlations(data,id)
 
     [rho,pval] = corr(data.Averages);
     m = mean(data.Averages,1);
@@ -723,7 +704,7 @@ function plot_correlations(data)
     
     n = numel(data.LabelsSimple) - 1;
 
-    f = figure('Name','Cross-Sectional Measures > Correlation Matrix','Units','normalized');
+    f = figure('Name','Cross-Sectional Measures > Correlation Matrix','Units','normalized','Tag',id);
     
     [ax,big_ax] = gplotmatrix_stable(f,data.Averages,data.LabelsSimple(1:end-1));
 
@@ -772,7 +753,7 @@ function plot_correlations(data)
 
 end
 
-function plot_rankings(data)
+function plot_rankings(data,id)
 
     labels = data.LabelsSimple(1:end-1);
     n = numel(labels);
@@ -792,7 +773,7 @@ function plot_rankings(data)
     rc_y = rc_y(:) + 0.5;
     rc_text = cellstr(num2str(data.RankingConcordance(:),'%.2f'));
 
-    f = figure('Name','Cross-Sectional Measures > Rankings','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Cross-Sectional Measures > Rankings','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);

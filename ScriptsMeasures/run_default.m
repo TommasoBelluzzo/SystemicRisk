@@ -55,8 +55,12 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     n = data.N;
     t = data.T;
     
+    step_1 = 0.15;
+    step_2 = 1 - step_1;
+    
     bar = waitbar(0,'Initializing default measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
+    cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating default measures (step 1 of 2)...');
@@ -65,6 +69,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     try
 
         r = max(0,data.RiskFreeRate);
+        
 
         firms_data = extract_data_by_firm(data,{'Equity' 'Capitalization' 'Liabilities' 'CDS'});
         
@@ -73,7 +78,8 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
         futures_results = cell(n,1);
 
         for i = 1:n
-            futures(i) = parfeval(@main_loop_1,1,firms_data{i},data.FirmDefaults(i),r,data.ST,data.DT,data.LCAR,data.OP);
+            offset = min(min(data.Defaults(i),data.Insolvencies(i)) - 1,t);
+            futures(i) = parfeval(@main_loop_1,1,firms_data{i},offset,r,data.ST,data.DT,data.LCAR,data.OP);
         end
 
         for i = 1:n
@@ -86,7 +92,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
             futures_results{future_index} = value;
             
             futures_max = max([future_index futures_max]);
-            waitbar(0.2 * ((futures_max - 1) /  n),bar);
+            waitbar(step_1 * ((futures_max - 1) /  n),bar);
 
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -113,7 +119,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     end
     
     pause(1);
-    waitbar(0.2,bar,'Finalizing default measures (step 1 of 2)...');
+    waitbar(step_1,bar,'Finalizing default measures (step 1 of 2)...');
     pause(1);
 
     try
@@ -124,10 +130,13 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     end
     
     pause(1);
-    waitbar(0.2,bar,'Calculating default measures (step 2 of 2)...');
+    waitbar(step_1,bar,'Calculating default measures (step 2 of 2)...');
     pause(1);
     
     try
+        
+        q = data.Q;
+        q_diff = diff([q 1]);
 
         cl = data.SCCAContingentLiabilities;
         cl(isnan(cl)) = 0;
@@ -139,7 +148,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows{i},data.Q);
+            futures(i) = parfeval(@main_loop_2,1,windows{i},q,q_diff);
         end
 
         for i = 1:t
@@ -152,7 +161,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
             futures_results{future_index} = value;
             
             futures_max = max([future_index futures_max]);
-            waitbar(0.2 + (0.8 * ((futures_max - 1) / t)),bar);
+            waitbar(step_1 + (step_2 * ((futures_max - 1) / t)),bar);
 
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -202,17 +211,8 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     end
     
     if (analyze)
-        try
-            plot_distances(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_distances'' produced errors.');
-        end
-        
-        try
-            plot_scca(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_scca'' produced errors.');
-        end
+        safe_plot(@(id)plot_distances(data,id));
+        safe_plot(@(id)plot_scca(data,id));
     end
     
     result = data;
@@ -271,10 +271,11 @@ function data = data_finalize_1(data,window_results)
         data.SCCAContingentLiabilities(1:window_result.Offset,i) = window_result.SCCAContingentLiabilities;
     end
 
-    weights = data.CapitalizationLagged ./ repmat(sum(data.CapitalizationLagged,2),1,n);
+    cap_lag = handle_firms_distress(data.Insolvencies,data.CapitalizationLagged,true);
+    weights = cap_lag ./ repmat(sum(cap_lag,2,'omitnan'),1,n);
 
-	cap = max(1e-6,sum(handle_defaulted_firms(data.Capitalization,data.FirmDefaults),2,'omitnan'));
-    lb = max(1e-6,sum(handle_defaulted_firms(data.Liabilities,data.FirmDefaults),2,'omitnan'));
+	cap = max(1e-6,sum(handle_firms_distress(data.Insolvencies,data.Capitalization,false),2,'omitnan'));
+    lb = max(1e-6,sum(handle_firms_distress(data.Insolvencies,data.Liabilities,false),2,'omitnan'));
     db = (lb .* data.ST) + (data.DT .* (lb .* (1 - data.ST)));
     r = max(0,data.RiskFreeRate);
 
@@ -424,26 +425,8 @@ end
 
 %% MEASURES
 
-function window_results = main_loop_1(firm_data,firm_default,r,st,dt,lcar,op)
+function window_results = main_loop_1(firm_data,offset,r,st,dt,lcar,op)
 
-    offset = min(firm_default - 1,size(firm_data,1));
-
-    eq = firm_data(1:offset,1);
-
-    f = find(diff([false; eq < 0; false] ~= 0));
-    indices = f(1:2:end-1);
-
-    if (~isempty(indices))
-        counts = f(2:2:end) - indices;
-
-        index_last = indices(end);
-        count_last = counts(end);
-
-        if (((index_last + count_last - 1) == numel(eq)) && (count_last >= 252))
-            offset = min(index_last - 1,offset);
-        end
-    end
-    
     cap = max(1e-6,firm_data(1:offset,2));
     lb = max(1e-6,firm_data(1:offset,3));
     db = (lb .* st) + (dt .* (lb .* (1 - st)));
@@ -464,11 +447,11 @@ function window_results = main_loop_1(firm_data,firm_default,r,st,dt,lcar,op)
 
 end
 
-function window_results = main_loop_2(window,q)
+function window_results = main_loop_2(window,q,q_diff)
 
     window_results = struct();
     
-    [scca_joint_vars,scca_joint_es] = calculate_scca_indicators(window,q);
+    [scca_joint_vars,scca_joint_es] = calculate_scca_indicators(window,q,q_diff);
     window_results.SCCAJointVaRs = scca_joint_vars;
     window_results.SCCAJointES = scca_joint_es;
 
@@ -488,7 +471,7 @@ function [d2d,d2c] = calculate_distances(va,va_m,db,r,t,lcar)
 
 end
 
-function [joint_vars,joint_es] = calculate_scca_indicators(data,q)
+function [joint_vars,joint_es] = calculate_scca_indicators(data,q,q_diff)
 
     [t,n] = size(data);
     data_sorted = sort(data,1);
@@ -530,6 +513,7 @@ function [joint_vars,joint_es] = calculate_scca_indicators(data,q)
     x0_xi = mean(xi);
     
     joint_vars = zeros(1,numel(q));
+    options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off');
     
     for j = 1:numel(q)
         lhs = -log(q(j)) / d;
@@ -540,21 +524,25 @@ function [joint_vars,joint_es] = calculate_scca_indicators(data,q)
         e = [];
 
         try
-            options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off');
-            [joint_var,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],[],[],[],options);
+            [joint_var,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],0,Inf,[],options);
         catch e
         end
 
         if (~isempty(e) || (ef <= 0))
-            joint_var = 0;
+            joint_vars(j) = 0;
+        else
+            joint_vars(j) = joint_var;
         end
-
-        joint_vars(j) = joint_var;
     end
-    
-    q_diff = diff([q 1]);
-    joint_es = sum(joint_vars .* q_diff) / sum(q_diff);
-    
+
+    indices = joint_vars > 0;
+
+    if (any(indices))
+        joint_es = sum(joint_vars(indices) .* q_diff(indices)) / sum(q_diff(indices));
+    else
+        joint_es = 0;
+    end
+
     function um = unit_margin(x,mu,sigma,xi)
 
         um_z = (x - mu) ./ sigma;
@@ -603,7 +591,7 @@ function [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,t,op)
 
 	rd = dbd - put_price;
 
-    cds_put_price = dbd .* (1 - exp(-(cds ./ 10000) .* max(0.5,((db ./ rd) - 1)) .* t));
+    cds_put_price = dbd .* (1 - exp(-cds .* max(0.5,((db ./ rd) - 1)) .* t));
     cds_put_price = min(cds_put_price,put_price);  
     
     a = max(0,min(1 - (cds_put_price ./ put_price),1));
@@ -666,57 +654,73 @@ end
 
 %% PLOTTING
 
-function f = plot_distances(data)
+function plot_distances(data,id)
 
     distances = data.Indicators(:,1:4);
 
     y_min = min(-1,min(min(distances)));
-    y_max = max(max(distances(:,1)));
+    y_max = max(max(distances));
     y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
+    
+    y_ticks = floor(y_min):0.5:ceil(y_max);
+    y_ticks_labels = arrayfun(@(x)sprintf('%.1f',x),y_ticks,'UniformOutput',false);
 
     f = figure('Name','Default Measures > Distances','Units','normalized','Position',[100 100 0.85 0.85]);
 
-    sub_1 = subplot(1,2,1);
-    p1 = plot(sub_1,data.DatesNum,distances(:,1),'Color',[0.000 0.447 0.741]);
+    sub_1 = subplot(2,2,1);
+    plot(sub_1,data.DatesNum,distances(:,1),'Color',[0.000 0.447 0.741]);
     hold on;
-        p2 = plot(sub_1,data.DatesNum,distances(:,3),'Color',[0.494 0.184 0.556]);
-        p3 = plot(sub_1,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
+        p = plot(sub_1,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
     hold off;
     xlabel(sub_1,'Time');
     ylabel(sub_1,'Value');
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'XTickLabelRotation',45);
-    title(sub_1,data.LabelsSheet{1});
-
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-    else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-    end
+    title(sub_1,data.LabelsIndicators{1});
     
-    sub_2 = subplot(1,2,2);
-    plot(sub_2,data.DatesNum,distances(:,2),'Color',[0.000 0.447 0.741]);
+    sub_2 = subplot(2,2,2);
+    plot(sub_2,data.DatesNum,distances(:,3),'Color',[0.000 0.447 0.741]);
     hold on;
-        plot(sub_2,data.DatesNum,distances(:,4),'Color',[0.494 0.184 0.556]);
         plot(sub_2,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
     hold off;
     xlabel(sub_2,'Time');
     ylabel(sub_2,'Value');
-    set(sub_2,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'XTickLabelRotation',45);
-    title(sub_2,data.LabelsSheet{2});
+    title(sub_2,data.LabelsIndicators{2});
+    
+    sub_3 = subplot(2,2,3);
+    plot(sub_3,data.DatesNum,distances(:,2),'Color',[0.000 0.447 0.741]);
+    hold on;
+        plot(sub_3,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
+    hold off;
+    xlabel(sub_3,'Time');
+    ylabel(sub_3,'Value');
+    title(sub_3,data.LabelsIndicators{3});
+    
+    sub_4 = subplot(2,2,4);
+    plot(sub_4,data.DatesNum,distances(:,4),'Color',[0.000 0.447 0.741]);
+    hold on;
+        plot(sub_4,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
+    hold off;
+    xlabel(sub_4,'Time');
+    ylabel(sub_4,'Value');
+    title(sub_4,data.LabelsIndicators{4});
+    
+    set([sub_1 sub_2 sub_3 sub_4],'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'YTick',y_ticks,'YTickLabel',y_ticks_labels,'XTickLabelRotation',45);
 
     if (data.MonthlyTicks)
+        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
         datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_3,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_4,'x','mm/yyyy','KeepLimits','KeepTicks');
     else
+        datetick(sub_1,'x','yyyy','KeepLimits');
         datetick(sub_2,'x','yyyy','KeepLimits');
+        datetick(sub_3,'x','yyyy','KeepLimits');
+        datetick(sub_4,'x','yyyy','KeepLimits');
     end
 
-    set([sub_1 sub_2],'YTick',get(sub_1,'YTick'),'YTickLabel',get(sub_1,'YTickLabel'));
-
-    l = legend(sub_1,[p1 p2 p3],'Average','Portfolio','Default Threshold','Location','best');
-    set(l,'NumColumns',3,'Units','normalized');
-    drawnow();
+    l = legend(sub_1,p,'Default Threshold','Location','best');
+    set(l,'Units','normalized');
     l_position = get(l,'Position');
-    set(l,'Position',[0.4173 0.0328 l_position(3) l_position(4)]);
+    set(l,'Position',[0.4683 0.4799 l_position(3) l_position(4)]);
 
     t = figure_title('Distances');
     t_position = get(t,'Position');
@@ -728,14 +732,14 @@ function f = plot_distances(data)
 
 end
 
-function f = plot_scca(data)
+function plot_scca(data,id)
 
     el = sum(data.SCCAExpectedLosses,2,'omitnan');
     cl = sum(data.SCCAContingentLiabilities,2,'omitnan');
     alpha = cl ./ el;
     jes = data.Indicators(:,5);
 
-    f = figure('Name','Default Measures > Systemic CCA','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Default Measures > Systemic CCA','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,[1 2]);
     a1 = area(sub_1,data.DatesNum,el,'EdgeColor','none','FaceColor',[0.65 0.65 0.65]);

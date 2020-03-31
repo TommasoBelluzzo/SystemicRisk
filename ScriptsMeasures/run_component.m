@@ -48,6 +48,7 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     e = [];
     
     data = data_initialize(data,bandwidth,k,f,q);
+    n = data.N;
     t = data.T;
     
     rng_settings = rng();
@@ -55,18 +56,18 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     
     bar = waitbar(0,'Initializing component measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
-    
+    cleanup = onCleanup(@()delete(bar));
+
     pause(1);
     waitbar(0,bar,'Calculating component measures...');
     pause(1);
 
     try
 
-        r = handle_defaulted_firms(data.FirmReturns,data.FirmDefaults);
-        rw = 1 ./ (repmat(data.N,data.T,1) - sum(isnan(r),2));
-        data.CATFINReturns = sum(r .* repmat(rw,1,data.N),2,'omitnan');
-        
-        windows_fr = extract_rolling_windows(data.FirmReturns,bandwidth,false);
+        rw = 1 ./ (repmat(n,t,1) - sum(isnan(data.Returns),2));
+        data.CATFINReturns = sum(data.Returns .* repmat(rw,1,n),2,'omitnan');
+
+        windows_fr = extract_rolling_windows(data.Returns,bandwidth,false);
         windows_pr = extract_rolling_windows(data.CATFINReturns,bandwidth,false);
 
         futures(1:t) = parallel.FevalFuture;
@@ -139,23 +140,9 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     end
 
     if (analyze)
-        try
-            plot_indicators_catfin(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_indicators_catfin'' produced errors.');
-        end
-        
-        try
-            plot_indicators_other(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_indicators_other'' produced errors.');
-        end
-        
-        try
-            plot_pca(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_pca'' produced errors.');
-        end
+        safe_plot(@(id)plot_indicators_catfin(data,id));
+        safe_plot(@(id)plot_indicators_other(data,id));
+        safe_plot(@(id)plot_pca(data,id));
     end
     
     result = data;
@@ -180,8 +167,8 @@ function data = data_initialize(data,bandwidth,k,f,q)
     
     data.CATFINReturns = NaN(data.T,1);
     data.CATFINVaR = NaN(data.T,3);
-    data.CATFINFirstComponentCoefficients = NaN(1,3);
-    data.CATFINFirstComponentExplained = NaN;
+    data.CATFINFirstCoefficients = NaN(1,3);
+    data.CATFINFirstExplained = NaN;
     data.CATFIN = NaN(data.T,1);
     
     data.AbsorptionRatio = NaN(data.T,1);
@@ -195,12 +182,12 @@ function data = data_initialize(data,bandwidth,k,f,q)
 
 end
 
-function data = data_finalize(data,window_results)
+function data = data_finalize(data,results)
 
     t = data.T;
 
     for i = 1:t
-        window_result = window_results{i};
+        window_result = results{i};
         
         data.CATFINVaR(i,:) = window_result.CATFINVaR;
         
@@ -218,10 +205,15 @@ function data = data_finalize(data,window_results)
     
     [coefficients,scores,explained] = calculate_pca(data.CATFINVaR,false);
     data.CATFIN = scores(:,1);
-    data.CATFINFirstComponentCoefficients = coefficients(:,1).';
-    data.CATFINFirstComponentExplained = explained(1);
+    data.CATFINFirstCoefficients = coefficients(:,1).';
+    data.CATFINFirstExplained = explained(1);
 
-    [coefficients,scores,explained] = calculate_pca(data.FirmReturns,true);
+    r = data.Returns;
+    nan_indices = isnan(r);
+    rm = repmat(mean(r,1,'omitnan'),t,1);
+    r(nan_indices) = rm(nan_indices);
+
+    [coefficients,scores,explained] = calculate_pca(r,true);
     data.PCACoefficientsOverall = coefficients;
     data.PCAExplainedOverall = explained;
     data.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
@@ -361,6 +353,9 @@ end
 
 function window_results = main_loop(window_fr,window_pr,components,a)
 
+    nan_indices = sum(isnan(window_fr),1) > 0;
+    window_fr(:,nan_indices) = [];
+
     window_results = struct();
 
     [var_np,var_gpd,var_sged] = calculate_catfin_var(window_pr,a,0.98,0.05);
@@ -383,7 +378,7 @@ function [var_np,var_gpd,var_sged] = calculate_catfin_var(data,a,g,u)
     t = size(data,1);
 
     w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
-    h = sortrows([data w],1);
+    h = sortrows([data w],1,'ascend');
     csw = cumsum(h(:,2));
     cswa = find(csw >= a);
     var_np = h(cswa(1),1);  
@@ -409,8 +404,11 @@ end
 
 function [ar,cs,ti] = calculate_component_indicators(data,components)
 
-    zeros_indices = find(~data);
-    data(zeros_indices) = (((1e-10 - 1e-8) .* rand(numel(zeros_indices),1)) + 1e-8);
+    zero_indices = find(~data);
+    data(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
+    
+    novar_indices = find(var(data,1) == 0);
+    data(:,novar_indices) = data(:,novar_indices) + ((-9e-9 .* rand(size(data(:,novar_indices)))) + 1e-8);
 
     c = cov(data);
     bm = eye(size(c)) .* diag(c);
@@ -428,25 +426,19 @@ end
 function [coefficients,scores,explained] = calculate_pca(data,normalize)
 
     if (normalize)
-        data_normalized = data;
-        
-        for i = 1:size(data_normalized,2)
-            c = data_normalized(:,i);
+        for i = 1:size(data,2)
+            c = data(:,i);
 
-            m = mean(c);
+            m = mean(c,'omitnan');
 
-            s = std(c);
+            s = std(c,'omitnan');
             s(s == 0) = 1;
 
-            data_normalized(:,i) = (c - m) / s;
+            data(:,i) = (c - m) ./ s;
         end
-
-        data_normalized(isnan(data_normalized)) = 0;
-
-        [coefficients,scores,~,~,explained] = pca(data_normalized,'Economy',false);
-    else
-        [coefficients,scores,~,~,explained] = pca(data,'Economy',false);
     end
+
+    [coefficients,scores,~,~,explained] = pca(data,'Economy',false);
 
 end
 
@@ -484,19 +476,19 @@ end
 
 %% PLOTTING
 
-function plot_indicators_catfin(data)
+function plot_indicators_catfin(data,id)
 
     r = max(0,-data.CATFINReturns);
 
     y_max = max(max([-data.CATFINVaR r]));
     y_limits = [0 ((abs(y_max) * 1.1) * sign(y_max))];
 
-    f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,3,[1 3]);
     plot(sub_1,data.DatesNum,data.CATFIN,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
-    t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',data.K * 100) ', PCA.EV=' sprintf('%.2f%%',data.CATFINFirstComponentExplained) ')']);
+    t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',data.K * 100) ', PCA.EV=' sprintf('%.2f%%',data.CATFINFirstExplained) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
@@ -514,7 +506,7 @@ function plot_indicators_catfin(data)
             plot(sub,data.DatesNum,data.CATFINVaR(:,i),'Color',[1 0.4 0.4]);
         hold off;
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45,'YLim',y_limits);
-        t1 = title(sub,[data.LabelsVaR{i} ' Value-at-Risk (PCA.C=' sprintf('%.4f',data.CATFINFirstComponentCoefficients(i)) ')']);
+        t1 = title(sub,[data.LabelsVaR{i} ' Value-at-Risk (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
         set(t1,'Units','normalized');
         t1_position = get(t1,'Position');
         set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
@@ -536,7 +528,7 @@ function plot_indicators_catfin(data)
 
 end
 
-function plot_indicators_other(data)
+function plot_indicators_other(data,id)
 
     alpha = 2 / (data.Bandwidth + 1);
 
@@ -549,7 +541,7 @@ function plot_indicators_other(data)
     ti_ma = [data.TurbulenceIndex(1,:); filter(alpha,[1 (alpha - 1)],data.TurbulenceIndex(2:end,:),(1 - alpha) * data.TurbulenceIndex(1,:))];
 	cs_ma = [data.CorrelationSurprise(1,:); filter(alpha,[1 (alpha - 1)],data.CorrelationSurprise(2:end,:),(1 - alpha) * data.CorrelationSurprise(1,:))];
 
-    f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,[1 3]);
     plot(sub_1,data.DatesNum,data.AbsorptionRatio,'Color',[0.000 0.447 0.741]);
@@ -570,10 +562,10 @@ function plot_indicators_other(data)
     hold off;
     xlabel(sub_2,'Time');
     ylabel(sub_2,'Value');
-    l2 = legend(sub_2,[p21 p22],'EWMA','Threshold','Location','best');
-    set(l2,'NumColumns',2,'Units','normalized');
-    l2_position = get(l2,'Position');
-    set(l2,'Position',[0.6710 0.4799 l2_position(3) l2_position(4)]);
+    l = legend(sub_2,[p21 p22],'EWMA','Threshold','Location','best');
+    set(l,'NumColumns',2,'Units','normalized');
+    l_position = get(l,'Position');
+    set(l,'Position',[0.6710 0.4799 l_position(3) l_position(4)]);
     t2 = title(sub_2,['Turbulence Index (Q=' sprintf('%.2f',data.Q) ')']);
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
@@ -614,7 +606,7 @@ function plot_indicators_other(data)
 
 end
 
-function plot_pca(data)
+function plot_pca(data,id)
 
     coefficients = data.PCACoefficientsOverall(:,1:3);
     [coefficients_rows,coefficients_columns] = size(coefficients);
@@ -644,7 +636,7 @@ function plot_pca(data)
     y_ticks = 0:10:100;
     y_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
     
-    f = figure('Name','Component Measures > Principal Component Analysis','Units','normalized');
+    f = figure('Name','Component Measures > Principal Component Analysis','Units','normalized','Tag',id);
 
     sub_1 = subplot(1,2,1);
     line_1 = line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'LineStyle','-','Marker','none');

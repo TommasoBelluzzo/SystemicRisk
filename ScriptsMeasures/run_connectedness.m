@@ -4,7 +4,7 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % significance = A float (0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
-% robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=true).
+% robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
 % k = A float (0.00,0.20] representing the Granger-causality threshold for no causal relationships (optional, default=0.06).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -23,7 +23,7 @@ function [result,stopped] = run_connectedness(varargin)
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
         ip.addOptional('significance',0.05,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0,'<=',0.20}));
-        ip.addOptional('robust',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('robust',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
         ip.addOptional('k',0.06,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0,'<=',0.20}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -52,14 +52,18 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
     
     bar = waitbar(0,'Initializing connectedness measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
+    cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating connectedness measures...');
     pause(1);
-    
+
     try
 
-        windows = extract_rolling_windows(data.FirmReturns,bandwidth,false);
+        r = data.Returns;
+        r(isnan(r)) = 0;
+        
+        windows = extract_rolling_windows(r,bandwidth,false);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
@@ -129,29 +133,10 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
     end
 
     if (analyze)
-        try
-            plot_indicators(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_indicators'' produced errors.');
-        end
-        
-        try
-            plot_network(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_network'' produced errors.');
-        end
-        
-        try
-            plot_adjacency_matrix(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_adjacency_matrix'' produced errors.');
-        end
-        
-        try
-            plot_centralities(data);
-        catch
-            warning('MATLAB:SystemicRisk','The analysis function ''plot_centralities'' produced errors.');
-        end
+        safe_plot(@(id)plot_indicators(data,id));
+        safe_plot(@(id)plot_network(data,id));
+        safe_plot(@(id)plot_adjacency_matrix(data,id));
+        safe_plot(@(id)plot_centralities(data,id));
     end
     
     result = data;
@@ -166,7 +151,7 @@ function data = data_initialize(data,bandwidth,significance,robust,k)
     data.K = k;
     data.Robust = robust;
     data.Significance = significance;
-
+    
     data.AdjacencyMatrices = cell(data.T,1);
     data.DCI = NaN(data.T,1);
     data.ConnectionsInOut = NaN(data.T,1);
@@ -180,6 +165,17 @@ function data = data_initialize(data,bandwidth,significance,robust,k)
     data.DegreesIn = NaN(data.T,data.N);
     data.DegreesOut = NaN(data.T,data.N);
     data.Degrees = NaN(data.T,data.N);
+
+    data.AdjacencyMatrixAverage = [];
+    data.BetweennessCentralitiesAverage = [];
+    data.ClosenessCentralitiesAverage = [];
+    data.DegreeCentralitiesAverage = [];
+    data.EigenvectorCentralitiesAverage = [];
+    data.KatzCentralitiesAverage = [];
+    data.ClusteringCoefficientsAverage = [];
+    data.DegreesInAverage = [];
+    data.DegreesOutAverage = [];
+    data.DegreesAverage = [];
 
 end
 
@@ -205,22 +201,22 @@ function data = data_finalize(data,window_results)
         data.Degrees(i,:) = futures_result.Degrees;
     end
 
-    a = sum(cat(3,data.AdjacencyMatrices{:}),3) ./ t;
-    a_threshold = mean(mean(a));
-    a(a < a_threshold) = 0;
-    a(a >= a_threshold) = 1;
-    data.AdjacencyMatrixAverage = a;
+    am_avg = sum(cat(3,data.AdjacencyMatrices{:}),3) ./ t;
+    am_threshold = mean(mean(am_avg));
+    am_avg(am_avg < am_threshold) = 0;
+    am_avg(am_avg >= am_threshold) = 1;
+    data.AdjacencyMatrixAverage = am_avg;
     
-    [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(a);
+    [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am_avg);
     data.BetweennessCentralitiesAverage = bc;
     data.ClosenessCentralitiesAverage = cc;
     data.DegreeCentralitiesAverage = dc;
     data.EigenvectorCentralitiesAverage = ec;
     data.KatzCentralitiesAverage = kc;
-    data.ClusteringCoefficientsAverage = clustering_coefficients;
-    data.DegreesInAverage = degrees_in;
-    data.DegreesOutAverage = degrees_out;
-    data.DegreesAverage = degrees;
+    data.ClusteringCoefficientsAverage = clc;
+    data.DegreesInAverage = deg_in;
+    data.DegreesOutAverage = deg_out;
+    data.DegreesAverage = deg;
 
 end
 
@@ -327,52 +323,52 @@ function window_results = main_loop(window,significance,robust,group_delimiters)
 
     window_results = struct();
 
-    adjacency_matrix = causal_adjacency(window,significance,robust);
-    window_results.AdjacencyMatrix = adjacency_matrix;
+    am = causal_adjacency(window,significance,robust);
+    window_results.AdjacencyMatrix = am;
 
-    [dci,number_io,number_ioo] = calculate_connectedness_indicators(adjacency_matrix,group_delimiters);
+    [dci,number_io,number_ioo] = calculate_connectedness_indicators(am,group_delimiters);
     window_results.DCI = dci;
     window_results.ConnectionsInOut = number_io;
     window_results.ConnectionsInOutOther = number_ioo;
 
-    [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(adjacency_matrix);
+    [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am);
     window_results.BetweennessCentralities = bc;
     window_results.ClosenessCentralities = cc;
     window_results.DegreeCentralities = dc;
     window_results.EigenvectorCentralities = ec;
     window_results.KatzCentralities = kc;
-    window_results.ClusteringCoefficients = clustering_coefficients;
-    window_results.DegreesIn = degrees_in;
-    window_results.DegreesOut = degrees_out;
-    window_results.Degrees = degrees;
+    window_results.ClusteringCoefficients = clc;
+    window_results.DegreesIn = deg_in;
+    window_results.DegreesOut = deg_out;
+    window_results.Degrees = deg;
 
 end
 
-function [bc,cc,dc,ec,kc,clustering_coefficients,degrees_in,degrees_out,degrees] = calculate_centralities(adjacency_matrix)
+function [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am)
 
-    adjacency_matrix_len = length(adjacency_matrix);
+    am_len = length(am);
 
-    bc = calculate_betweenness_centrality(adjacency_matrix,adjacency_matrix_len);
-    [degrees_in,degrees_out,degrees,dc] = calculate_degree_centrality(adjacency_matrix,adjacency_matrix_len);
-    cc = calculate_closeness_centrality(adjacency_matrix,adjacency_matrix_len);
-    ec = calculate_eigenvector_centrality(adjacency_matrix);
-    kc = calculate_katz_centrality(adjacency_matrix,adjacency_matrix_len);
-    clustering_coefficients = calculate_clustering_coefficient(adjacency_matrix,adjacency_matrix_len,degrees);
+    bc = calculate_betweenness_centrality(am,am_len);
+    [deg_in,deg_out,deg,dc] = calculate_degree_centrality(am,am_len);
+    cc = calculate_closeness_centrality(am,am_len);
+    ec = calculate_eigenvector_centrality(am);
+    kc = calculate_katz_centrality(am,am_len);
+    clc = calculate_clustering_coefficient(am,am_len,deg);
 
 end
 
-function [dci,in_out,in_out_other] = calculate_connectedness_indicators(adjacency_matrix,group_delimiters)
+function [dci,in_out,in_out_other] = calculate_connectedness_indicators(am,group_delimiters)
 
-    n = size(adjacency_matrix,1);
+    n = size(am,1);
 
-    dci = sum(sum(adjacency_matrix)) / ((n ^ 2) - n);
+    dci = sum(sum(am)) / ((n ^ 2) - n);
 
     number_i = zeros(n,1);
     number_o = zeros(n,1);
     
     for i = 1:n     
-        number_i(i) = sum(adjacency_matrix(:,i));
-        number_o(i) = sum(adjacency_matrix(i,:));
+        number_i(i) = sum(am(:,i));
+        number_o(i) = sum(am(i,:));
     end
 
     in_out = (sum(number_i) + sum(number_o)) / (2 * (n - 1));
@@ -406,8 +402,8 @@ function [dci,in_out,in_out_other] = calculate_connectedness_indicators(adjacenc
                 end
             end
 
-            number_ifo(i) = number_i(i) - sum(adjacency_matrix(group_begin:group_end,i));
-            number_oto(i) = number_o(i) - sum(adjacency_matrix(i,group_begin:group_end));
+            number_ifo(i) = number_i(i) - sum(am(group_begin:group_end,i));
+            number_oto(i) = number_o(i) - sum(am(i,group_begin:group_end));
         end
 
         in_out_other = (sum(number_ifo) + sum(number_oto)) / (2 * group_delimiters_len * (n / group_delimiters_len));
@@ -415,49 +411,49 @@ function [dci,in_out,in_out_other] = calculate_connectedness_indicators(adjacenc
 
 end
 
-function bc = calculate_betweenness_centrality(adjacency_matrix,adjacency_matrix_len)
+function bc = calculate_betweenness_centrality(am,am_len)
 
-    bc = zeros(1,adjacency_matrix_len);
+    bc = zeros(1,am_len);
 
-    for i = 1:adjacency_matrix_len
+    for i = 1:am_len
         depth = 0;
-        nsp = accumarray([1 i],1,[1 adjacency_matrix_len]);
-        bfs = false(250,adjacency_matrix_len);
-        fringe = adjacency_matrix(i,:);
+        nsp = accumarray([1 i],1,[1 am_len]);
+        bfs = false(250,am_len);
+        fringe = am(i,:);
 
         while ((nnz(fringe) > 0) && (depth <= 250))
             depth = depth + 1;
             nsp = nsp + fringe;
             bfs(depth,:) = logical(fringe);
-            fringe = (fringe * adjacency_matrix) .* ~nsp;
+            fringe = (fringe * am) .* ~nsp;
         end
 
         [rows,cols,v] = find(nsp);
         v = 1 ./ v;
         
-        nsp_inv = accumarray([rows.' cols.'],v,[1 adjacency_matrix_len]);
+        nsp_inv = accumarray([rows.' cols.'],v,[1 am_len]);
 
-        bcu = ones(1,adjacency_matrix_len);
+        bcu = ones(1,am_len);
 
         for depth = depth:-1:2
             w = (bfs(depth,:) .* nsp_inv) .* bcu;
-            bcu = bcu + ((adjacency_matrix * w.').' .* bfs(depth-1,:)) .* nsp;
+            bcu = bcu + ((am * w.').' .* bfs(depth-1,:)) .* nsp;
         end
 
         bc = bc + sum(bcu,1);
     end
 
-    bc = bc - adjacency_matrix_len;
-    bc = (bc .* 2) ./ ((adjacency_matrix_len - 1) * (adjacency_matrix_len - 2));
+    bc = bc - am_len;
+    bc = (bc .* 2) ./ ((am_len - 1) * (am_len - 2));
 
 end
 
-function cc = calculate_closeness_centrality(adjacency_matrix,adjacency_matrix_len)
+function cc = calculate_closeness_centrality(am,am_len)
 
-    cc = zeros(1,adjacency_matrix_len);
+    cc = zeros(1,am_len);
 
-    for i = 1:adjacency_matrix_len
-        paths = dijkstra_shortest_paths(adjacency_matrix,adjacency_matrix_len,i);
+    for i = 1:am_len
+        paths = dijkstra_shortest_paths(am,am_len,i);
         paths_sum = sum(paths(~isinf(paths)));
         
         if (paths_sum ~= 0)
@@ -465,29 +461,29 @@ function cc = calculate_closeness_centrality(adjacency_matrix,adjacency_matrix_l
         end
     end
 
-    cc = cc .* (adjacency_matrix_len - 1);
+    cc = cc .* (am_len - 1);
 
 end
 
-function clustering_coefficients = calculate_clustering_coefficient(adjacency_matrix,adjacency_matrix_len,degrees)
+function clc = calculate_clustering_coefficient(am,am_len,deg)
 
-    if (issymmetric(adjacency_matrix))
-        coefficient = 2;
+    if (issymmetric(am))
+        f = 2;
     else
-        coefficient = 1;
+        f = 1;
     end
 
-    clustering_coefficients = zeros(adjacency_matrix_len,1);
+    clc = zeros(am_len,1);
 
-    for i = 1:adjacency_matrix_len
-        degree = degrees(i);
+    for i = 1:am_len
+        degree = deg(i);
 
         if ((degree == 0) || (degree == 1))
             continue;
         end
 
-        k_neighbors = find(adjacency_matrix(i,:) ~= 0);
-        k_subgraph = adjacency_matrix(k_neighbors,k_neighbors);
+        k_neighbors = find(am(i,:) ~= 0);
+        k_subgraph = am(k_neighbors,k_neighbors);
 
         if (issymmetric(k_subgraph))
             k_subgraph_trace = trace(k_subgraph);
@@ -501,31 +497,31 @@ function clustering_coefficients = calculate_clustering_coefficient(adjacency_ma
             edges = sum(sum(k_subgraph));
         end
 
-        clustering_coefficients(i) = (coefficient * edges) / (degree * (degree - 1));     
+        clc(i) = (f * edges) / (degree * (degree - 1));     
     end
     
-    clustering_coefficients = clustering_coefficients.';
+    clc = clc.';
 
 end
 
-function [degrees_in,degrees_out,degrees,degree_centrality] = calculate_degree_centrality(adjacency_matrix,adjacency_matrix_len)
+function [deg_in,deg_out,deg,dc] = calculate_degree_centrality(am,am_len)
 
-    degrees_in = sum(adjacency_matrix);
-    degrees_out = sum(adjacency_matrix.');
+    deg_in = sum(am);
+    deg_out = sum(am.');
     
-    if (issymmetric(adjacency_matrix))
-        degrees = degrees_in + diag(adjacency_matrix).';
+    if (issymmetric(am))
+        deg = deg_in + diag(am).';
     else
-        degrees = degrees_in + degrees_out;
+        deg = deg_in + deg_out;
     end
 
-    degree_centrality = degrees ./ (adjacency_matrix_len - 1);
+    dc = deg ./ (am_len - 1);
 
 end
 
-function ec = calculate_eigenvector_centrality(adjacency_matrix)
+function ec = calculate_eigenvector_centrality(am)
 
-	[eigen_vector,eigen_values] = eig(adjacency_matrix);
+	[eigen_vector,eigen_values] = eig(am);
     [~,indices] = max(diag(eigen_values));
 
     ec = abs(eigen_vector(:,indices)).';
@@ -533,14 +529,14 @@ function ec = calculate_eigenvector_centrality(adjacency_matrix)
 
 end
 
-function kc = calculate_katz_centrality(adjacency_matrix,adjacency_matrix_len)
+function kc = calculate_katz_centrality(am,am_len)
 
-    kc = (eye(adjacency_matrix_len) - (adjacency_matrix .* 0.1)) \ ones(adjacency_matrix_len,1);
+    kc = (eye(am_len) - (am .* 0.1)) \ ones(am_len,1);
     kc = kc.' ./ (sign(sum(kc)) * norm(kc,'fro'));
 
 end
 
-function adjacency_matrix = causal_adjacency(data,significance,robust)
+function am = causal_adjacency(data,significance,robust)
 
     n = size(data,2);
     i = repelem((1:n).',n,1);
@@ -554,79 +550,72 @@ function adjacency_matrix = causal_adjacency(data,significance,robust)
     d_out = arrayfun(@(x)data(:,x),j,'UniformOutput',false);
     
     k = n^2 - n;
-    result = zeros(k,1);
+    pvalues = zeros(k,1);
 
-    for y = 1:k
-        in = d_in{y};
-        out = d_out{y};
-        
-        if (robust)
-            [pval,~] = linear_granger_causality(in,out);
-        else
-            [~,pval] = linear_granger_causality(in,out);
+    if (robust)
+        for y = 1:k
+            in = d_in{y};
+            out = d_out{y};
+
+            [~,pvalues(y)] = linear_granger_causality(in,out);
         end
-        
-        if (pval < significance)
-            result(y) = 1;
+    else
+        for y = 1:k
+            in = d_in{y};
+            out = d_out{y};
+
+            [pvalues(y),~] = linear_granger_causality(in,out);
         end
     end
 
-    indices = sub2ind([n n],i,j);
-
-    adjacency_matrix = zeros(n);
-    adjacency_matrix(indices) = result;
+    am = zeros(n);
+    am(sub2ind([n n],i,j)) = pvalues < significance;
 
 end
 
-function paths = dijkstra_shortest_paths(adjm,adjm_len,node)
+function paths = dijkstra_shortest_paths(am,am_len,node)
 
-    paths = Inf(1,adjm_len);
+    paths = Inf(1,am_len);
     paths(node) = 0;
 
-    adjm_seq = 1:adjm_len;
+    s = 1:am_len;
 
-    while (~isempty(adjm_seq))
-        [~,idx] = min(paths(adjm_seq));
-        adjm_seq_idx = adjm_seq(idx);
+    while (~isempty(s))
+        [~,idx] = min(paths(s));
+        s_min = s(idx);
 
-        for i = 1:length(adjm_seq)
-            adjm_seq_i = adjm_seq(i);
+        for i = 1:length(s)
+            s_i = s(i);
 
-            adjm_off = adjm(adjm_seq_idx,adjm_seq_i);
-            sum_off = adjm_off + paths(adjm_seq_idx);
+            offset = am(s_min,s_i);
+            offset_sum = offset + paths(s_min);
             
-            if ((adjm_off > 0) && (paths(adjm_seq_i) > sum_off))
-                paths(adjm_seq_i) = sum_off;
+            if ((offset > 0) && (paths(s_i) > offset_sum))
+                paths(s_i) = offset_sum;
             end
         end
 
-        adjm_seq = setdiff(adjm_seq,adjm_seq_idx);
+        s = setdiff(s,s_min);
     end
 
 end
 
-function [beta,covariance] = hac_regression(y,x,rat)
+function [beta,covariance,residuals] = hac_regression(y,x,ratio)
 
     t = length(y);
 
-    beta = regress(y,x);
-    residuals = y - (x * beta);
+    [beta,~,residuals] = regress(y,x);
 
     h = diag(residuals) * x;
-    l = round(rat * t);
     q_hat = (x.' * x) / t;
     o_hat = (h.' * h) / t;
-
-    for i = 1:l-1
-        o_tmp = 0;
-
-        for j = 1:t-i
-            o_tmp = o_tmp + h(j,:).' * h(j+i,:);
-        end
-
-        o_tmp = o_tmp / (t - i);
+    
+    l = round(ratio * t,0);
+    
+	for i = 1:(l - 1)
+        o_tmp = (h(1:(t-i),:).' * h((1+i):t,:)) / (t - i);
         o_hat = o_hat + (((l - i) / l) * (o_tmp + o_tmp.'));
-    end
+	end
 
     covariance = (q_hat \ o_hat) / q_hat;
 
@@ -638,9 +627,8 @@ function [pval,pval_robust] = linear_granger_causality(in,out)
     y = out(2:t,1);
     x = [out(1:t-1) in(1:t-1)];
 
-    [beta,covariance] = hac_regression(y,x,0.1);
-    
-    residuals = y - (x * beta);
+    [beta,covariance,residuals] = hac_regression(y,x,0.1);
+
     c = inv(x.' * x);
     s2 = (residuals.' * residuals) / (t - 3);
     t_coefficients = beta(2) / sqrt(s2 * c(2,2));
@@ -652,14 +640,15 @@ end
 
 %% PLOTTING
 
-function plot_indicators(data)
+function plot_indicators(data,id)
 
     connections_max = max(max([data.ConnectionsInOut data.ConnectionsInOutOther])) * 1.1;
+    
     threshold_indices = data.DCI >= data.K;
     threshold = NaN(data.T,1);
     threshold(threshold_indices) = connections_max;
 
-    f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.DCI);
@@ -708,7 +697,7 @@ function plot_indicators(data)
 
 end
 
-function plot_network(data)
+function plot_network(data,id)
 
     if (data.Groups == 0)
         group_colors = repmat(lines(1),data.N,1);
@@ -718,26 +707,26 @@ function plot_network(data)
         group_lines = lines(data.Groups);
 
         for i = 1:group_delimiters_len
-            del = data.GroupDelimiters(i);
+            group_delimiter = data.GroupDelimiters(i);
 
             if (i == 1)
-                group_colors(1:del,:) = repmat(group_lines(i,:),del,1);
+                group_colors(1:group_delimiter,:) = repmat(group_lines(i,:),group_delimiter,1);
             else
-                del_prev = data.GroupDelimiters(i-1) + 1;
-                group_colors(del_prev:del,:) = repmat(group_lines(i,:),del-del_prev+1,1);
+                group_delimiter_prev = data.GroupDelimiters(i-1) + 1;
+                group_colors(group_delimiter_prev:group_delimiter,:) = repmat(group_lines(i,:),group_delimiter - group_delimiter_prev + 1,1);
             end
 
             if (i == group_delimiters_len)
-                group_colors(del+1:end,:) = repmat(group_lines(i+1,:),data.N-del,1);
+                group_colors(group_delimiter+1:end,:) = repmat(group_lines(i+1,:),data.N - group_delimiter,1);
             end
         end
     end
     
     if (isempty(data.Capitalization))
-        weights = nanmean(data.Degrees,1);
+        weights = mean(data.Degrees,1,'omitnan');
         weights = weights ./ mean(weights);
     else
-        weights = mean(data.Capitalization,1);
+        weights = mean(data.Capitalization,1,'omitnan');
         weights = weights ./ mean(weights);
     end
 
@@ -755,7 +744,7 @@ function plot_network(data)
     x = [xy(i,1) xy(j,1)].';
     y = [xy(i,2) xy(j,2)].';
 
-    f = figure('Name','Connectedness Measures > Network Graph','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Network Graph','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub = subplot(100,1,10:100);
 
@@ -773,7 +762,7 @@ function plot_network(data)
             end
         hold off;
     else
-        group_delimiters_inc = data.GroupDelimiters + 1;
+        d_inc = data.GroupDelimiters + 1;
 
         lines_ref = NaN(data.Groups,1);
         lines_off = 1;
@@ -783,7 +772,7 @@ function plot_network(data)
                 group_color = group_colors(i,:);
                 line(xy(i,1),xy(i,2),'Color',group_color,'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * weights(i))));
 
-                if ((i == 1) || any(group_delimiters_inc == i))
+                if ((i == 1) || any(d_inc == i))
                     lines_ref(lines_off) = line(xy(i,1),xy(i,2),'Color',group_color,'LineStyle','none','Marker','.','MarkerSize',35);
                     lines_off = lines_off + 1;
                 end
@@ -809,17 +798,17 @@ function plot_network(data)
 
 end
 
-function plot_adjacency_matrix(data)
+function plot_adjacency_matrix(data,id)
 
-    a = data.AdjacencyMatrixAverage;
-    a(logical(eye(data.N))) = 0.5;
-    a = padarray(a,[1 1],'post');
+    am = data.AdjacencyMatrixAverage;
+    am(logical(eye(data.N))) = 0.5;
+    am = padarray(am,[1 1],'post');
 
     off = data.N + 0.5;
 
-    f = figure('Name','Connectedness Measures > Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
-    pcolor(a);
+    pcolor(am);
     colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
     axis image;
 
@@ -837,7 +826,7 @@ function plot_adjacency_matrix(data)
 
 end
 
-function plot_centralities(data)
+function plot_centralities(data,id)
 
     seq = 1:data.N;
     
@@ -851,10 +840,10 @@ function plot_centralities(data)
     ec_names = data.FirmNames(order);
     [kc,order] = sort(data.KatzCentralitiesAverage);
     kc_names = data.FirmNames(order);
-    [clustering_coefficients,order] = sort(data.ClusteringCoefficientsAverage);
-    clustering_coefficients_names = data.FirmNames(order);
+    [clc,order] = sort(data.ClusteringCoefficientsAverage);
+    clc_names = data.FirmNames(order);
 
-    f = figure('Name','Connectedness Measures > Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Connectedness Measures > Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,3,1);
     bar(sub_1,seq,bc,'FaceColor',[0.749 0.862 0.933]);
@@ -882,8 +871,8 @@ function plot_centralities(data)
     title('Katz Centrality');
 
     sub_6 = subplot(2,3,6);
-    bar(sub_6,seq,clustering_coefficients,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_6,'XTickLabel',clustering_coefficients_names);
+    bar(sub_6,seq,clc,'FaceColor',[0.749 0.862 0.933]);
+    set(sub_6,'XTickLabel',clc_names);
     title('Clustering Coefficient');
     
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
