@@ -130,29 +130,34 @@ setup = {
 };
 
 for i = 1:size(setup,1)
+    category = setup{i,1};
     enabled = setup{i,2};
+    analysis = setup{i,3};
+    run_function = setup{i,4};
     
-    if (enabled)
-        category = setup{i,1};
-        analysis = setup{i,3};
-        run_function = setup{i,4};
-        
-        pause(2);
-
-        temp = fullfile(path_base,['Templates' filesep() 'Template' category '.xlsx']);
-        out = fullfile(path_base,['Results' filesep() 'Results' category '.xlsx']);
-        [result,stopped] = run_function(data,temp,out,analysis);
-
-        if (stopped)
-            return;
-        end
-        
-        category_reference = ['result' lower(regexprep(category,'([A-Z])','_$1'))];
-
-        eval([category_reference ' = result;']);
-        clear('result','stopped');
-
-        mat = fullfile(path_base,['Results' filesep() 'Results' category '.mat']);
-        save(mat,category_reference);
+    if (~enabled)
+        continue;
     end
+    
+    if (~data.(['Supports' category]))
+        continue;
+    end
+
+    pause(2);
+
+    temp = fullfile(path_base,['Templates' filesep() 'Template' category '.xlsx']);
+    out = fullfile(path_base,['Results' filesep() 'Results' category '.xlsx']);
+    [result,stopped] = run_function(data,temp,out,analysis);
+
+    if (stopped)
+        return;
+    end
+
+    category_reference = ['result' lower(regexprep(category,'([A-Z])','_$1'))];
+
+    eval([category_reference ' = result;']);
+    clear('result','stopped');
+
+    mat = fullfile(path_base,['Results' filesep() 'Results' category '.mat']);
+    save(mat,category_reference);
 end
