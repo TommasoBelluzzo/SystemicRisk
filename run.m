@@ -1,7 +1,7 @@
 %% VERSION CHECK
 
-if (verLessThan('MATLAB','8.3'))
-    error('The minimum required Matlab version is R2014a.');
+if (verLessThan('MATLAB','8.4'))
+    error('The minimum required Matlab version is R2014b.');
 end
 
 %% CLEANUP
@@ -78,7 +78,7 @@ addpath(paths_base);
 
 %% DATASET
 
-binary_version = 1.0;
+dataset_version = 'v1.1';
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 [file_path,file_name,file_extension] = fileparts(file);
@@ -92,6 +92,7 @@ mat = fullfile(file_path,[file_name '.mat']);
 if (exist(mat,'file') == 2)
     file_dir = dir(file);
     file_lmd = datetime(file_dir.datenum,'ConvertFrom','datenum');
+    
     mat_dir = dir(mat);
     mat_lmd = datetime(mat_dir.datenum,'ConvertFrom','datenum');
     
@@ -105,14 +106,14 @@ else
 end
 
 if (dataset_process)
-    data = parse_dataset(file,'dd/MM/yyyy','QQ yyyy','P',3);
+    data = parse_dataset(file,dataset_version,'dd/MM/yyyy','QQ yyyy','P',3);
     save(mat,'data');
     analyze_dataset(data);
 else
     load(mat);
     
-    if (data.BinaryVersion ~= binary_version)
-        data = parse_dataset(file,'dd/MM/yyyy','QQ yyyy','P',3);
+    if (~strcmp(data.Version,dataset_version))
+        data = parse_dataset(file,dataset_version,'dd/MM/yyyy','QQ yyyy','P',3);
         save(mat,'data');
         analyze_dataset(data);
     end

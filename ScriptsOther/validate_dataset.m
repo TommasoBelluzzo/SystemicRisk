@@ -23,8 +23,10 @@ end
 
 function data = validate_dataset_internal(data,measures)
 
-    validate_field(data,'BinaryVersion',{'double'},{'real','finite','scalar','>=',1});
     validate_field(data,'TimeSeries',{'cellstr'},{'nonempty','size',[1 9]});
+
+	validate_field(data,'File',{'char'},{'nonempty','size',[1 NaN]});
+	validate_field(data,'Version',{'char'},{'nonempty','size',[1 NaN]});
 
     n = validate_field(data,'N',{'numeric'},{'scalar','integer','real','finite','>=',3});
     t = validate_field(data,'T',{'numeric'},{'scalar','integer','real','finite','>=',252});

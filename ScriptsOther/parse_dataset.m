@@ -1,5 +1,6 @@
 % [INPUT]
 % file = A string representing the full path to the Excel spreadsheet containing the dataset.
+% version = A string representing the version of the dataset.
 % date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except the balance sheet ones (optional, default='dd/MM/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
 % shares_type = A string (either 'P' for prices or 'R' for returns) representing the type of data included in the Shares sheet (optional, default='P').
@@ -15,6 +16,7 @@ function data = parse_dataset(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        ip.addRequired('version',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('date_format_base','dd/MM/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P','R'})));
@@ -25,16 +27,17 @@ function data = parse_dataset(varargin)
 
     ipr = ip.Results;
     [file,file_sheets] = validate_file(ipr.file);
+    version = validate_version(ipr.version);
     date_format_base = validate_date_format(ipr.date_format_base,true);
     date_format_balance = validate_date_format(ipr.date_format_balance,false);
     
     nargoutchk(1,1);
 
-    data = parse_dataset_internal(file,file_sheets,date_format_base,date_format_balance,ipr.shares_type,ipr.forward_rolling);
+    data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,ipr.shares_type,ipr.forward_rolling);
 
 end
 
-function data = parse_dataset_internal(file,file_sheets,date_format_base,date_format_balance,shares_type,forward_rolling)
+function data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,forward_rolling)
 
     if (~strcmp(file_sheets{1},'Shares'))
         error('The first sheet of the dataset file must be the ''Shares'' one.');
@@ -194,10 +197,12 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     separate_accounts = handle_firms_distress(defaults,separate_accounts,false);
 
     data = struct();
-    
-    data.BinaryVersion = 1.0;
+
     data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'Liabilities' 'LiabilitiesRolled' 'Returns' 'SeparateAccounts'};
 
+    data.File = file;
+    data.Version = version;
+    
     data.N = n;
     data.T = t;
 
@@ -235,6 +240,7 @@ function data = parse_dataset_internal(file,file_sheets,date_format_base,date_fo
     
  	data.SupportsComponent = true;
 	data.SupportsConnectedness = true;
+ 	data.SupportsCrossQuantilogram = true;
 	data.SupportsCrossSectional = supports_cross_sectional;
 	data.SupportsDefault = supports_default;
 	data.SupportsSpillover = true;
@@ -251,7 +257,7 @@ function date_format = validate_date_format(date_format,base)
         error(['The date format ''' date_format ''' is invalid.']);
     end
     
-    if (base && ~any(regexp(date_format, 'd{1,2}')))
+    if (base && ~any(regexp(date_format,'d{1,2}')))
         error('The base date format must define a daily frequency.');
     end
     
@@ -291,6 +297,14 @@ function [file,file_sheets] = validate_file(file)
         end
     end
 
+end
+
+function version = validate_version(version)
+
+    if (~any(regexp(version,'v\d+\.\d+')))
+        error('The version format is invalid.');
+    end
+    
 end
 
 %% PARSING
@@ -523,7 +537,6 @@ function [defaults,insolvencies] = detect_distress(returns,equity)
     threshold = round(t * 0.05,0);
     
     defaults = NaN(1,n);
-    insolvencies = NaN(1,n);
 
     for i = 1:n
         r = returns(:,i);
@@ -538,22 +551,28 @@ function [defaults,insolvencies] = detect_distress(returns,equity)
         if (((index_last + count_last - 1) == t) && (count_last >= threshold))
             defaults(i) = index_last;
         end
-        
-        eq = equity(:,i);
-        
-        f = find(diff([false; eq < 0; false] ~= 0));
-        indices = f(1:2:end-1);
+    end
+    
+    insolvencies = NaN(1,n);
+    
+    if (~isempty(equity))
+        for i = 1:n
+            eq = equity(:,i);
 
-        if (~isempty(indices))
-            counts = f(2:2:end) - indices;
+            f = find(diff([false; eq < 0; false] ~= 0));
+            indices = f(1:2:end-1);
 
-            index_last = indices(end);
-            count_last = counts(end);
+            if (~isempty(indices))
+                counts = f(2:2:end) - indices;
 
-            if (((index_last + count_last - 1) == numel(eq)) && (count_last >= threshold))
-                insolvencies(i) = index_last;
-            end
-        end   
+                index_last = indices(end);
+                count_last = counts(end);
+
+                if (((index_last + count_last - 1) == numel(eq)) && (count_last >= threshold))
+                    insolvencies(i) = index_last;
+                end
+            end   
+        end
     end
 
 end
