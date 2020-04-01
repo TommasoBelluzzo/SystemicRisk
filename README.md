@@ -2,27 +2,27 @@
 
 This script calculates and analyses the following risk measures:
 
-* `COMPONENT MEASURES`
+* **COMPONENT MEASURES**
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
   * `CATFIN` by [Allen et al. (2012)](https://doi.org/10.1093/rfs/hhs094)
   * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
   * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
   * `Principal Component Analysis`
-* `CONNECTEDNESS MEASURES`
+* **CONNECTEDNESS MEASURES**
   * `DCI (Dynamic Causality Index)` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `"In & Out" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `"In & Out - Other" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `Network Centralities`
-* `CROSS-SECTIONAL MEASURES`
+* **CROSS-SECTIONAL MEASURES**
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
-* `DEFAULT MEASURES`
+* **DEFAULT MEASURES**
   * `D2C (Distance To Capital)` by [Chan-Lau & Sy (2007)](https://doi.org/10.1057/palgrave.jbr.2350056)
   * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
   * `SCCA (Systemic Contingent Claims Analysis)` by [Jobst & Gray (2013)](https://doi.org/10.5089/9781475572780.001)
-* `SPILLOVER MEASURES`
+* **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Net Spillovers` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
