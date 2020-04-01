@@ -2,6 +2,17 @@
 
 This script calculates and analyses the following risk measures:
 
+* `Component Measures`
+  * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
+  * `CATFIN` by [Allen et al. (2012)](https://doi.org/10.1093/rfs/hhs094)
+  * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
+  * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
+  * `Principal Component Analysis`
+* `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
+  * `DCI (Dynamic Causality Index)`
+  * `"In & Out" Connections`
+  * `"In & Out - Other" Connections`
+  * `Network Centralities`
 * `Cross-Sectional Measures`
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
@@ -11,21 +22,10 @@ This script calculates and analyses the following risk measures:
   * `D2C (Distance To Capital)` by [Chan-Lau & Sy (2007)](https://doi.org/10.1057/palgrave.jbr.2350056)
   * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
   * `SCCA (Systemic Contingent Claims Analysis)` by [Jobst & Gray (2013)](https://doi.org/10.5089/9781475572780.001)
-* `Connectedness Measures` proposed in [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `DCI (Dynamic Causality Index)`
-  * `"In & Out" Connections`
-  * `"In & Out - Other" Connections`
-  * `Network Centralities`
 * `Spillover Measures` proposed in [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `SI (Spillover Index)`
   * `Spillovers From & To`
   * `Net Spillovers`
-* `Component Measures`
-  * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
-  * `CATFIN` by [Allen et al. (2012)](https://doi.org/10.1093/rfs/hhs094)
-  * `Correlation Surprise` by [Kinlaw & Turkington (2012)](https://doi.org/10.2139/ssrn.2133396)
-  * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
-  * `Principal Component Analysis`
 
 Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source for systemic risk measurement.
 
