@@ -13,6 +13,9 @@ This script calculates and analyses the following risk measures:
   * `"In & Out" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `"In & Out - Other" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `Network Centralities`
+* **CROSS-QUANTILOGRAM MEASURES**
+  * `Full Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
+  * `Partial Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
 * **CROSS-SECTIONAL MEASURES**
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
@@ -116,16 +119,23 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * removing rows with NaNs or filling the gaps through interpolation.
 
 * It is not mandatory to include financial time series used by measures that are excluded from computations. Optional financial time series used by measures that are included in computations can be omitted, as long as their related contributions aren't necessary. Below a list of required and optional time series for every category of measures:
-  * **Cross-Sectional Measures:**
-    * *Required:* shares, market capitalization, assets, equity.
-    * *Optional:* separate accounts, state variables.
+
+  * **Component Measures:**
+    * *Required:* shares.
+    * *Optional:* none.
   * **Connectedness Measures:**
     * *Required:* shares.
     * *Optional:* market capitalization, groups.
-  * **Spillover Measures:**
+  * **Cross-Quantilogram Measures:**
     * *Required:* shares.
+    * *Optional:* state variables.
+  * **Cross-Sectional Measures:**
+    * *Required:* shares, market capitalization, assets, equity.
+    * *Optional:* separate accounts, state variables.
+  * **Default Measures:**
+    * *Required:* shares, market capitalization, cds, assets, equity.
     * *Optional:* none.
-  * **Component Measures:**
+  * **Spillover Measures:**
     * *Required:* shares.
     * *Optional:* none.
   
