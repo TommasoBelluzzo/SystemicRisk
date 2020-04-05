@@ -158,7 +158,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
-* If the dataset parsing process is too slow, the best way to solve the issue is to provide an unformatted Excel spreadsheet.
+* If the dataset parsing process is too slow, the best way to solve the issue is to provide a standard unformatted Excel spreadsheet (`.xlsx`) or a binary Excel spreadsheet (`.xlsb`).
 
 * Connectedness, cross-quantilogram and spillover measures may take very long time to finish in presence of huge datasets. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores used by parallel computing.
 
