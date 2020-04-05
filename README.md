@@ -118,7 +118,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
 
-* It is not mandatory to include financial time series used by measures that are excluded from computations. Optional financial time series used by measures that are included in computations can be omitted, as long as their related contributions aren't necessary. Below a list of required and optional time series for every category of measures:
+* It is not mandatory to include financial time series used by excluded measures. Optional financial time series used by included measures can be omitted, as long as their related contribution isn't necessary. Below a list of required and optional time series for each category of measures:
 
   * **Component Measures:**
     * *Required:* shares.
@@ -156,9 +156,9 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
-* If the dataset parsing process is too slow, the best way to solve the issue is to provide an unformatted Excel spreadsheet. Another possible workaround is to modify the calls to the `readtable` function by adding the name-value pair argument `Basic` set to `true`.
+* If the dataset parsing process is too slow, the best way to solve the issue is to provide an unformatted Excel spreadsheet.
 
-* While stochastic measures are very fast to compute even for huge datasets, connectedness and spillover measures may take very long time to finish. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores available for parallel computing.
+* Connectedness, cross-quantilogram and spillover measures may take very long time to finish in presence of huge datasets. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores used by parallel computing.
 
 ## Screenshots
 
