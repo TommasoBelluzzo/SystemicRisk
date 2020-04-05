@@ -140,6 +140,8 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Optional:* none.
   
 * If the `Shares` sheet contains returns instead of prices, values must be expressed on a logarithmic scale. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk-free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
+
+* Firms whose `Shares` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be defaulted. Firms whose `Equity` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be insolvent. This allows the scripts to exclude them from computations starting from a certain offset.
   
 * Groups are based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
