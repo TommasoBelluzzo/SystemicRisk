@@ -113,7 +113,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 #### Notes
 
-* The minimum allowed dataset must include the `Shares` sheet with a benchmark index and at least `3` firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is `252`, which translates into a full business year. They must have been previously validated and preprocessed by:
+* The minimum allowed dataset must include the `Shares` sheet with a benchmark index and at least `3` firms. Observations must have a daily frequency and, in order to run consistent calculations, their minimum required amount is `253`, which translates into a full business year plus an additional observation at the beginning of the time series. They must have been previously validated and preprocessed by:
   * discarding illiquid series (unless necessary);
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
