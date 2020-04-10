@@ -23,12 +23,12 @@ function [result,stopped] = run_default(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
-        ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0,'<=',1}));
-        ip.addOptional('lst',0.6,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0}));
-        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.03,'<=',0.20}));
+        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
+        ip.addOptional('lst',0.6,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'scalar'}));
+        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
         ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM','GC'})));
-        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
+        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -50,12 +50,12 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     result = [];
     stopped = false;
     e = [];
-    
+
     data = data_initialize(data,bandwidth,rr,lst,car,op,k);
     n = data.N;
     t = data.T;
     
-    step_1 = 0.15;
+    step_1 = max(round((n * 50) / ((n * 50) + t),1),0.2);
     step_2 = 1 - step_1;
     
     bar = waitbar(0,'Initializing default measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
@@ -69,7 +69,6 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     try
 
         r = max(0,data.RiskFreeRate);
-        
 
         firms_data = extract_data_by_firm(data,{'Equity' 'Capitalization' 'Liabilities' 'CDS'});
         
@@ -92,7 +91,7 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
             futures_results{future_index} = value;
             
             futures_max = max([future_index futures_max]);
-            waitbar(step_1 * ((futures_max - 1) /  n),bar);
+            waitbar(step_1 * ((futures_max - 1) / n),bar);
 
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -212,7 +211,11 @@ function [result,stopped] = run_default_internal(data,temp,out,bandwidth,rr,lst,
     
     if (analyze)
         safe_plot(@(id)plot_distances(data,id));
+        safe_plot(@(id)plot_sequence(data,'D2D',id));
+        safe_plot(@(id)plot_sequence(data,'D2C',id));
         safe_plot(@(id)plot_scca(data,id));
+        safe_plot(@(id)plot_sequence(data,'SCCA Expected Losses',id));
+        safe_plot(@(id)plot_sequence(data,'SCCA Contingent Liabilities',id));
     end
     
     result = data;
@@ -244,8 +247,8 @@ function data = data_initialize(data,bandwidth,rr,lst,car,op,k)
     data.LabelsSheet = {['D2D (LST=' lst_label ')'] ['D2C (LST=' lst_label ', CAR=' car_label ')'] 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
     data.LabelsSheetSimple = {'D2D' 'D2C' 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
 
-    data.D2C = NaN(data.T,data.N);
     data.D2D = NaN(data.T,data.N);
+    data.D2C = NaN(data.T,data.N);
 
     data.SCCAAlphas = NaN(data.T,data.N);
     data.SCCAExpectedLosses = NaN(data.T,data.N);
@@ -337,7 +340,7 @@ function out_temp = validate_template(out_temp)
     sheets = {'D2D' 'D2C' 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
 
     if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
     if (ispc())
@@ -426,6 +429,8 @@ end
 %% MEASURES
 
 function window_results = main_loop_1(firm_data,offset,r,st,dt,lcar,op)
+
+    window_results = struct();
 
     cap = max(1e-6,firm_data(1:offset,2));
     lb = max(1e-6,firm_data(1:offset,3));
@@ -665,7 +670,7 @@ function plot_distances(data,id)
     y_ticks = floor(y_min):0.5:ceil(y_max);
     y_ticks_labels = arrayfun(@(x)sprintf('%.1f',x),y_ticks,'UniformOutput',false);
 
-    f = figure('Name','Default Measures > Distances','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Default Measures > Distances','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,1);
     plot(sub_1,data.DatesNum,distances(:,1),'Color',[0.000 0.447 0.741]);
@@ -791,5 +796,55 @@ function plot_scca(data,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+function plot_sequence(data,target,id)
+
+    [~,index] = ismember(target,data.LabelsSheetSimple);
+    plots_title = data.LabelsSheet(index);
+    
+    if (strcmp(plots_title,data.LabelsSheetSimple(index)))
+        plots_title = [];
+    end
+
+    x = data.DatesNum;
+    x_limits = [x(1) x(end)];
+    
+    y = data.(strrep(target,' ',''));
+    y_min = min(min(y));
+    y_max = max(max(y));
+    y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
+    
+    core = struct();
+
+    core.N = data.N;
+    core.PlotFunction = @(ax,x,y)plot(ax,x,y);
+    core.SequenceFunction = @(y,offset)y(:,offset);
+	
+    core.OuterTitle = 'Default Measures';
+    core.InnerTitle = [target ' Time Series'];
+    core.Labels = data.FirmNames;
+
+    core.Plots = 1;
+    core.PlotsTitle = plots_title;
+    core.PlotsType = 'H';
+    
+    core.X = x;
+    core.XDates = data.MonthlyTicks;
+    core.XLabel = 'Time';
+    core.XLimits = x_limits;
+    core.XRotation = 45;
+    core.XTick = [];
+    core.XTickLabels = @(x)sprintf('%.2f',x);
+
+    core.Y = y;
+    core.YLabel = 'Value';
+    core.YLimits = y_limits;
+    core.YRotation = [];
+    core.YTick = [];
+    core.YTickLabels = [];
+
+    sequential_plot(core,id);
 
 end

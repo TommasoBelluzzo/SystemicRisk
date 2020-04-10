@@ -3,9 +3,9 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% significance = A float (0.00,0.20] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% significance = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
 % robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
-% k = A float (0.00,0.20] representing the Granger-causality threshold for no causal relationships (optional, default=0.06).
+% k = A float (0.00,0.20] representing the Granger-causality threshold for non-causal relationships (optional, default=0.06).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -21,10 +21,10 @@ function [result,stopped] = run_connectedness(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
-        ip.addOptional('significance',0.05,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0,'<=',0.20}));
+        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('significance',0.05,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.1,'scalar'}));
         ip.addOptional('robust',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
-        ip.addOptional('k',0.06,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0,'<=',0.20}));
+        ip.addOptional('k',0.06,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.20,'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

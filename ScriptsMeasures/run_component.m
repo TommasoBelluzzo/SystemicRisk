@@ -21,10 +21,10 @@ function [result,stopped] = run_component(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
-        ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
-        ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.2,'<=',0.8}));
-        ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>',0.5,'<',1}));
+        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
+        ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.2,'<=',0.8,'scalar'}));
+        ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'real','finite','>',0.5,'<',1,'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -48,15 +48,14 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     e = [];
     
     data = data_initialize(data,bandwidth,k,f,q);
-    n = data.N;
     t = data.T;
-    
-    rng_settings = rng();
-    rng(0);
+
+    rng(double(bitxor(uint16('T'),uint16('B'))));
+	cleanup_1 = onCleanup(@()rng('default'));
     
     bar = waitbar(0,'Initializing component measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
-    cleanup = onCleanup(@()delete(bar));
+    cleanup_2 = onCleanup(@()delete(bar));
 
     pause(1);
     waitbar(0,bar,'Calculating component measures...');
@@ -64,11 +63,8 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
 
     try
 
-        rw = 1 ./ (repmat(n,t,1) - sum(isnan(data.Returns),2));
-        data.CATFINReturns = sum(data.Returns .* repmat(rw,1,n),2,'omitnan');
-
         windows_fr = extract_rolling_windows(data.Returns,bandwidth,false);
-        windows_pr = extract_rolling_windows(data.CATFINReturns,bandwidth,false);
+        windows_pr = extract_rolling_windows(data.PortfolioReturns,bandwidth,false);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
@@ -103,9 +99,7 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
         cancel(futures);
     catch
     end
-    
-    rng(rng_settings);
-    
+
     if (~isempty(e))
         delete(bar);
         rethrow(e);
@@ -163,10 +157,9 @@ function data = data_initialize(data,bandwidth,k,f,q)
     k_label = sprintf('%.0f%%',(data.K * 100));
     data.Labels = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
     data.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    data.LabelsVaR = {'Non-Parametric' 'GPD' 'SGED'};
-    
-    data.CATFINReturns = NaN(data.T,1);
-    data.CATFINVaR = NaN(data.T,3);
+    data.LabelsVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
+
+    data.CATFINVaR = NaN(data.T,4);
     data.CATFINFirstCoefficients = NaN(1,3);
     data.CATFINFirstExplained = NaN;
     data.CATFIN = NaN(data.T,1);
@@ -200,13 +193,17 @@ function data = data_finalize(data,results)
         data.PCAExplainedSums(i,:) = fliplr([cumsum([window_result.PCAExplained(1) window_result.PCAExplained(2) window_result.PCAExplained(3)]) 100]);
         data.PCAScores{i} = window_result.PCAScores;
     end
-    
-    data.AbsorptionRatio = min(max(data.AbsorptionRatio,0),1);
+
+    x = 1:t;
+    nan_indices = isnan(data.CATFINVaR(:,4));
+    data.CATFINVaR(nan_indices,4) = spline(x(~nan_indices),data.CATFINVaR(~nan_indices,4),x(nan_indices));
     
     [coefficients,scores,explained] = calculate_pca(data.CATFINVaR,false);
     data.CATFIN = scores(:,1);
     data.CATFINFirstCoefficients = coefficients(:,1).';
     data.CATFINFirstExplained = explained(1);
+
+    data.AbsorptionRatio = min(max(data.AbsorptionRatio,0),1);
 
     r = data.Returns;
     nan_indices = isnan(r);
@@ -353,13 +350,13 @@ end
 
 function window_results = main_loop(window_fr,window_pr,components,a)
 
+    window_results = struct();
+
     nan_indices = sum(isnan(window_fr),1) > 0;
     window_fr(:,nan_indices) = [];
 
-    window_results = struct();
-
-    [var_np,var_gpd,var_sged] = calculate_catfin_var(window_pr,a,0.98,0.05);
-    window_results.CATFINVaR = -1 .* min(0,[var_np var_gpd var_sged]);
+    [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(window_pr,a,0.98,0.05);
+    window_results.CATFINVaR = -1 .* min(0,[var_np var_gpd var_gev var_sged]);
     
     [ar,cs,ti] = calculate_component_indicators(window_fr,components);
     window_results.AbsorptionRatio = ar;
@@ -373,48 +370,84 @@ function window_results = main_loop(window_fr,window_pr,components,a)
 
 end
 
-function [var_np,var_gpd,var_sged] = calculate_catfin_var(data,a,g,u)
+function [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(x,a,g,u)
 
-    t = size(data,1);
+    t = size(x,1);
 
     w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
-    h = sortrows([data w],1,'ascend');
+    h = sortrows([x w],1,'ascend');
     csw = cumsum(h(:,2));
     cswa = find(csw >= a);
     var_np = h(cswa(1),1);  
 
     k = round(t / (t * u),0);
-    data_neg = -data; 
-    data_sneg = sort(data_neg);
-    u = data_sneg(t - k);
-    excess = data_neg(data_neg > u) - u;
+    x_neg = -x; 
+    x_neg_sorted = sort(x_neg);
+    threshold = x_neg_sorted(t - k);
+    excess = x_neg(x_neg > threshold) - threshold;
     gpd_params = gpfit(excess);
     [xi,beta,zeta] = deal(gpd_params(1),gpd_params(2),k / t);
-    var_gpd = -(u + (beta / xi) * ((((1 / zeta) * a) ^ -xi) - 1));
+    var_gpd = -(threshold + (beta / xi) * ((((1 / zeta) * a) ^ -xi) - 1));
+
+    k = round(nthroot(t,1.81),0);
+    block_maxima = find_block_maxima(x,t,k);
+    theta = find_extremal_index(x,t,k);
+    gev_params = gevfit(block_maxima);
+    [xi,sigma,mu] = deal(gev_params(1),gev_params(2),gev_params(3));
+    var_gev = -(mu - (sigma / xi) * (1 - (-(t / k) * theta * log(1 - a))^-xi));
 
     try
-        sged_params = mle(data,'PDF',@sgedpdf,'Start',[mean(data) std(data) 0 1],'LowerBound',[-Inf 0 -1 0],'UpperBound',[Inf Inf 1 Inf]);
+        sged_params = mle(x,'PDF',@sgedpdf,'Start',[mean(x) std(x) 0 1],'LowerBound',[-Inf 0 -1 0],'UpperBound',[Inf Inf 1 Inf]);
         [mu,sigma,lambda,kappa] = deal(sged_params(1),sged_params(2),sged_params(3),sged_params(4));
         var_sged = fsolve(@(x)sgedcdf(x,mu,sigma,lambda,kappa)-a,0,optimset(optimset(@fsolve),'Diagnostics','off','Display','off'));
     catch
-        var_sged = var_gpd;
+        var_sged = NaN;
+    end
+    
+    function block_maxima = find_block_maxima(x,t,k)
+
+        c = floor(t / k);
+
+        block_maxima = zeros(k,1);
+        i = 1;
+
+        for j = 1:k-1
+            block_maxima(j) = max(x(i:i+c-1));
+            i = i + c;
+        end
+
+        block_maxima(k) = max(x(i:end));
+
+    end
+
+    function theta = find_extremal_index(x,t,k)
+
+        c = t - k + 1;
+        y = zeros(c,1);
+
+        for i = 1:c
+            y(i,1) = (1 / t) * sum(x <= max(x(i:i+k-1)));
+        end
+
+        theta = ((1 / c) * sum(-k * log(y)))^-1;
+
     end
 
 end
 
-function [ar,cs,ti] = calculate_component_indicators(data,components)
+function [ar,cs,ti] = calculate_component_indicators(x,components)
 
-    zero_indices = find(~data);
-    data(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
+    zero_indices = find(~x);
+    x(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
     
-    novar_indices = find(var(data,1) == 0);
-    data(:,novar_indices) = data(:,novar_indices) + ((-9e-9 .* rand(size(data(:,novar_indices)))) + 1e-8);
+    novar_indices = find(var(x,1) == 0);
+    x(:,novar_indices) = x(:,novar_indices) + ((-9e-9 .* rand(size(x(:,novar_indices)))) + 1e-8);
 
-    c = cov(data);
+    c = cov(x);
     bm = eye(size(c)) .* diag(c);
     e = eigs(c,size(c,1));
 
-    v = data(end,:) - mean(data(1:end-1,:),1);
+    v = x(end,:) - mean(x(1:end-1,:),1);
     vt = v.';
 
     ar = sum(e(1:components)) / trace(c);
@@ -423,22 +456,22 @@ function [ar,cs,ti] = calculate_component_indicators(data,components)
 
 end
 
-function [coefficients,scores,explained] = calculate_pca(data,normalize)
+function [coefficients,scores,explained] = calculate_pca(x,normalize)
 
     if (normalize)
-        for i = 1:size(data,2)
-            c = data(:,i);
+        for i = 1:size(x,2)
+            c = x(:,i);
 
             m = mean(c,'omitnan');
 
             s = std(c,'omitnan');
             s(s == 0) = 1;
 
-            data(:,i) = (c - m) ./ s;
+            x(:,i) = (c - m) ./ s;
         end
     end
 
-    [coefficients,scores,~,~,explained] = pca(data,'Economy',false);
+    [coefficients,scores,~,~,explained] = pca(x,'Economy',false);
 
 end
 
@@ -478,14 +511,14 @@ end
 
 function plot_indicators_catfin(data,id)
 
-    r = max(0,-data.CATFINReturns);
+    r = max(0,-data.PortfolioReturns);
 
     y_max = max(max([-data.CATFINVaR r]));
     y_limits = [0 ((abs(y_max) * 1.1) * sign(y_max))];
 
     f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
-    sub_1 = subplot(2,3,[1 3]);
+    sub_1 = subplot(2,4,[1 4]);
     plot(sub_1,data.DatesNum,data.CATFIN,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
     t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',data.K * 100) ', PCA.EV=' sprintf('%.2f%%',data.CATFINFirstExplained) ')']);
@@ -499,17 +532,17 @@ function plot_indicators_catfin(data,id)
         datetick(sub_1,'x','yyyy','KeepLimits');
     end
     
-    for i = 1:3
-        sub = subplot(2,3,i + 3);
+    for i = 1:4
+        sub = subplot(2,4,i + 4);
         plot(sub,data.DatesNum,r,'Color',[0.000 0.447 0.741]);
         hold on;
             plot(sub,data.DatesNum,data.CATFINVaR(:,i),'Color',[1 0.4 0.4]);
         hold off;
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45,'YLim',y_limits);
-        t1 = title(sub,[data.LabelsVaR{i} ' Value-at-Risk (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
-        set(t1,'Units','normalized');
-        t1_position = get(t1,'Position');
-        set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
+        ti = title(sub,[data.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
+        set(ti,'Units','normalized');
+        ti_position = get(ti,'Position');
+        set(ti,'Position',[0.4783 ti_position(2) ti_position(3)]);
 
         if (data.MonthlyTicks)
             datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -538,8 +571,8 @@ function plot_indicators_other(data,id)
         ti_th(i) = quantile(data.TurbulenceIndex(max(1,i-data.Bandwidth):min(data.T,i+data.Bandwidth)),data.Q);
     end
 
-    ti_ma = [data.TurbulenceIndex(1,:); filter(alpha,[1 (alpha - 1)],data.TurbulenceIndex(2:end,:),(1 - alpha) * data.TurbulenceIndex(1,:))];
-	cs_ma = [data.CorrelationSurprise(1,:); filter(alpha,[1 (alpha - 1)],data.CorrelationSurprise(2:end,:),(1 - alpha) * data.CorrelationSurprise(1,:))];
+    ti_ma = [data.TurbulenceIndex(1); filter(alpha,[1 (alpha - 1)],data.TurbulenceIndex(2:end),(1 - alpha) * data.TurbulenceIndex(1))];
+	cs_ma = [data.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],data.CorrelationSurprise(2:end),(1 - alpha) * data.CorrelationSurprise(1))];
 
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 

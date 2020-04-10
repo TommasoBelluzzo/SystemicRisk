@@ -6,7 +6,7 @@
 % steps = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
 % lags = An integer [1,3] representing the number of lags of the VAR model in the variance decomposition (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon of the variance decomposition (optional, default=4).
-% fevd = A string (either 'G' for Generalized or 'O' for Orthogonal) representing the FEVD type of the variance decomposition (optional, default='G').
+% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type of the variance decomposition (optional, default='G').
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -22,10 +22,10 @@ function [result,stopped] = run_spillover(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
-        ip.addOptional('steps',10,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
-        ip.addOptional('lags',2,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',3}));
-        ip.addOptional('h',4,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1,'<=',10}));
+        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('steps',10,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',10,'scalar'}));
+        ip.addOptional('lags',2,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',3,'scalar'}));
+        ip.addOptional('h',4,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',10,'scalar'}));
         ip.addOptional('fevd','G',@(x)any(validatestring(x,{'G','O'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -51,13 +51,13 @@ function [result,stopped] = run_spillover_internal(data,temp,out,bandwidth,steps
 
     indices = unique([1:steps:data.T data.T]);
     data = data_initialize(data,bandwidth,steps,indices,lags,h,fevd);
-
-    rng_settings = rng();
-    rng(0);
+    
+    rng(double(bitxor(uint16('T'),uint16('B'))));
+	cleanup_1 = onCleanup(@()rng('default'));
     
     bar = waitbar(0,'Initializing spillover measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
-    cleanup = onCleanup(@()delete(bar));
+    cleanup_2 = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating spillover measures...');
@@ -103,8 +103,6 @@ function [result,stopped] = run_spillover_internal(data,temp,out,bandwidth,steps
     catch
     end
     
-    rng(rng_settings);
-    
     if (~isempty(e))
         delete(bar);
         rethrow(e);
@@ -141,6 +139,7 @@ function [result,stopped] = run_spillover_internal(data,temp,out,bandwidth,steps
     if (analyze)
         safe_plot(@(id)plot_index(data,id));
         safe_plot(@(id)plot_spillovers(data,id));
+        safe_plot(@(id)plot_sequence(data,id));
     end
     
     result = data;
@@ -262,7 +261,7 @@ function temp = validate_template(temp)
     sheets = {'Index' 'Spillovers From' 'Spillovers To' 'Spillovers Net'};
 
     if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
     if (ispc())
@@ -395,7 +394,11 @@ function vd = variance_decomposition(data,lags,h,fevd)
     if (d > 0)
         mu = ones(d,1) .* mean(data,1);
         sigma = ones(d,1) .* std(data,1);
-        rho = nearest_spd(corr(data));
+
+        rho = corr(data);
+        rho(isnan(rho)) = 0;
+        rho = nearest_spd(rho);
+
         z = (normrnd(mu,sigma,[d n]) * chol(rho,'upper')) + (0.01 .* randn(d,n));
 
         data = [data; z];
@@ -615,5 +618,64 @@ function plot_spillovers(data,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+function plot_sequence(data,id)
+
+    ft = [data.SpilloversFrom data.SpilloversTo];
+
+    x = data.DatesNum;
+    x_limits = [x(1) x(end)];
+    
+    y = cat(3,data.SpilloversFrom,data.SpilloversTo,data.SpilloversNet);
+    
+    y_min_ft = min(min(ft));
+    y_max_ft = max(max(ft));
+    y_min_net = min(min(data.SpilloversNet));
+    y_max_net = max(max(data.SpilloversNet));
+    
+    y_limits = zeros(3,2);
+    y_limits(1:2,:) = repmat([((abs(y_min_ft) * 1.1) * sign(y_min_ft)) ((abs(y_max_ft) * 1.1) * sign(y_max_ft))],2,1);
+    y_limits(3,:) = [((abs(y_min_net) * 1.1) * sign(y_min_net)) ((abs(y_max_net) * 1.1) * sign(y_max_net))];
+
+    core = struct();
+
+    core.N = data.N;
+    core.PlotFunction = @(ax,x,y)plot_function(ax,x,y);
+    core.SequenceFunction = @(y,offset)[y(:,offset,1) y(:,offset,2) y(:,offset,3)];
+	
+    core.OuterTitle = 'Cross-Sectional Measures';
+    core.InnerTitle = 'Spillovers Time Series';
+    core.Labels = data.FirmNames;
+
+    core.Plots = 3;
+    core.PlotsTitle = {'From' 'To' 'Net'};
+    core.PlotsType = 'V';
+    
+    core.X = x;
+    core.XDates = data.MonthlyTicks;
+    core.XLabel = 'Time';
+    core.XLimits = x_limits;
+    core.XRotation = 45;
+    core.XTick = [];
+    core.XTickLabels = @(x)sprintf('%.2f',x);
+
+    core.Y = y;
+    core.YLabel = 'Value';
+    core.YLimits = y_limits;
+    core.YRotation = [];
+    core.YTick = [];
+    core.YTickLabels = [];
+
+    sequential_plot(core,id);
+
+    function plot_function(subs,x,y)
+
+        for i = 1:3
+            plot(subs(i),x,y(:,i),'Color',[0.000 0.447 0.741]);
+        end
+
+    end
 
 end

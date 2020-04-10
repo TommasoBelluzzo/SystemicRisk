@@ -21,10 +21,10 @@ function [result,stopped] = run_cross_sectional(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.90,'<=',0.99}));
-        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.1,'<=',0.6}));
-        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0.03,'<=',0.20}));
-        ip.addOptional('sf',0.40,@(x)validateattributes(x,{'double'},{'scalar','real','finite','>=',0,'<=',1}));
+        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
+        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.1,'<=',0.6,'scalar'}));
+        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
+        ip.addOptional('sf',0.40,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -165,6 +165,10 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,d,car,s
         safe_plot(@(id)plot_systemic_averages(data,id));
         safe_plot(@(id)plot_correlations(data,id));
         safe_plot(@(id)plot_rankings(data,id));
+        safe_plot(@(id)plot_sequence(data,'CoVaR',id));
+        safe_plot(@(id)plot_sequence(data,'Delta CoVaR',id));
+        safe_plot(@(id)plot_sequence(data,'MES',id));
+        safe_plot(@(id)plot_sequence(data,'SRISK',id));
     end
     
     result = data;
@@ -286,7 +290,7 @@ function temp = validate_template(temp)
     sheets = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SRISK' 'Averages'};
     
     if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
     if (ispc())
@@ -605,41 +609,52 @@ end
 function plot_idiosyncratic_averages(data,id)
 
     averages = data.Averages(:,1:3);
-    
-    y_min = min(min(averages));
-    y_max = max(max(averages(:,1)));
-    y_limits_beta = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
+    beta = averages(:,1);
+    others = averages(:,2:3);
 
-    y_min = min(min(averages));
-    y_max = max(max(averages(:,2:3)));
-    y_limits_other = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
-    
-    y_limits = [y_limits_beta; y_limits_other; y_limits_other];
+    y_max = max(max(beta));
+    y_limits_beta = [0 ((abs(y_max) * 1.1) * sign(y_max))];
+
+    y_min = min(min(others));
+    y_max = max(max(others));
+    y_limits_others = [((abs(y_min) * 0.9) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
 
     f = figure('Name','Cross-Sectional Measures > Idiosyncratic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
-    subs = NaN(3,1);
+    sub_1 = subplot(2,2,[1 3]);
+    plot(sub_1,data.DatesNum,beta,'Color',[0.000 0.447 0.741]);
+    xlabel(sub_1,'Time');
+    ylabel(sub_1,'Value');
+    set(sub_1,'YLim',y_limits_beta);
+    title(sub_1,data.Labels(1));
+    
+    sub_2 = subplot(2,2,2);
+    plot(sub_2,data.DatesNum,averages(:,2),'Color',[0.000 0.447 0.741]);
+    xlabel(sub_2,'Time');
+    ylabel(sub_2,'Value');
+    set(sub_2,'YLim',y_limits_others);
+    title(sub_2,data.Labels(2));
+    
+    sub_3 = subplot(2,2,4);
+    plot(sub_3,data.DatesNum,averages(:,3),'Color',[0.000 0.447 0.741]);
+    xlabel(sub_3,'Time');
+    ylabel(sub_3,'Value');
+    set(sub_3,'YLim',y_limits_others);
+    title(sub_3,data.Labels(3));
+    
+    set([sub_1 sub_2 sub_3],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
+    set(sub_3,'YTick',get(sub_2,'YTick'),'YTickLabel',get(sub_2,'YTickLabel'),'YTickLabelMode',get(sub_2,'YTickLabelMode'),'YTickMode',get(sub_2,'YTickMode'));
 
-    for i = 1:3
-        sub = subplot(1,3,i);
-        plot(sub,data.DatesNum,averages(:,i));
-        xlabel(sub,'Time');
-        ylabel(sub,'Value');
-        set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits(i,:),'XTickLabelRotation',45);
-        title(sub,data.Labels(i));
-        
-        if (data.MonthlyTicks)
-            datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
-        else
-            datetick(sub,'x','yyyy','KeepLimits');
-        end
-        
-        subs(i) = sub;
+    if (data.MonthlyTicks)
+        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+        datetick(sub_3,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        datetick(sub_1,'x','yyyy','KeepLimits');
+        datetick(sub_2,'x','yyyy','KeepLimits');
+        datetick(sub_3,'x','yyyy','KeepLimits');
     end
 
-    y_labels = arrayfun(@(x)sprintf('%.0f',x),get(subs(end),'YTick'),'UniformOutput',false);
-    set([subs(2) subs(3)],'YTickLabel',y_labels);
-    
     t = figure_title('Idiosyncratic Averages');
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
@@ -664,7 +679,7 @@ function plot_systemic_averages(data,id)
     
     for i = 1:4
         sub = subplot(2,2,i);
-        plot(sub,data.DatesNum,averages(:,i));
+        plot(sub,data.DatesNum,averages(:,i),'Color',[0.000 0.447 0.741]);
         xlabel(sub,'Time');
         ylabel(sub,'Value');
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits,'XTickLabelRotation',45);
@@ -694,12 +709,14 @@ end
 
 function plot_correlations(data,id)
 
+    mu = mean(data.Averages,1);
+    sigma = std(data.Averages,1);
+    
     [rho,pval] = corr(data.Averages);
-    m = mean(data.Averages,1);
-    s = std(data.Averages,1);
+    rho(isnan(rho)) = 0;
 
-    z = bsxfun(@minus,data.Averages,m);
-    z = bsxfun(@rdivide,z,s);
+    z = bsxfun(@minus,data.Averages,mu);
+    z = bsxfun(@rdivide,z,sigma);
     z_limits = [nanmin(z(:)) nanmax(z(:))];
     
     n = numel(data.LabelsSimple) - 1;
@@ -723,8 +740,8 @@ function plot_correlations(data,id)
             ax_ij = ax(i,j);
             
             z_limits_current = 1.1 .* z_limits;
-            x_limits = m(j) + (z_limits_current * s(j));
-            y_limits = m(i) + (z_limits_current * s(i));
+            x_limits = mu(j) + (z_limits_current * sigma(j));
+            y_limits = mu(i) + (z_limits_current * sigma(i));
 
             set(get(big_ax,'Parent'),'CurrentAxes',ax_ij);
             set(ax_ij,'XLim',x_limits,'XTick',[],'YLim',y_limits,'YTick',[]);
@@ -847,5 +864,51 @@ function plot_rankings(data,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+function plot_sequence(data,target,id)
+
+    [~,index] = ismember(target,data.LabelsSimple);
+    plots_title = data.Labels(index);
+
+    x = data.DatesNum;
+    x_limits = [x(1) x(end)];
+    
+    y = data.(strrep(target,' ',''));
+    y_min = min(min(y));
+    y_max = max(max(y));
+    y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
+    
+    core = struct();
+
+    core.N = data.N;
+    core.PlotFunction = @(ax,x,y)plot(ax,x,y,'Color',[0.000 0.447 0.741]);
+    core.SequenceFunction = @(y,offset)y(:,offset);
+	
+    core.OuterTitle = 'Cross-Sectional Measures';
+    core.InnerTitle = [target ' Time Series'];
+    core.Labels = data.FirmNames;
+
+    core.Plots = 1;
+    core.PlotsTitle = plots_title;
+    core.PlotsType = 'H';
+    
+    core.X = x;
+    core.XDates = data.MonthlyTicks;
+    core.XLabel = 'Time';
+    core.XLimits = x_limits;
+    core.XRotation = 45;
+    core.XTick = [];
+    core.XTickLabels = @(x)sprintf('%.2f',x);
+
+    core.Y = y;
+    core.YLabel = 'Value';
+    core.YLimits = y_limits;
+    core.YRotation = [];
+    core.YTick = [];
+    core.YTickLabels = [];
+
+    sequential_plot(core,id);
 
 end
