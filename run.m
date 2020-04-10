@@ -78,7 +78,8 @@ addpath(paths_base);
 
 %% DATASET
 
-dataset_version = 'v1.1';
+dataset_version = 'v1.2';
+dataset_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 [file_path,file_name,file_extension] = fileparts(file);
@@ -99,7 +100,11 @@ if (exist(mat,'file') == 2)
     if (file_lmd > mat_lmd)
         dataset_process = true;
     else
-        dataset_process = false;
+        load(mat);
+        
+        if (~strcmp(data.Version,dataset_version))
+            dataset_process = true;
+        end
     end
 else
     dataset_process = true;
@@ -109,32 +114,22 @@ if (dataset_process)
     data = parse_dataset(file,dataset_version,'dd/MM/yyyy','QQ yyyy','P',3);
     save(mat,'data');
     analyze_dataset(data);
-else
-    load(mat);
-    
-    if (~strcmp(data.Version,dataset_version))
-        data = parse_dataset(file,dataset_version,'dd/MM/yyyy','QQ yyyy','P',3);
-        save(mat,'data');
-        analyze_dataset(data);
-    end
 end
 
 %% MEASURES
 
 setup = {
-    % NAME            ENABLED  ANALYZE  FUNCTION
-    'CrossSectional'  true     true     @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
-    'Default'         true     true     @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,'BSM',0.95,analysis);
-    'Connectedness'   true     true     @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,false,0.06,analysis);
-    'Spillover'       true     true     @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
-    'Component'       true     true     @(data,temp,file,analysis)run_component(data,temp,file,252,0.99,0.2,0.75,analysis);
+    % NAME               ENABLED  ANALYZE  FUNCTION
+    'Component'          true     true     @(data,temp,file,analysis)run_component(data,temp,file,252,0.99,0.2,0.75,analysis);
+    'Connectedness'      true     true     @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,false,0.06,analysis);
+    'CrossQuantilogram'  true     true     @(data,temp,file,analysis)run_cross_quantilogram(data,temp,file,252,0.05,60,'SB',0.05,100,analysis);
+    'CrossSectional'     true     true     @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
+    'Default'            true     true     @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,'BSM',0.95,analysis);
+    'Spillover'          true     true     @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
 };
 
 for i = 1:size(setup,1)
-    category = setup{i,1};
-    enabled = setup{i,2};
-    analysis = setup{i,3};
-    run_function = setup{i,4};
+    [category,enabled,analysis,run_function] = setup{i,:};
     
     if (~enabled)
         continue;
