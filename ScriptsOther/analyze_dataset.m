@@ -23,30 +23,30 @@ end
 
 function analyze_dataset_internal(data)
 
-    plot_index(data);
-    plot_boxes('Returns',data.Returns,data.FirmNames);
+    safe_plot(@(id)plot_index(data,id));
+    safe_plot(@(id)plot_boxes('Returns',data.Returns,data.FirmNames,id));
     
     if (~isempty(data.Capitalization))
-        plot_boxes('Market Capitalization',data.Capitalization,data.FirmNames);
+        safe_plot(@(id)plot_boxes('Market Capitalization',data.Capitalization,data.FirmNames,id));
     end
     
     if (~isempty(data.CDS))
-        plot_risk_free_rate(data);
-        plot_boxes('CDS Spreads',data.CDS,data.FirmNames);
+        safe_plot(@(id)plot_risk_free_rate(data,id));
+        safe_plot(@(id)plot_boxes('CDS Spreads',data.CDS,data.FirmNames,id));
     end
     
     if (~isempty(data.Assets) && ~isempty(data.Equity))
-        plot_boxes('Assets',data.Assets,data.FirmNames);
-        plot_boxes('Equity',data.Equity,data.FirmNames);
+        safe_plot(@(id)plot_boxes('Assets',data.Assets,data.FirmNames,id));
+        safe_plot(@(id)plot_boxes('Equity',data.Equity,data.FirmNames,id));
     end
 
 end
 
-function plot_boxes(name,x,firm_names)
+function plot_boxes(name,x,firm_names,id)
 
     n = numel(firm_names);
 
-    f = figure('Name',['Dataset > ' name],'Units','normalized','Position',[100 100 0.85 0.85]);    
+    f = figure('Name',['Dataset > ' name],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);    
 
     boxplot(x,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
@@ -75,7 +75,7 @@ function plot_boxes(name,x,firm_names)
 
 end
 
-function plot_index(data)
+function plot_index(data,id)
 
     index = data.Index;
 
@@ -89,7 +89,7 @@ function plot_index(data)
     index_ske = skewness(index,0);
     index_kur = kurtosis(index,0);
 
-    f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,data.DatesNum,data.Index);
@@ -133,12 +133,12 @@ function plot_index(data)
 
 end
 
-function plot_risk_free_rate(data)
+function plot_risk_free_rate(data,id)
 
     rfr = data.RiskFreeRate;
     rfr_pc = [0; (((rfr(2:end) - rfr(1:end-1)) ./ rfr(1:end-1)) .* 100)];
 
-    f = figure('Name','Dataset > Risk-Free Rate','Units','normalized','Position',[100 100 0.85 0.85]);
+    f = figure('Name','Dataset > Risk-Free Rate','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
     plot(sub_1,data.DatesNum,rfr);
