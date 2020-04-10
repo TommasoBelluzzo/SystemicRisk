@@ -1,5 +1,5 @@
 % [INPUT]
-% s = A string representing the figure title.
+% t = A string representing the figure title.
 %
 % [OUTPUT]
 % t = The handler of the figure title.

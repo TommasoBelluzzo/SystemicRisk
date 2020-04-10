@@ -44,7 +44,13 @@ function safe_plot_internal(handle)
         handle(id);
     catch e
         delete(findobj('Type','Figure','Tag',id));
-        warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' newline() e.message]);
+        
+        r = getReport(e,'Extended','Hyperlinks','off');
+        r = split(r,newline());
+        r = cellfun(@(x)['  ' x],r,'UniformOutput',false);
+        r = strjoin(r,newline());
+
+        warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' newline() newline() r newline()]);
     end
 
 end

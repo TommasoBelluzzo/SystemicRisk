@@ -3,7 +3,7 @@
 % time_series = A string or a cell array of strings defining the time series to extract.
 %
 % [OUTPUT]
-% firms_data = A vector containing n t-by-k numeric matrices, where n is the number of firms, t is the number of observations and k is the number of time series.
+% firms_data = A vector containing n float t-by-k matrices, where n is the number of firms, t is the number of observations and k is the number of time series.
 
 function firms_data = extract_data_by_firm(varargin)
 

@@ -1,10 +1,10 @@
 % [INPUT]
 % offsets = A vector containing the distress offset of each firm; offsets are set to NaN in absence of distress.
-% data = A numeric t-by-n matrix containing the time series.
+% data = A float t-by-n matrix containing the time series.
 % lagged = A boolean indicating whether the time series is lagged.
 %
 % [OUTPUT]
-% data = A numeric t-by-n matrix containing the original time series in which distressed observations are replaced with NaNs.
+% data = A float t-by-n matrix containing the original time series in which distressed observations are replaced with NaNs.
 
 function data = handle_firms_distress(varargin)
 
@@ -12,8 +12,8 @@ function data = handle_firms_distress(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('offsets',@(x)validateattributes(x,{'numeric'},{'vector','nonempty','real'}));
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','real'}));
+        ip.addRequired('offsets',@(x)validateattributes(x,{'double'},{'real','vector','nonempty'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','2d'}));
         ip.addRequired('lagged',@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

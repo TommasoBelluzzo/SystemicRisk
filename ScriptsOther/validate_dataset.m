@@ -4,12 +4,18 @@
 
 function data = validate_dataset(varargin)
 
+    persistent measures;
+    
+    if (isempty(measures))
+        measures = {'component','connectedness','cross-quantilogram','cross-sectional','default','spillover'};
+    end
+    
     persistent ip;
 
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addOptional('measures','',@(x)any(validatestring(x,{'component','connectedness','cross-sectional','default','spillover'})));
+        ip.addOptional('measures','',@(x)any(validatestring(x,measures)));
     end
 
     ip.parse(varargin{:});
@@ -28,10 +34,10 @@ function data = validate_dataset_internal(data,measures)
 	validate_field(data,'File',{'char'},{'nonempty','size',[1 NaN]});
 	validate_field(data,'Version',{'char'},{'nonempty','size',[1 NaN]});
 
-    n = validate_field(data,'N',{'numeric'},{'scalar','integer','real','finite','>=',3});
-    t = validate_field(data,'T',{'numeric'},{'scalar','integer','real','finite','>=',252});
+    n = validate_field(data,'N',{'double'},{'real','finite','integer','>=',3,'scalar'});
+    t = validate_field(data,'T',{'double'},{'real','finite','integer','>=',252,'scalar'});
 
-    validate_field(data,'DatesNum',{'numeric'},{'integer','real','finite','>',0,'nonempty','size',[t 1]});
+    validate_field(data,'DatesNum',{'double'},{'real','finite','integer','>',0,'nonempty','size',[t 1]});
     validate_field(data,'DatesStr',{'cellstr'},{'nonempty','size',[t 1]});
     validate_field(data,'MonthlyTicks',{'logical'},{'scalar'});
 
@@ -40,6 +46,7 @@ function data = validate_dataset_internal(data,measures)
     
     validate_field(data,'Index',{'double'},{'real','finite','nonempty','size',[t 1]});
     validate_field(data,'Returns',{'double'},{'real','nanfinite','nonempty','size',[t n]});
+    validate_field(data,'PortfolioReturns',{'double'},{'real','nanfinite','nonempty','size',[t 1]});
 
     validate_field(data,'Capitalization',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
     validate_field(data,'CapitalizationLagged',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
@@ -56,16 +63,16 @@ function data = validate_dataset_internal(data,measures)
     state_variables = validate_field(data,'StateVariables',{'double'},{'optional','real','finite','nonempty','size',[t NaN]});
     validate_field(data,'StateVariablesNames',{'cellstr'},{'optional','nonempty','size',[1 size(state_variables,2)]});
 
-    groups = validate_field(data,'Groups',{'numeric'},{'scalar','integer','real','finite','>=',0});
+    groups = validate_field(data,'Groups',{'double'},{'real','finite','integer','>=',0,'scalar'});
 
     if (groups == 0)
-        validate_field(data,'GroupDelimiters',{'numeric'},{'size',[0,0]});
+        validate_field(data,'GroupDelimiters',{'double'},{'size',[0,0]});
     else
-        validate_field(data,'GroupDelimiters',{'numeric'},{'integer','real','finite','positive','increasing','nonempty','size',[(groups - 1) 1]});
+        validate_field(data,'GroupDelimiters',{'double'},{'real','finite','integer','positive','increasing','nonempty','size',[(groups - 1) 1]});
     end
 
     if (groups == 0)
-        validate_field(data,'GroupNames',{'numeric'},{'size',[0 0]});
+        validate_field(data,'GroupNames',{'double'},{'size',[0 0]});
     else
         validate_field(data,'GroupNames',{'cellstr'},{'nonempty','size',[groups 1]});
     end
@@ -113,7 +120,7 @@ function value = validate_field(data,field_name,field_type,field_validator)
         empty = false;
 
         try
-            validateattributes(value,{'numeric'},{'size',[0 0]});
+            validateattributes(value,{'double'},{'size',[0 0]});
             empty = true;
         catch
         end

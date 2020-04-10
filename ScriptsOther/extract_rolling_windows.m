@@ -1,10 +1,10 @@
 % [INPUT]
-% data = A numeric t-by-n matrix containing the time series.
+% data = A float t-by-n matrix containing the time series.
 % bandwidth = An integer [21,252] representing the dimension of each rolling window.
 % truncate = A boolean that indicates whether to exclude all the rolling windows with a dimension less than the bandwidth (optional, default=true).
 %
 % [OUTPUT]
-% windows = A vector of numeric bandwidth-by-n matrices representing the rolling windows.
+% windows = A vector of float bandwidth-by-n matrices representing the rolling windows.
 %
 % [NOTES]
 % If the number of observations is less than or equal to the specified bandwidth, a single rolling window containing all the observations is returned.
@@ -15,8 +15,8 @@ function windows = extract_rolling_windows(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty'}));
-        ip.addRequired('bandwidth',@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',21,'<=',252}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'2d','nonempty'}));
+        ip.addRequired('bandwidth',@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
         ip.addRequired('truncate',@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

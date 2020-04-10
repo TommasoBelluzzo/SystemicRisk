@@ -20,7 +20,7 @@ function data = parse_dataset(varargin)
         ip.addOptional('date_format_base','dd/MM/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P','R'})));
-        ip.addOptional('forward_rolling',3,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',0,'<=',6}));
+        ip.addOptional('forward_rolling',3,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',0,'<=',6,'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -85,7 +85,6 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     n = width(tab_shares) - 2;
     t = t - 1;
 
-    dates_str = cellstr(datetime(tab_shares{:,1},'InputFormat',date_format_base));
     dates_num = datenum(tab_shares{:,1});
     tab_shares.Date = [];
     
@@ -176,6 +175,9 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
         end
     end
     
+    dates_num = dates_num(2:end);
+	dates_str = cellstr(datetime(dates_num,'ConvertFrom','datenum'));
+    
     if (~isempty(assets) && ~isempty(equity))
         [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling);
     end
@@ -196,6 +198,9 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     liabilities_rolled = handle_firms_distress(defaults,liabilities_rolled,false);
     separate_accounts = handle_firms_distress(defaults,separate_accounts,false);
 
+    rw = 1 ./ (repmat(n,t,1) - sum(isnan(returns),2));
+    portfolio_returns = sum(returns .* repmat(rw,1,n),2,'omitnan');
+
     data = struct();
 
     data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'Liabilities' 'LiabilitiesRolled' 'Returns' 'SeparateAccounts'};
@@ -206,8 +211,8 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     data.N = n;
     data.T = t;
 
-    data.DatesNum = dates_num(2:end);
-    data.DatesStr = dates_str(2:end);
+    data.DatesNum = dates_num;
+    data.DatesStr = dates_str;
     data.MonthlyTicks = length(unique(year(data.DatesNum))) <= 3;
 
     data.IndexName = index_name;
@@ -215,6 +220,7 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     
     data.Index = index;
     data.Returns = returns;
+    data.PortfolioReturns = portfolio_returns;
     
     data.Capitalization = capitalization;
     data.CapitalizationLagged = capitalization_lagged;
@@ -312,7 +318,15 @@ end
 function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_names,check_negatives)
 
     if (verLessThan('MATLAB','9.1'))
-        tab_partial = readtable(file,'Sheet',index);
+        if (ispc())
+            try
+            	tab_partial = readtable(file,'Sheet',index,'Basic',true);
+            catch
+                tab_partial = readtable(file,'Sheet',index);
+            end
+        else
+            tab_partial = readtable(file,'Sheet',index);
+        end
 
         if (~all(cellfun(@isempty,regexp(tab_partial.Properties.VariableNames,'^Var\d+$','once'))))
             error(['The ''' name ''' table contains unnamed columns.']);
@@ -347,7 +361,15 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
         options = setvaropts(options,'Date','InputFormat',date_format);
 
-        tab_partial = readtable(file,options);
+        if (ispc())
+            try
+            	tab_partial = readtable(file,options,'Basic',true);
+            catch
+                tab_partial = readtable(file,options);
+            end
+        else
+            tab_partial = readtable(file,options);
+        end
     end
     
     if (any(any(ismissing(tab_partial))))
@@ -361,6 +383,10 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
     t_current = height(tab_partial);
     dates_num_current = datenum(tab_partial.Date);
     tab_partial.Date = [];
+
+    if (t_current ~= numel(unique(cellstr(datestr(dates_num,date_format)))))
+        error(['The ''' name ''' sheet contains an invalid number of observation dates.']);
+    end
     
     if (t_current ~= numel(unique(dates_num_current)))
         error(['The ''' name ''' sheet contains duplicate observation dates.']);
@@ -396,7 +422,15 @@ end
 function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
 
     if (verLessThan('MATLAB','9.1'))
-        tab = readtable(file,'Sheet',index);
+        if (ispc())
+            try
+            	tab = readtable(file,'Sheet',index,'Basic',true);
+            catch
+                tab = readtable(file,'Sheet',index);
+            end
+        else
+            tab = readtable(file,'Sheet',index);
+        end
         
         if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
             error(['The ''' name ''' table contains unnamed columns.']);
@@ -419,7 +453,16 @@ function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
         end
 
         options = setvartype(options,{'char' 'double'});
-        tab = readtable(file,options);
+        
+        if (ispc())
+            try
+            	tab = readtable(file,options,'Basic',true);
+            catch
+                tab = readtable(file,options);
+            end
+        else
+            tab = readtable(file,options);
+        end
     end
     
     if (any(any(ismissing(tab))))
@@ -449,7 +492,15 @@ end
 function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_names,check_negatives)
 
     if (verLessThan('MATLAB','9.1'))
-        tab = readtable(file,'Sheet',index);
+        if (ispc())
+            try
+            	tab = readtable(file,'Sheet',index,'Basic',true);
+            catch
+                tab = readtable(file,'Sheet',index);
+            end
+        else
+            tab = readtable(file,'Sheet',index);
+        end
         
         if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
             error(['The ''' name ''' table contains unnamed columns.']);
@@ -484,7 +535,15 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
         options = setvaropts(options,'Date','InputFormat',date_format);
 
-        tab = readtable(file,options);
+        if (ispc())
+            try
+            	tab = readtable(file,options,'Basic',true);
+            catch
+                tab = readtable(file,options);
+            end
+        else
+            tab = readtable(file,options);
+        end
     end
     
     if (any(any(ismissing(tab))))
@@ -580,21 +639,19 @@ end
 function [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling)
 
     liabilities = assets - equity;
-    
+
     if (forward_rolling > 0)
-        liabilities_unique = unique(liabilities,'rows','stable');
-
-        dates_num = dates_num(2:end);
         [~,a] = unique(cellstr(datestr(dates_num,'mm/yyyy')),'stable');
+        liabilities_monthly = liabilities(a,:);
 
-        seq = a(1:forward_rolling:numel(a)) - 1;
-        seq(end+1) = numel(dates_num);
+        indices_seq = [a(1:forward_rolling:numel(a)) - 1; numel(dates_num)];
+        liabilities_seq = liabilities_monthly(1:forward_rolling:numel(a),:);
 
         liabilities_rolled = NaN(size(liabilities));
 
-        for i = 2:numel(seq)
-            indices = (seq(i-1) + 1):seq(i);
-            liabilities_rolled(indices,:) = repmat(liabilities_unique(i-1,:),numel(indices),1);
+        for i = 2:numel(indices_seq)
+            indices = (indices_seq(i-1) + 1):indices_seq(i);
+            liabilities_rolled(indices,:) = repmat(liabilities_seq(i-1,:),numel(indices),1);
         end
     else
         liabilities_rolled = liabilities;

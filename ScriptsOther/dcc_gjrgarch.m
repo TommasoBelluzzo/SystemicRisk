@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A numeric t-by-n matrix containing the model input.
+% data = A float t-by-n matrix containing the model input.
 % dcc_q = An integer greater than or equal to 1 representing the lag of the innovation term in the DCC estimator (optional, default=1).
 % dcc_p = An integer greater than or equal to 1 representing the lag of the lagged correlation matrices in the DCC estimator (optional, default=1).
 % arch_q = Optional argument (default=1) with two possible types:
@@ -24,11 +24,11 @@ function [params,p,h,e] = dcc_gjrgarch(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'numeric'},{'2d','nonempty','real','finite'}));
-        ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
-        ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','real','finite','>=',1}));
-        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'numeric'},{'vector','nonempty','real','finite','>=',1}));
-        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'numeric'},{'vector','nonempty','real','finite','>=',1}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','finite','2d','nonempty'}));
+        ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
+        ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
+        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'double'},{'real','finite','>=',1,'vector','nonempty'}));
+        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'double'},{'real','finite','>=',1,'vector','nonempty'}));
     end
 
     ip.parse(varargin{:});
