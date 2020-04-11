@@ -125,7 +125,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Optional:* none.
   * **Connectedness Measures:**
     * *Required:* shares.
-    * *Optional:* market capitalization, groups.
+    * *Optional:* groups.
   * **Cross-Quantilogram Measures:**
     * *Required:* shares.
     * *Optional:* state variables.
