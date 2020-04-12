@@ -19,6 +19,7 @@ This script calculates and analyses the following risk measures:
 * **CROSS-SECTIONAL MEASURES**
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
+  * `SES (Systemic Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
 * **DEFAULT MEASURES**
