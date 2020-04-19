@@ -161,7 +161,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 * If the dataset parsing process is too slow, the best way to solve the issue is to provide a standard unformatted Excel spreadsheet (`.xlsx`) or a binary Excel spreadsheet (`.xlsb`).
 
-* Connectedness, cross-quantilogram and spillover measures may take very long time to finish in presence of huge datasets. The performance of computations may vary from machine to machine, depending on the CPU processing speed and the number of cores used by parallel computing.
+* Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
 ## Screenshots
 
