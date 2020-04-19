@@ -25,6 +25,7 @@ This script calculates and analyses the following risk measures:
 * **DEFAULT MEASURES**
   * `D2C (Distance To Capital)` by [Chan-Lau & Sy (2007)](https://doi.org/10.1057/palgrave.jbr.2350056)
   * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
+  * `DIP (Distress Insurance Premium)` by [Black et al. (2012)](https://doi.org/10.2139/ssrn.2181645)
   * `SCCA (Systemic Contingent Claims Analysis)` by [Jobst & Gray (2013)](https://doi.org/10.5089/9781475572780.001)
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
