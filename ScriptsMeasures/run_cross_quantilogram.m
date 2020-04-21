@@ -61,13 +61,7 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
     n = data.N;
     t = data.T;
 
-    if (strcmp(data.CIM,'SB'))
-        step_iter = data.CIP;
-    else
-        step_iter = numel(max(round(data.CIP * t,0),1):t);
-    end
-
-    step_1 = max((n * data.Lags * step_iter) / ((n * data.Lags * step_iter) + (t * n * step_iter)),0.2);
+    step_1 = 0.2;
     step_2 = 1 - step_1;
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
@@ -258,6 +252,9 @@ end
 
 function data = data_initialize(data,bandwidth,a,lags,ci_m,ci_s,ci_p,ci_v)
 
+    n = data.N;
+    t = data.T;
+
     pi = ~isempty(data.StateVariables);
 
     data.A = a;
@@ -269,16 +266,16 @@ function data = data_initialize(data,bandwidth,a,lags,ci_m,ci_s,ci_p,ci_v)
     data.Lags = lags;
     data.PartialsIncluded = pi;
 
-    data.CQFullFrom = NaN(lags,data.N,3);
-    data.CQFullTo = NaN(lags,data.N,3);
-    data.CQFullFromWindows = NaN(data.T,3);
-    data.CQFullToWindows = NaN(data.T,3);
+    data.CQFullFrom = NaN(lags,n,3);
+    data.CQFullTo = NaN(lags,n,3);
+    data.CQFullFromWindows = NaN(t,3);
+    data.CQFullToWindows = NaN(t,3);
     
     if (pi)
-        data.CQPartialFrom = NaN(lags,data.N,3);
-        data.CQPartialTo = NaN(lags,data.N,3);
-        data.CQPartialFromWindows = NaN(data.T,3);
-        data.CQPartialToWindows = NaN(data.T,3);
+        data.CQPartialFrom = NaN(lags,n,3);
+        data.CQPartialTo = NaN(lags,n,3);
+        data.CQPartialFromWindows = NaN(t,3);
+        data.CQPartialToWindows = NaN(t,3);
     end
 
 end
@@ -806,7 +803,7 @@ function [cq,cv] = calculate_stationary_bootstrap(x,a,k,s,b)
 
     cqc = cq_sb - cq;
     cv = [min(0,gumbel_quantile(cqc,s)) max(0,gumbel_quantile(cqc,1 - s))];
-    
+
 end
 
 function q = gumbel_quantile(x,p)
@@ -833,25 +830,26 @@ function indices = indices_bootstrap(n,g)
 
     zi = find(~u(2:n));
     indices(zi + 1) = indices(zi) + 1;
+
     fi = indices > n;
     indices(fi) = indices(fi) - n;
 
 end
 
-function block_length = ppw_optimal_block_length(x)
+function bl = ppw_optimal_block_length(x)
 
     [t,n] = size(x);
 
     k = max(sqrt(log10(t)),5);
     c = 2 * sqrt(log10(t) / t);
-    
+
     b_max = ceil(min(3 * sqrt(t),t / 3));
     m_max = ceil(sqrt(t)) + k;
 
-    block_length = zeros(n,2);
+    bl = zeros(n,2);
 
-	for i = 1:n
-        x_i = x(:,i);
+    for ppw_i = 1:n
+        x_i = x(:,ppw_i);
 
         p1 = m_lag(x_i,m_max);
         p1 = p1(m_max+1:end,:);
@@ -870,26 +868,26 @@ function block_length = ppw_optimal_block_length(x)
         else
             m_hat = p3(1,1);
         end
-        
+
         m = min(2 * m_hat,m_max);
 
         if (m > 0)
-            kk = (-m:m).';
-       
+            mm = (-m:m).';
+
             p1 = m_lag(x_i,m);
             p1 = p1(m+1:end,:);
             p1 = cov([x_i(m+1:end),p1]);
 
             act = sortrows([-(1:m).' p1(2:end,1)],1);
-            auto_covariance = [act(:,2); p1(:,1)];
-            
-            kkm = kk ./ m;
-            kernel_weights = ((abs(kkm) >= 0) .* (abs(kkm) < 0.5)) + (2 .* (1 - abs(kkm)) .* (abs(kkm) >= 0.5) .* (abs(kkm) <= 1));
+            ac = [act(:,2); p1(:,1)];
 
-            acw = kernel_weights .* auto_covariance;
+            mmn = mm ./ m;
+            kernel_weights = ((abs(mmn) >= 0) .* (abs(mmn) < 0.5)) + (2 .* (1 - abs(mmn)) .* (abs(mmn) >= 0.5) .* (abs(mmn) <= 1));
+
+            acw = kernel_weights .* ac;
             acw_ss = sum(acw)^2;
-            
-            g_hat = sum(acw .* abs(kk));
+
+            g_hat = sum(acw .* abs(mm));
             dcb_hat = (4/3) * acw_ss;
             dsb_hat = 2 * acw_ss;
 
@@ -898,19 +896,19 @@ function block_length = ppw_optimal_block_length(x)
             bl_vl = min((b_comp1 / dsb_hat)^(1/3) * b_comp2,b_max);
             bl_cb = min((b_comp1 / dcb_hat)^(1/3) * b_comp2,b_max);
 
-            block_length(i,:) = [bl_vl bl_cb];
+            bl(ppw_i,:) = [bl_vl bl_cb];
         else
-            block_length(i,:) = 1;
+            bl(ppw_i,:) = 1;
         end
-	end
+    end
     
     function l = m_lag(x,n)
 
-        xn = numel(x);
-        l = ones(xn,n);
+        mn = numel(x);
+        l = ones(mn,n);
 
-        for j = 1:n
-            l(j+1:xn,j) = x(1:xn-j,1);
+        for ml_i = 1:n
+            l(ml_i+1:mn,ml_i) = x(1:mn-ml_i,1);
         end
 
     end
@@ -938,10 +936,6 @@ function plot_sequence(data,target,id)
         y = [data.CQFullFrom(:) data.CQFullTo(:)];
     end
 
-    y_min = min(min(y));
-    y_max = max(max(y));
-    y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
-
     core = struct();
 
     core.N = data.N;
@@ -966,7 +960,7 @@ function plot_sequence(data,target,id)
 
     core.Y = cat(3,data.(['CQ' target 'From']),data.(['CQ' target 'To']));
     core.YLabel = 'Value';
-    core.YLimits = y_limits;
+    core.YLimits = find_plot_limits(y,0.1);
     core.YRotation = [];
     core.YTick = [];
     core.YTickLabels = @(x)sprintf('%.2f',x);
@@ -1015,12 +1009,9 @@ function plot_windows(data,target,id)
     to_cq_above = NaN(data.T,1);
     to_cq_above(above_indices) = to_cq(above_indices);
 
-    text = [target ' Cross-Quantilograms (Windows)'];
+    text = [target ' Cross-Quantilograms (Windows EWMA)'];
 
-    y = [from_cq to_cq];
-    y_min = min(min(min(y)),-0.1);
-    y_max = min(max(max(y)),1.0);
-    y_limits = [((abs(y_min) * 1.1) * sign(y_min)) ((abs(y_max) * 1.1) * sign(y_max))];
+    y_limits = find_plot_limits([from_cq to_cq],0.1);
 
     f = figure('Name',['Cross-Quantilogram Measures > ' text],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -1066,9 +1057,7 @@ function plot_windows(data,target,id)
         datetick(sub_2,'x','yyyy','KeepLimits');
     end
 
-    t = figure_title(text);
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title(text);
     
     pause(0.01);
     frame = get(f,'JavaFrame');

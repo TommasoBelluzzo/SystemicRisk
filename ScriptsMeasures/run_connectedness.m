@@ -147,35 +147,38 @@ end
 
 function data = data_initialize(data,bandwidth,significance,robust,k)
 
+    n = data.N;
+    t = data.T;
+
     data.Bandwidth = bandwidth;
     data.K = k;
     data.Robust = robust;
     data.Significance = significance;
     
-    data.AdjacencyMatrices = cell(data.T,1);
-    data.DCI = NaN(data.T,1);
-    data.ConnectionsInOut = NaN(data.T,1);
-    data.ConnectionsInOutOther = NaN(data.T,1);
-    data.BetweennessCentralities = NaN(data.T,data.N);
-    data.ClosenessCentralities = NaN(data.T,data.N);
-    data.DegreeCentralities = NaN(data.T,data.N);
-    data.EigenvectorCentralities = NaN(data.T,data.N);
-    data.KatzCentralities = NaN(data.T,data.N);
-    data.ClusteringCoefficients = NaN(data.T,data.N);
-    data.DegreesIn = NaN(data.T,data.N);
-    data.DegreesOut = NaN(data.T,data.N);
-    data.Degrees = NaN(data.T,data.N);
+    data.AdjacencyMatrices = cell(t,1);
+    data.DCI = NaN(t,1);
+    data.ConnectionsInOut = NaN(t,1);
+    data.ConnectionsInOutOther = NaN(t,1);
+    data.BetweennessCentralities = NaN(t,n);
+    data.ClosenessCentralities = NaN(t,n);
+    data.DegreeCentralities = NaN(t,n);
+    data.EigenvectorCentralities = NaN(t,n);
+    data.KatzCentralities = NaN(t,n);
+    data.ClusteringCoefficients = NaN(t,n);
+    data.DegreesIn = NaN(t,n);
+    data.DegreesOut = NaN(t,n);
+    data.Degrees = NaN(t,n);
 
-    data.AdjacencyMatrixAverage = [];
-    data.BetweennessCentralitiesAverage = [];
-    data.ClosenessCentralitiesAverage = [];
-    data.DegreeCentralitiesAverage = [];
-    data.EigenvectorCentralitiesAverage = [];
-    data.KatzCentralitiesAverage = [];
-    data.ClusteringCoefficientsAverage = [];
-    data.DegreesInAverage = [];
-    data.DegreesOutAverage = [];
-    data.DegreesAverage = [];
+    data.AdjacencyMatrixAverage = NaN(n,n);
+    data.BetweennessCentralitiesAverage = NaN(1,n);
+    data.ClosenessCentralitiesAverage = NaN(1,n);
+    data.DegreeCentralitiesAverage = NaN(1,n);
+    data.EigenvectorCentralitiesAverage = NaN(1,n);
+    data.KatzCentralitiesAverage = NaN(1,n);
+    data.ClusteringCoefficientsAverage = NaN(1,n);
+    data.DegreesInAverage = NaN(1,n);
+    data.DegreesOutAverage = NaN(1,n);
+    data.DegreesAverage = NaN(1,n);
 
 end
 
@@ -201,13 +204,10 @@ function data = data_finalize(data,window_results)
         data.Degrees(i,:) = futures_result.Degrees;
     end
 
-    am_avg = sum(cat(3,data.AdjacencyMatrices{:}),3) ./ t;
-    am_threshold = mean(mean(am_avg));
-    am_avg(am_avg < am_threshold) = 0;
-    am_avg(am_avg >= am_threshold) = 1;
-    data.AdjacencyMatrixAverage = am_avg;
+    am = calculate_average_adjacency_matrix(data.AdjacencyMatrices);
+    data.AdjacencyMatrixAverage = am;
     
-    [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am_avg);
+    [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am);
     data.BetweennessCentralitiesAverage = bc;
     data.ClosenessCentralitiesAverage = cc;
     data.DegreeCentralitiesAverage = dc;
@@ -341,6 +341,17 @@ function window_results = main_loop(window,significance,robust,group_delimiters)
     window_results.DegreesIn = deg_in;
     window_results.DegreesOut = deg_out;
     window_results.Degrees = deg;
+
+end
+
+function am = calculate_average_adjacency_matrix(ams)
+
+    am = sum(cat(3,ams{:}),3) ./ numel(ams);
+
+    threshold = mean(mean(am));
+
+    am(am < threshold) = 0;
+    am(am >= threshold) = 1;
 
 end
 
@@ -651,7 +662,7 @@ function plot_indicators(data,id)
     f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.DCI);
+    plot(sub_1,data.DatesNum,smooth_data(data.DCI));
     hold on;
         plot(sub_1,data.DatesNum,repmat(data.K,[data.T 1]),'Color',[1 0.4 0.4]);
     hold off;
@@ -663,11 +674,11 @@ function plot_indicators(data,id)
     sub_2 = subplot(2,1,2);
     area_1 = area(sub_2,data.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
     hold on;
-        area_2 = area(sub_2,data.DatesNum,data.ConnectionsInOut,'EdgeColor','none','FaceColor','b');
+        area_2 = area(sub_2,data.DatesNum,smooth_data(data.ConnectionsInOut),'EdgeColor','none','FaceColor','b');
         if (data.Groups == 0)
             area_3 = area(sub_2,data.DatesNum,NaN(data.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         else
-            area_3 = area(sub_2,data.DatesNum,data.ConnectionsInOutOther,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_3 = area(sub_2,data.DatesNum,smooth_data(data.ConnectionsInOutOther),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
     set(sub_2,'YLim',[0 connections_max]);
@@ -687,9 +698,7 @@ function plot_indicators(data,id)
     
     set([sub_1 sub_2],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
     
-    t = figure_title('Indicators');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Indicators');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -722,16 +731,9 @@ function plot_network(data,id)
         end
     end
     
-    if (isempty(data.Capitalization))
-        weights = mean(data.Degrees,1,'omitnan');
-        weights = weights ./ mean(weights);
-    else
-        weights = mean(data.Capitalization,1,'omitnan');
-        weights = weights ./ mean(weights);
-    end
-
-	weights_min = min(weights);
-	weights = (weights - weights_min) ./ (max(weights) - min(weights));
+	weights = mean(data.Degrees,1,'omitnan');
+	weights = weights ./ mean(weights);
+	weights = (weights - min(weights)) ./ (max(weights) - min(weights));
     weights = (weights .* 3.75) + 0.25;
     
     theta = linspace(0,(2 * pi),(data.N + 1)).';
@@ -788,9 +790,7 @@ function plot_network(data,id)
     labels = text((xy(:,1) .* 1.075), (xy(:,2) .* 1.075),data.FirmNames,'FontSize',10);
     set(labels,{'Rotation'},num2cell(theta * (180 / pi())));
 
-    t = figure_title('Network Graph');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Network Graph');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -816,9 +816,7 @@ function plot_adjacency_matrix(data,id)
     set(ax,'XAxisLocation','top','TickLength',[0 0],'YDir','reverse');
     set(ax,'XTick',1.5:off,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YTick',1.5:off,'YTickLabels',data.FirmNames,'YTickLabelRotation',45);
     
-    t = figure_title('Average Adjacency Matrix');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Average Adjacency Matrix');
 
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -877,9 +875,7 @@ function plot_centralities(data,id)
     
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
 
-    t = figure_title('Average Centrality Measures');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Average Centrality Measures');
     
     pause(0.01);
     frame = get(f,'JavaFrame');

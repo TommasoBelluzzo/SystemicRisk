@@ -78,7 +78,7 @@ addpath(paths_base);
 
 %% DATASET
 
-dataset_version = 'v1.2';
+dataset_version = 'v1.5';
 dataset_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
@@ -102,7 +102,7 @@ if (exist(mat,'file') == 2)
     else
         load(mat);
         
-        if (~strcmp(data.Version,dataset_version))
+        if ((exist('data','var') == 0) || ~strcmp(data.Version,dataset_version))
             dataset_process = true;
         end
     end
@@ -111,7 +111,7 @@ else
 end
 
 if (dataset_process)
-    data = parse_dataset(file,dataset_version,'dd/MM/yyyy','QQ yyyy','P',3);
+    data = parse_dataset(file,dataset_version,'dd/mm/yyyy','QQ yyyy','P');
     save(mat,'data');
     analyze_dataset(data);
 end
@@ -123,8 +123,8 @@ setup = {
     'Component'          true     true     @(data,temp,file,analysis)run_component(data,temp,file,252,0.99,0.2,0.75,analysis);
     'Connectedness'      true     true     @(data,temp,file,analysis)run_connectedness(data,temp,file,252,0.05,false,0.06,analysis);
     'CrossQuantilogram'  true     true     @(data,temp,file,analysis)run_cross_quantilogram(data,temp,file,252,0.05,60,'SB',0.05,100,analysis);
-    'CrossSectional'     true     true     @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.40,0.08,0.40,analysis);
-    'Default'            true     true     @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,'BSM',0.95,analysis);
+    'CrossSectional'     true     true     @(data,temp,file,analysis)run_cross_sectional(data,temp,file,0.95,0.08,0.40,0.40,3,analysis);
+    'Default'            true     true     @(data,temp,file,analysis)run_default(data,temp,file,252,0.4,0.6,0.08,100,0.10,2,'BSM',0.95,analysis);
     'Spillover'          true     true     @(data,temp,file,analysis)run_spillover(data,temp,file,252,10,2,4,'G',analysis);
 };
 

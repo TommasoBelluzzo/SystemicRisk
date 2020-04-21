@@ -150,6 +150,9 @@ end
 
 function data = data_initialize(data,bandwidth,steps,indices,lags,h,fevd)
 
+    n = data.N;
+    t = data.T;
+
     data.Bandwidth = bandwidth;
     data.FEVD = fevd;
     data.H = h;
@@ -158,73 +161,47 @@ function data = data_initialize(data,bandwidth,steps,indices,lags,h,fevd)
     data.Windows = numel(indices);
     data.WindowsIndices = indices;
 
-    data.VarianceDecompositions = cell(data.T,1);
-    data.SI = NaN(data.T,1);
-    data.SpilloversFrom = NaN(data.T,data.N);
-    data.SpilloversTo = NaN(data.T,data.N);
-    data.SpilloversNet = NaN(data.T,data.N);
+    data.VarianceDecompositions = cell(t,1);
+    data.SI = NaN(t,1);
+    data.SpilloversFrom = NaN(t,n);
+    data.SpilloversTo = NaN(t,n);
+    data.SpilloversNet = NaN(t,n);
 
 end
 
-function data = data_finalize(data,results)
+function data = data_finalize(data,window_results)
 
-    n = data.N;
-    t = data.T;
+    window_indices = data.WindowsIndices;
 
-    steps = data.Steps;
-    windows_indices = data.WindowsIndices;
+    for i = 1:numel(window_results)
+        window_result = window_results{i};
+        window_index = window_indices(i);
 
-    for i = 1:numel(results)
-        window_result = results{i};
-        window_offset = windows_indices(i);
-
-        data.VarianceDecompositions{window_offset} = window_result.VarianceDecomposition;
-        data.SI(window_offset) = window_result.SI;
-        data.SpilloversFrom(window_offset,:) = window_result.SpilloversFrom;
-        data.SpilloversTo(window_offset,:) = window_result.SpilloversTo;
-        data.SpilloversNet(window_offset,:) = window_result.SpilloversNet;
-    end
-
-    if (steps > 1)
-        x = 1:t;
-
-        nans_check = ~ismember(x,windows_indices).';
-        nans_indices = find(nans_check).';
-
-        vd = data.VarianceDecompositions;
-        vd(cellfun(@isempty,vd)) = {NaN(n,n)};
-
-        for i = 1:n
-            for j = 1:n
-                vd_ij = cellfun(@(vdf)vdf(i,j),vd);
-                vdij_spline = spline(x(~nans_check),vd_ij(~nans_check),x(nans_check));
-                vd_ij(nans_check) = vdij_spline;
-
-                for k = nans_indices
-                    vd_k = vd{k};
-                    vd_k(i,j) = vd_ij(k);
-                    vd{k} = vd_k;
-                end
-            end   
-        end
-
-        for k = nans_indices
-            vd_k = vd{k};
-            vd_k = bsxfun(@rdivide,vd_k,sum(vd_k,2));
-            
-            [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd_k);
-            
-            data.VarianceDecompositions{k} = vd_k;
-            data.SI(k) = si;
-            data.SpilloversFrom(k,:) = spillovers_from;
-            data.SpilloversTo(k,:) = spillovers_to;
-            data.SpilloversNet(k,:) = spillovers_net;
-        end
+        data.VarianceDecompositions{window_index} = window_result.VarianceDecomposition;
+        data.SI(window_index) = window_result.SI;
+        data.SpilloversFrom(window_index,:) = window_result.SpilloversFrom;
+        data.SpilloversTo(window_index,:) = window_result.SpilloversTo;
+        data.SpilloversNet(window_index,:) = window_result.SpilloversNet;
     end
     
-    data.SpilloversFrom = handle_firms_distress(data.Defaults,data.SpilloversFrom,false);
-    data.SpilloversTo = handle_firms_distress(data.Defaults,data.SpilloversTo,false);
-    data.SpilloversNet = handle_firms_distress(data.Defaults,data.SpilloversNet,false);
+    if (data.Steps > 1)
+        [step_indices,step_results] = steps_interpolation(data);
+        
+        for i = 1:numel(step_results)
+            step_result = step_results{i};
+            step_index = step_indices(i);
+
+            data.VarianceDecompositions{step_index} = step_result.VarianceDecomposition;
+            data.SI(step_index) = step_result.SI;
+            data.SpilloversFrom(step_index,:) = step_result.SpilloversFrom;
+            data.SpilloversTo(step_index,:) = step_result.SpilloversTo;
+            data.SpilloversNet(step_index,:) = step_result.SpilloversNet;
+        end
+    end
+
+    data.SpilloversFrom = distress_data(data.Defaults,data.SpilloversFrom);
+    data.SpilloversTo = distress_data(data.Defaults,data.SpilloversTo);
+    data.SpilloversNet = distress_data(data.Defaults,data.SpilloversNet);
 
 end
 
@@ -349,7 +326,7 @@ function [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover
 
     vd_diag = diag(vd);
     
-    spillovers_from = sum(vd,2) - vd_diag;
+    spillovers_from = min(max(sum(vd,2) - vd_diag,0),1);
     spillovers_to = sum(vd,1).' - vd_diag;
     spillovers_net = spillovers_to - spillovers_from;
 
@@ -381,6 +358,54 @@ function c_hat = nearest_spd(c)
             e = min(eig(c_hat));
             c_hat = c_hat + (((-e * k^2) + eps(e)) * eye(size(c)));
         end
+    end
+
+end
+
+function [step_indices,step_results] = steps_interpolation(data)
+
+    n = data.N;
+    t = data.T;
+    x = data.DatesNum;
+
+    nan_indices = ~ismember((1:t).',data.WindowsIndices);
+    step_indices = find(nan_indices);
+    step_indices_len = numel(step_indices);
+
+    vd = data.VarianceDecompositions;
+    vd(cellfun(@isempty,vd)) = {NaN(n,n)};
+
+    for i = 1:n
+        for j = 1:n
+            vd_ij = cellfun(@(vdf)vdf(i,j),vd);
+            vd_ij(nan_indices) = spline(x(~nan_indices),vd_ij(~nan_indices),x(nan_indices));
+
+            for k = 1:step_indices_len
+                step_index = step_indices(k);
+                
+                vd_k = vd{step_index};
+                vd_k(i,j) = vd_ij(step_index);
+                vd{step_index} = vd_k;
+            end
+        end   
+    end
+    
+    step_results = cell(step_indices_len,1);
+
+    for i = 1:step_indices_len
+        vd_k = vd{step_indices(i)};
+        vd_k = bsxfun(@rdivide,vd_k,sum(vd_k,2));
+
+        [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd_k);
+
+        step_result = struct();
+        step_result.VarianceDecomposition = vd_k;
+        step_result.SI = si;
+        step_result.SpilloversFrom = spillovers_from;
+        step_result.SpilloversTo = spillovers_to;
+        step_result.SpilloversNet = spillovers_net;
+        
+        step_results{i} = step_result;
     end
 
 end
@@ -518,10 +543,12 @@ end
 
 function plot_index(data,id)
 
+    si = data.SI;
+
     f = figure('Name','Spillover Measures > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,6,1:5);
-    plot(sub_1,data.DatesNum,data.SI);
+    plot(sub_1,data.DatesNum,smooth_data(si));
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
     
     if (data.MonthlyTicks)
@@ -531,20 +558,17 @@ function plot_index(data,id)
     end
     
     sub_2 = subplot(1,6,6);
-    boxplot(sub_2,data.SI,'Notch','on','Symbol','k.');
+    boxplot(sub_2,si,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     delete(findobj(f,'-regexp','Tag','\w*Outlier'));
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
     
     if (strcmp(data.FEVD,'G'))
-        t = figure_title('Spillover Index (Generalized FEVD)');
+        figure_title('Spillover Index (Generalized FEVD)');
     else
-        t = figure_title('Spillover Index (Orthogonal FEVD)');
+        figure_title('Spillover Index (Orthogonal FEVD)');
     end
-
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -554,13 +578,13 @@ end
 
 function plot_spillovers(data,id)
 
-    spillovers_from = data.SpilloversFrom;
+    spillovers_from = smooth_data(data.SpilloversFrom);
     spillovers_from = bsxfun(@rdivide,spillovers_from,sum(spillovers_from,2,'omitnan'));
     
-    spillovers_to = data.SpilloversTo;
+    spillovers_to = smooth_data(data.SpilloversTo);
     spillovers_to = bsxfun(@rdivide,spillovers_to,sum(spillovers_to,2,'omitnan'));
 
-    spillovers_net = data.SpilloversNet;
+    spillovers_net = smooth_data(data.SpilloversNet);
     spillovers_net = [min(spillovers_net,[],2,'omitnan') max(spillovers_net,[],2,'omitnan')];
     spillovers_net_avg = mean(spillovers_net,2);
 
@@ -584,6 +608,7 @@ function plot_spillovers(data,id)
     fill(sub_3,[data.DatesNum; flipud(data.DatesNum)],[spillovers_net(:,1); fliplr(spillovers_net(:,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
     hold on;
         plot(sub_3,data.DatesNum,spillovers_net_avg,'Color',[0.000 0.447 0.741]);
+        plot(sub_3,data.DatesNum,zeros(data.T,1),'Color',[1 0.4 0.4]);
     hold off;
     grid on;
     set(sub_3,'YLim',[-1 1]);
@@ -607,13 +632,10 @@ function plot_spillovers(data,id)
     end
 
     if (strcmp(data.FEVD,'G'))
-        t = figure_title('Spillovers (Generalized FEVD)');
+        figure_title('Spillovers (Generalized FEVD)');
     else
-        t = figure_title('Spillovers (Orthogonal FEVD)');
+        figure_title('Spillovers (Orthogonal FEVD)');
     end
-    
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -623,29 +645,27 @@ end
 
 function plot_sequence(data,id)
 
+    n = data.N;
     ft = [data.SpilloversFrom data.SpilloversTo];
+    net = data.SpilloversNet;
 
     x = data.DatesNum;
     x_limits = [x(1) x(end)];
-    
-    y = cat(3,data.SpilloversFrom,data.SpilloversTo,data.SpilloversNet);
-    
-    y_min_ft = min(min(ft));
+
     y_max_ft = max(max(ft));
-    y_min_net = min(min(data.SpilloversNet));
-    y_max_net = max(max(data.SpilloversNet));
     
     y_limits = zeros(3,2);
-    y_limits(1:2,:) = repmat([((abs(y_min_ft) * 1.1) * sign(y_min_ft)) ((abs(y_max_ft) * 1.1) * sign(y_max_ft))],2,1);
-    y_limits(3,:) = [((abs(y_min_net) * 1.1) * sign(y_min_net)) ((abs(y_max_net) * 1.1) * sign(y_max_net))];
+    y_limits(1,:) = [0 1];
+    y_limits(2,:) = find_plot_limits(y_max_ft,0.1,0);
+    y_limits(3,:) = [-1 1];
 
     core = struct();
 
     core.N = data.N;
-    core.PlotFunction = @(ax,x,y)plot_function(ax,x,y);
+    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
     core.SequenceFunction = @(y,offset)[y(:,offset,1) y(:,offset,2) y(:,offset,3)];
 	
-    core.OuterTitle = 'Cross-Sectional Measures';
+    core.OuterTitle = 'Spillover Measures';
     core.InnerTitle = 'Spillovers Time Series';
     core.Labels = data.FirmNames;
 
@@ -661,7 +681,7 @@ function plot_sequence(data,id)
     core.XTick = [];
     core.XTickLabels = @(x)sprintf('%.2f',x);
 
-    core.Y = y;
+    core.Y = cat(3,smooth_data(ft(:,1:n)),smooth_data(ft(:,n+1:end)),smooth_data(net));
     core.YLabel = 'Value';
     core.YLimits = y_limits;
     core.YRotation = [];
@@ -673,7 +693,26 @@ function plot_sequence(data,id)
     function plot_function(subs,x,y)
 
         for i = 1:3
-            plot(subs(i),x,y(:,i),'Color',[0.000 0.447 0.741]);
+            y_i = y(:,i);
+            sub = subs(i);
+            
+            plot(sub,x,y_i,'Color',[0.000 0.447 0.741]);
+            
+            if (i == 3)
+                hold(sub,'on');
+                    plot(sub,x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
+                hold(sub,'off');
+            end
+            
+            d = find(isnan(y_i),1,'first');
+
+            if (~isempty(d))
+                xd = x(d) - 1;
+
+                hold(sub,'on');
+                    plot(sub,[xd xd],get(sub,'YLim'),'Color',[1 0.4 0.4]);
+                hold(sub,'on');
+            end
         end
 
     end

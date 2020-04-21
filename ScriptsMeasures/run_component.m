@@ -5,7 +5,7 @@
 % bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % k = A float [0.90,0.99] representing the confidence level used to calculate the CATFIN (optional, default=0.99).
 % f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio (optional, default=0.2).
-% q = A float (0.5,1.0) representing the threshold of the Turbulence Index (optional, default=0.75).
+% q = A float (0.5,1.0) representing the quantile threshold of the Turbulence Index (optional, default=0.75).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -64,7 +64,7 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     try
 
         windows_fr = extract_rolling_windows(data.Returns,bandwidth,false);
-        windows_pr = extract_rolling_windows(data.PortfolioReturns,bandwidth,false);
+        windows_pr = extract_rolling_windows(data.CATFINReturns,bandwidth,false);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
@@ -147,6 +147,12 @@ end
 
 function data = data_initialize(data,bandwidth,k,f,q)
 
+    n = data.N;
+    t = data.T;
+
+    r = data.Returns;
+    rw = 1 ./ (repmat(n,t,1) - sum(isnan(r),2));
+
     data.A = 1 - k;
     data.Bandwidth = bandwidth;
     data.Components = round(data.N * f,0);
@@ -159,19 +165,25 @@ function data = data_initialize(data,bandwidth,k,f,q)
     data.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
     data.LabelsVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
 
-    data.CATFINVaR = NaN(data.T,4);
+    data.CATFINReturns = sum(r .* repmat(rw,1,n),2,'omitnan');
+    data.CATFINVaR = NaN(t,4);
     data.CATFINFirstCoefficients = NaN(1,3);
     data.CATFINFirstExplained = NaN;
-    data.CATFIN = NaN(data.T,1);
+    data.CATFIN = NaN(t,1);
     
-    data.AbsorptionRatio = NaN(data.T,1);
-    data.CorrelationSurprise = NaN(data.T,1);
-    data.TurbulenceIndex = NaN(data.T,1);
+    data.AbsorptionRatio = NaN(t,1);
+    data.CorrelationSurprise = NaN(t,1);
+    data.TurbulenceIndex = NaN(t,1);
 
-    data.PCACoefficients = cell(data.T,1);
-    data.PCAExplained = cell(data.T,1);
-    data.PCAExplainedSums = NaN(data.T,4);
-    data.PCAScores = cell(data.T,1);
+    data.PCACoefficients = cell(t,1);
+    data.PCAExplained = cell(t,1);
+    data.PCAExplainedSums = NaN(t,4);
+    data.PCAScores = cell(t,1);
+    
+    data.PCACoefficientsOverall = NaN(n,n);
+    data.PCAExplainedOverall = NaN(n,1);
+    data.PCAExplainedSumsOverall = NaN(1,4);
+    data.PCAScoresOverall = NaN(t,n);
 
 end
 
@@ -194,23 +206,16 @@ function data = data_finalize(data,results)
         data.PCAScores{i} = window_result.PCAScores;
     end
 
-    x = 1:t;
-    nan_indices = isnan(data.CATFINVaR(:,4));
-    data.CATFINVaR(nan_indices,4) = spline(x(~nan_indices),data.CATFINVaR(~nan_indices,4),x(nan_indices));
-    
+    data.CATFINVaR(:,4) = sanitize_data(data.CATFINVaR(:,4),data.DatesNum,[],[]);
+
     [coefficients,scores,explained] = calculate_pca(data.CATFINVaR,false);
     data.CATFIN = scores(:,1);
     data.CATFINFirstCoefficients = coefficients(:,1).';
     data.CATFINFirstExplained = explained(1);
 
-    data.AbsorptionRatio = min(max(data.AbsorptionRatio,0),1);
+    data.AbsorptionRatio = sanitize_data(data.AbsorptionRatio,data.DatesNum,[],[0 1]);
 
-    r = data.Returns;
-    nan_indices = isnan(r);
-    rm = repmat(mean(r,1,'omitnan'),t,1);
-    r(nan_indices) = rm(nan_indices);
-
-    [coefficients,scores,explained] = calculate_pca(r,true);
+    [coefficients,scores,explained] = calculate_overall_pca(data.Returns);
     data.PCACoefficientsOverall = coefficients;
     data.PCAExplainedOverall = explained;
     data.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
@@ -372,6 +377,12 @@ end
 
 function [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(x,a,g,u)
 
+    persistent options;
+
+    if (isempty(options))
+        options = optimset(optimset(@fsolve),'Diagnostics','off','Display','off');
+    end
+
     t = size(x,1);
 
     w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
@@ -399,38 +410,9 @@ function [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(x,a,g,u)
     try
         sged_params = mle(x,'PDF',@sgedpdf,'Start',[mean(x) std(x) 0 1],'LowerBound',[-Inf 0 -1 0],'UpperBound',[Inf Inf 1 Inf]);
         [mu,sigma,lambda,kappa] = deal(sged_params(1),sged_params(2),sged_params(3),sged_params(4));
-        var_sged = fsolve(@(x)sgedcdf(x,mu,sigma,lambda,kappa)-a,0,optimset(optimset(@fsolve),'Diagnostics','off','Display','off'));
+        var_sged = fsolve(@(x)sgedcdf(x,mu,sigma,lambda,kappa)-a,0,options);
     catch
         var_sged = NaN;
-    end
-    
-    function block_maxima = find_block_maxima(x,t,k)
-
-        c = floor(t / k);
-
-        block_maxima = zeros(k,1);
-        i = 1;
-
-        for j = 1:k-1
-            block_maxima(j) = max(x(i:i+c-1));
-            i = i + c;
-        end
-
-        block_maxima(k) = max(x(i:end));
-
-    end
-
-    function theta = find_extremal_index(x,t,k)
-
-        c = t - k + 1;
-        y = zeros(c,1);
-
-        for i = 1:c
-            y(i,1) = (1 / t) * sum(x <= max(x(i:i+k-1)));
-        end
-
-        theta = ((1 / c) * sum(-k * log(y)))^-1;
-
     end
 
 end
@@ -456,6 +438,16 @@ function [ar,cs,ti] = calculate_component_indicators(x,components)
 
 end
 
+function [coefficients,scores,explained] = calculate_overall_pca(r)
+
+    nan_indices = isnan(r);
+    rm = repmat(mean(r,1,'omitnan'),size(r,1),1);
+    r(nan_indices) = rm(nan_indices);
+
+    [coefficients,scores,explained] = calculate_pca(r,true);
+
+end
+
 function [coefficients,scores,explained] = calculate_pca(x,normalize)
 
     if (normalize)
@@ -472,6 +464,35 @@ function [coefficients,scores,explained] = calculate_pca(x,normalize)
     end
 
     [coefficients,scores,~,~,explained] = pca(x,'Economy',false);
+
+end
+
+function block_maxima = find_block_maxima(x,t,k)
+
+    c = floor(t / k);
+
+    block_maxima = zeros(k,1);
+    i = 1;
+
+    for j = 1:k-1
+        block_maxima(j) = max(x(i:i+c-1));
+        i = i + c;
+    end
+
+    block_maxima(k) = max(x(i:end));
+
+end
+
+function theta = find_extremal_index(x,t,k)
+
+    c = t - k + 1;
+    y = zeros(c,1);
+
+    for i = 1:c
+        y(i,1) = (1 / t) * sum(x <= max(x(i:i+k-1)));
+    end
+
+    theta = ((1 / c) * sum(-k * log(y)))^-1;
 
 end
 
@@ -503,7 +524,7 @@ function y = sgedpdf(x,mu,sigma,lambda,kappa)
     c = exp(log(kappa) - (log(2 * sigma * theta) + g1));
     u = x - mu + (delta * sigma);
 
-    y = c .*exp((-abs(u) .^ kappa) ./ ((1 + (sign(u) .* lambda)) .^ kappa) ./ theta^kappa ./ sigma^kappa); 
+    y = c .* exp((-abs(u) .^ kappa) ./ ((1 + (sign(u) .* lambda)) .^ kappa) ./ theta^kappa ./ sigma^kappa); 
 
 end
 
@@ -511,15 +532,13 @@ end
 
 function plot_indicators_catfin(data,id)
 
-    r = max(0,-data.PortfolioReturns);
-
-    y_max = max(max([-data.CATFINVaR r]));
-    y_limits = [0 ((abs(y_max) * 1.1) * sign(y_max))];
+    r = max(0,-data.CATFINReturns);
+    y_limits = find_plot_limits([-data.CATFINVaR r],0.1,0);
 
     f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,4,[1 4]);
-    plot(sub_1,data.DatesNum,data.CATFIN,'Color',[0.000 0.447 0.741]);
+    plot(sub_1,data.DatesNum,smooth_data(data.CATFIN),'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
     t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',data.K * 100) ', PCA.EV=' sprintf('%.2f%%',data.CATFINFirstExplained) ')']);
     set(t1,'Units','normalized');
@@ -536,13 +555,10 @@ function plot_indicators_catfin(data,id)
         sub = subplot(2,4,i + 4);
         plot(sub,data.DatesNum,r,'Color',[0.000 0.447 0.741]);
         hold on;
-            plot(sub,data.DatesNum,data.CATFINVaR(:,i),'Color',[1 0.4 0.4]);
+            plot(sub,data.DatesNum,smooth_data(data.CATFINVaR(:,i)),'Color',[1 0.4 0.4],'LineWidth',1.5);
         hold off;
         set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45,'YLim',y_limits);
-        ti = title(sub,[data.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
-        set(ti,'Units','normalized');
-        ti_position = get(ti,'Position');
-        set(ti,'Position',[0.4783 ti_position(2) ti_position(3)]);
+        title(sub,[data.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
 
         if (data.MonthlyTicks)
             datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -551,9 +567,7 @@ function plot_indicators_catfin(data,id)
         end
     end
 
-    t = figure_title('CATFIN Indicator');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('CATFIN Indicator');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -564,6 +578,9 @@ end
 function plot_indicators_other(data,id)
 
     alpha = 2 / (data.Bandwidth + 1);
+    
+    ar = data.AbsorptionRatio;
+    ar_limit = fix(min(ar) * 10) / 10;
 
     ti_th = NaN(data.T,1);
 
@@ -577,10 +594,10 @@ function plot_indicators_other(data,id)
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,data.DatesNum,data.AbsorptionRatio,'Color',[0.000 0.447 0.741]);
+    plot(sub_1,data.DatesNum,smooth_data(data.AbsorptionRatio),'Color',[0.000 0.447 0.741]);
     xlabel(sub_1,'Time');
     ylabel(sub_1,'Value');
-    set(sub_1,'YLim',[0 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) * 100,'UniformOutput',false));
+    set(sub_1,'YLim',[ar_limit 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) * 100,'UniformOutput',false));
     t1 = title(sub_1,['Absorption Ratio (F=' sprintf('%.2f',data.F) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
@@ -629,9 +646,7 @@ function plot_indicators_other(data,id)
         datetick(sub_3,'x','yyyy','KeepLimits');
     end
 
-    t = figure_title('Other Indicators');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Other Indicators');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -698,9 +713,7 @@ function plot_pca(data,id)
     legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
-    t = figure_title('Principal Component Analysis');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Principal Component Analysis');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
