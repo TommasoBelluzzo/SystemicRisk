@@ -29,7 +29,7 @@ end
 
 function data = validate_dataset_internal(data,measures)
 
-    validate_field(data,'TimeSeries',{'cellstr'},{'nonempty','size',[1 9]});
+    validate_field(data,'TimeSeries',{'cellstr'},{'nonempty','size',[1 7]});
 
 	validate_field(data,'File',{'char'},{'nonempty','size',[1 NaN]});
 	validate_field(data,'Version',{'char'},{'nonempty','size',[1 NaN]});
@@ -46,10 +46,8 @@ function data = validate_dataset_internal(data,measures)
     
     validate_field(data,'Index',{'double'},{'real','finite','nonempty','size',[t 1]});
     validate_field(data,'Returns',{'double'},{'real','nanfinite','nonempty','size',[t n]});
-    validate_field(data,'PortfolioReturns',{'double'},{'real','nanfinite','nonempty','size',[t 1]});
 
     validate_field(data,'Capitalization',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(data,'CapitalizationLagged',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
 
     validate_field(data,'RiskFreeRate',{'double'},{'optional','real','finite','nonempty','size',[t 1]});
     validate_field(data,'CDS',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
@@ -57,7 +55,6 @@ function data = validate_dataset_internal(data,measures)
     validate_field(data,'Assets',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
     validate_field(data,'Equity',{'double'},{'optional','real','nanfinite','nonempty','size',[t n]});
     validate_field(data,'Liabilities',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(data,'LiabilitiesRolled',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
     validate_field(data,'SeparateAccounts',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
 
     state_variables = validate_field(data,'StateVariables',{'double'},{'optional','real','finite','nonempty','size',[t NaN]});
@@ -163,7 +160,7 @@ function value = validate_field(data,field_name,field_type,field_validator)
         try
             validateattributes(value_check,field_type,{'finite'});
         catch
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected input to be finite.']);
+            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be finite.']);
         end
     end
     
@@ -174,7 +171,7 @@ function value = validate_field(data,field_name,field_type,field_validator)
         try
             validateattributes(value_check,field_type,{'>',1});
         catch
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected input to contain non-NaN values > 1.']);
+            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to contain all the finite values > 1.']);
         end
     end
 

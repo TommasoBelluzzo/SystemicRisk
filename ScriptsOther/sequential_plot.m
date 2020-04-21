@@ -125,9 +125,7 @@ function sequential_plot_internal(core,id)
         end
     end
 
-    ft = figure_title(core.InnerTitle);
-    ft_position = get(ft,'Position');
-    set(ft,'Position',[ft_position(1) -0.0157 ft_position(3)]);
+    figure_title(core.InnerTitle);
 
     setappdata(f,'Labels',core.Labels);
     setappdata(f,'N',core.N);

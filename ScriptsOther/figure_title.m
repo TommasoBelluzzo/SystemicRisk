@@ -91,7 +91,7 @@ function t = figure_title_internal(s)
     end
 
     axes('Position',[0 1 1 1],'Tag','FigureTitle','Visible','off');
-    t_internal = text(0.50,-0.05,s,'FontSize',f_font_size,'HorizontalAlignment','center');
+    t_internal = text(0.5000,-0.0157,s,'FontSize',f_font_size,'HorizontalAlignment','center');
 
     set(f,'NextPlot',next_plot);
 

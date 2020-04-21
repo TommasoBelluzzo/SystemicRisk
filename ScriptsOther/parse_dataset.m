@@ -1,10 +1,9 @@
 % [INPUT]
 % file = A string representing the full path to the Excel spreadsheet containing the dataset.
 % version = A string representing the version of the dataset.
-% date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except the balance sheet ones (optional, default='dd/MM/yyyy').
+% date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except balance sheet ones (optional, default='dd/mm/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
 % shares_type = A string (either 'P' for prices or 'R' for returns) representing the type of data included in the Shares sheet (optional, default='P').
-% forward_rolling = An integer [0,6] representing the number of months of liabilities forward-rolling, which simulates the difficulty of renegotiating debt in case of financial distress (optional, default=3).
 %
 % [OUTPUT]
 % data = A structure containing the parsed dataset.
@@ -17,10 +16,9 @@ function data = parse_dataset(varargin)
         ip = inputParser();
         ip.addRequired('file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('version',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('date_format_base','dd/MM/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        ip.addOptional('date_format_base','dd/mm/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P','R'})));
-        ip.addOptional('forward_rolling',3,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',0,'<=',6,'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -33,11 +31,11 @@ function data = parse_dataset(varargin)
     
     nargoutchk(1,1);
 
-    data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,ipr.shares_type,ipr.forward_rolling);
+    data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,ipr.shares_type);
 
 end
 
-function data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,forward_rolling)
+function data = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type)
 
     if (~strcmp(file_sheets{1},'Shares'))
         error('The first sheet of the dataset file must be the ''Shares'' one.');
@@ -61,8 +59,10 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
         supports_default = false;
         warning('MATLAB:SystemicRisk','The dataset file does not contain all the sheets required for the computation of default measures (''Market Capitalization'', ''CDS'', ''Assets'' and ''Equity'').');
     end
+    
+    using_prices = strcmp(shares_type,'P');
 
-    if (strcmp(shares_type,'P'))
+    if (using_prices)
         tab_shares = parse_table_standard(file,1,'Shares',date_format_base,[],[],true);
     else
         tab_shares = parse_table_standard(file,1,'Shares',date_format_base,[],[],false);
@@ -73,22 +73,31 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     end
     
     if (width(tab_shares) < 5)
-        error('The ''Shares'' sheet must contain at least the following elements: the observations dates, the benchmark time series and the time series of 3 firms.');
-    end
-    
-    t = height(tab_shares);
-
-    if (t < 253)
-        error('The ''Shares'' sheet must contain at least 253 observations (a full business year plus an additional observation at the beginning of the time frame) in order to run consistent calculations.');
+        error('The ''Shares'' sheet must contain at least the following elements: the observations dates and the time series of the benchmark and at least 3 firms.');
     end
     
     n = width(tab_shares) - 2;
-    t = t - 1;
+    
+    if (using_prices)
+        t = height(tab_shares);
+        
+        if (t < 253)
+            error('The ''Shares'' sheet must contain at least 253 observations (a full business year plus an additional observation at the beginning of the time series) in order to run consistent calculations.');
+        end
+        
+        t = t - 1;
+    else
+        t = height(tab_shares);
+        
+        if (t < 252)
+            error('The ''Shares'' sheet must contain at least 252 observations (a full business year) in order to run consistent calculations.');
+        end
+    end
 
     dates_num = datenum(tab_shares{:,1});
     tab_shares.Date = [];
     
-    if (strcmp(shares_type,'P'))
+    if (using_prices)
         tab_shares_headers = strtrim(tab_shares.Properties.VariableNames);
         tab_shares = table2array(tab_shares);
         tab_shares = diff(log(tab_shares));
@@ -105,20 +114,17 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
         index_name = tab_shares_headers{1};
         firm_names = tab_shares_headers(2:end);
         
-        index = tab_shares{2:end,1};
-        returns = tab_shares{2:end,2:end};
+        index = tab_shares{:,1};
+        returns = tab_shares{:,2:end};
     end
 
     capitalization = [];
-    capitalization_lagged = [];
 
     cds = [];
     risk_free_rate = [];
 
     assets = [];
     equity = [];
-    liabilities = [];
-    liabilities_rolled = [];
     separate_accounts = [];
 
     state_variables = [];
@@ -142,29 +148,29 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
 
             case 'Market Capitalization'
                 tab_capitalization = parse_table_standard(file,tab_index,tab_name,date_format_base,dates_num,firm_names,true);
-                capitalization = tab_capitalization{2:end,:};
-                capitalization_lagged = tab_capitalization{1:end-1,:};
+                capitalization = table2array(tab_capitalization);
 
             case 'CDS'
                 tab_cds = parse_table_standard(file,tab_index,tab_name,date_format_base,dates_num,[{'RF'} firm_names],true);
-                cds = tab_cds{2:end,2:end} ./ 10000;
-                risk_free_rate = tab_cds{2:end,1};
+                tab_arr = table2array(tab_cds);
+                cds = tab_arr(:,2:end) ./ 10000;
+                risk_free_rate = tab_arr(:,1);
                 
             case 'Assets'
                 tab_assets = parse_table_balance(file,tab_index,tab_name,date_format_balance,dates_num,firm_names,true);
-                assets = tab_assets{2:end,:};
+                assets = table2array(tab_assets);
                 
             case 'Equity'
                 tab_equity = parse_table_balance(file,tab_index,tab_name,date_format_balance,dates_num,firm_names,false);
-                equity = tab_equity{2:end,:};
+                equity = table2array(tab_equity);
                 
             case 'Separate Accounts'
                 tab_separate_accounts = parse_table_balance(file,tab_index,tab_name,date_format_balance,dates_num,firm_names,true);
-                separate_accounts = tab_separate_accounts{2:end,:};
+                separate_accounts = table2array(tab_separate_accounts);
 
             case 'State Variables'
                 tab_state_variables = parse_table_standard(file,tab_index,tab_name,date_format_base,dates_num,[],false);
-                state_variables = tab_state_variables{1:end-1,:};
+                state_variables = table2array(tab_state_variables);
                 state_variables_names = tab_state_variables.Properties.VariableNames;
 
             case 'Groups'
@@ -175,35 +181,52 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
         end
     end
     
-    dates_num = dates_num(2:end);
-	dates_str = cellstr(datetime(dates_num,'ConvertFrom','datenum'));
-    
+    if (using_prices)
+        dates_num = remove_first_observation(dates_num);
+        capitalization = remove_first_observation(capitalization);
+        cds = remove_first_observation(cds);
+        risk_free_rate = remove_first_observation(risk_free_rate);
+        assets = remove_first_observation(assets);
+        equity = remove_first_observation(equity);
+        separate_accounts = remove_first_observation(separate_accounts);
+        state_variables = remove_first_observation(state_variables);
+    end
+
     if (~isempty(assets) && ~isempty(equity))
-        [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling);
+        liabilities = assets - equity;
+    else
+        liabilities = [];
     end
     
     [defaults,insolvencies] = detect_distress(returns,equity);
     
     if (any(defaults == 1))
-        error('The dataset contains firms defaulted since the beginning of the observation period, consider removing them.');
+        error('The dataset contains firms defaulted since the beginning of the observation period that must be removed.');
+    end
+    
+    if (sum(isnan(defaults)) < 3)
+        error('The dataset contains observations in which less than 3 firms are not defaulted.');
+    end
+    
+    if (any(insolvencies == 1))
+        error('The dataset contains firms being insolvent since the beginning of the observation period that must be removed.');
     end
 
-    returns = handle_firms_distress(defaults,returns,false);
-    capitalization = handle_firms_distress(defaults,capitalization,false);
-    capitalization_lagged = handle_firms_distress(defaults,capitalization_lagged,true);
-    cds = handle_firms_distress(defaults,cds,false);
-    assets = handle_firms_distress(defaults,assets,false);
-    equity = handle_firms_distress(defaults,equity,false);
-    liabilities = handle_firms_distress(defaults,liabilities,false);
-    liabilities_rolled = handle_firms_distress(defaults,liabilities_rolled,false);
-    separate_accounts = handle_firms_distress(defaults,separate_accounts,false);
-
-    rw = 1 ./ (repmat(n,t,1) - sum(isnan(returns),2));
-    portfolio_returns = sum(returns .* repmat(rw,1,n),2,'omitnan');
+    if (sum(isnan(defaults)) < 3)
+        error('The dataset contains observations in which less than 3 firms are not insolvent.');
+    end
+    
+    returns = distress_data(defaults,returns);
+    capitalization = distress_data(defaults,capitalization);
+    cds = distress_data(defaults,cds);
+    assets = distress_data(defaults,assets);
+    equity = distress_data(defaults,equity);
+    liabilities = distress_data(defaults,liabilities);
+    separate_accounts = distress_data(defaults,separate_accounts);
 
     data = struct();
 
-    data.TimeSeries = {'Assets' 'Capitalization' 'CapitalizationLagged' 'CDS' 'Equity' 'Liabilities' 'LiabilitiesRolled' 'Returns' 'SeparateAccounts'};
+    data.TimeSeries = {'Assets' 'Capitalization' 'CDS' 'Equity' 'Liabilities' 'Returns' 'SeparateAccounts'};
 
     data.File = file;
     data.Version = version;
@@ -212,18 +235,16 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     data.T = t;
 
     data.DatesNum = dates_num;
-    data.DatesStr = dates_str;
-    data.MonthlyTicks = length(unique(year(data.DatesNum))) <= 3;
+    data.DatesStr = cellstr(datetime(dates_num,'ConvertFrom','datenum'));
+    data.MonthlyTicks = length(unique(year(dates_num))) <= 3;
 
     data.IndexName = index_name;
     data.FirmNames = firm_names;
     
     data.Index = index;
     data.Returns = returns;
-    data.PortfolioReturns = portfolio_returns;
     
     data.Capitalization = capitalization;
-    data.CapitalizationLagged = capitalization_lagged;
 
     data.RiskFreeRate = risk_free_rate;
     data.CDS = cds;
@@ -231,7 +252,6 @@ function data = parse_dataset_internal(file,file_sheets,version,date_format_base
     data.Assets = assets;
     data.Equity = equity;
     data.Liabilities = liabilities;
-    data.LiabilitiesRolled = liabilities_rolled;
     data.SeparateAccounts = separate_accounts;
 
     data.StateVariables = state_variables;
@@ -258,13 +278,17 @@ end
 function date_format = validate_date_format(date_format,base)
 
     try
-        datetime('now','InputFormat',date_format);
-    catch
-        error(['The date format ''' date_format ''' is invalid.']);
+        datestr(now(),date_format);
+    catch e
+        error(['The date format ''' date_format ''' is invalid.' newline() strtrim(regexprep(e.message,'Format.+$',''))]);
     end
     
-    if (base && ~any(regexp(date_format,'d{1,2}')))
+    if (base && ~any(regexp(date_format,'d{1,4}')))
         error('The base date format must define a daily frequency.');
+    end
+    
+    if (any(regexp(date_format,'(?:HH|MM|SS|FFF|AM|PM)')))
+        error('The date format must not include time information.');
     end
     
 end
@@ -336,7 +360,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
             error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
         end
 
-        tab_partial.Date = datetime(tab_partial.Date,'InputFormat',date_format);
+        tab_partial.Date = datetime(tab_partial.Date,'InputFormat',strrep(date_format,'m','M'));
 
         output_vars = varfun(@class,tab_partial,'OutputFormat','cell');
 
@@ -359,7 +383,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         end
 
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
-        options = setvaropts(options,'Date','InputFormat',date_format);
+        options = setvaropts(options,'Date','InputFormat',strrep(date_format,'m','M'));
 
         if (ispc())
             try
@@ -510,7 +534,7 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
             error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
         end
 
-        tab.Date = datetime(tab.Date,'InputFormat',date_format);
+        tab.Date = datetime(tab.Date,'InputFormat',strrep(date_format,'m','M'));
 
         output_vars = varfun(@class,tab,'OutputFormat','cell');
 
@@ -532,8 +556,8 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
             error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
         end
 
-        options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
-        options = setvaropts(options,'Date','InputFormat',date_format);
+        options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames) - 1)]);
+        options = setvaropts(options,'Date','InputFormat',strrep(date_format,'m','M'));
 
         if (ispc())
             try
@@ -636,25 +660,11 @@ function [defaults,insolvencies] = detect_distress(returns,equity)
 
 end
 
-function [liabilities,liabilities_rolled] = extract_liabilities(assets,equity,dates_num,forward_rolling)
+function data = remove_first_observation(data)
 
-    liabilities = assets - equity;
-
-    if (forward_rolling > 0)
-        [~,a] = unique(cellstr(datestr(dates_num,'mm/yyyy')),'stable');
-        liabilities_monthly = liabilities(a,:);
-
-        indices_seq = [a(1:forward_rolling:numel(a)) - 1; numel(dates_num)];
-        liabilities_seq = liabilities_monthly(1:forward_rolling:numel(a),:);
-
-        liabilities_rolled = NaN(size(liabilities));
-
-        for i = 2:numel(indices_seq)
-            indices = (indices_seq(i-1) + 1):indices_seq(i);
-            liabilities_rolled(indices,:) = repmat(liabilities_seq(i-1,:),numel(indices),1);
-        end
-    else
-        liabilities_rolled = liabilities;
+    if (~isempty(data))
+        data = data(2:end,:);
     end
 
 end
+

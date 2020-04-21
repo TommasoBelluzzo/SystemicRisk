@@ -38,6 +38,7 @@ function analyze_dataset_internal(data)
     if (~isempty(data.Assets) && ~isempty(data.Equity))
         safe_plot(@(id)plot_boxes('Assets',data.Assets,data.FirmNames,id));
         safe_plot(@(id)plot_boxes('Equity',data.Equity,data.FirmNames,id));
+        safe_plot(@(id)plot_boxes('Liabilities',data.Liabilities,data.FirmNames,id));
     end
 
 end
@@ -136,13 +137,16 @@ end
 function plot_risk_free_rate(data,id)
 
     rfr = data.RiskFreeRate;
+    y_limits_rfr = find_plot_limits(rfr,0.1);
+    
     rfr_pc = [0; (((rfr(2:end) - rfr(1:end-1)) ./ rfr(1:end-1)) .* 100)];
+    y_limits_rfr_pc = find_plot_limits(rfr_pc,0.1);
 
     f = figure('Name','Dataset > Risk-Free Rate','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
-    plot(sub_1,data.DatesNum,rfr);
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',[(min(rfr) - 0.01) (max(rfr) + 0.01)],'XTickLabelRotation',45);
+    plot(sub_1,data.DatesNum,smooth_data(rfr));
+    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits_rfr,'XTickLabelRotation',45);
     t1 = title(sub_1,'Trend');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
@@ -156,7 +160,7 @@ function plot_risk_free_rate(data,id)
 
     sub_2 = subplot(1,2,2);
     plot(sub_2,data.DatesNum,rfr_pc);
-    set(sub_2,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
+    set(sub_2,'XLim',[data.DatesNum(1) data.DatesNum(end)],'YLim',y_limits_rfr_pc,'XTickLabelRotation',45);
     set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick'),'UniformOutput',false));
     t2 = title(sub_2,'Percent Change');
     set(t2,'Units','normalized');

@@ -10,8 +10,8 @@
 %   - A vector of integers greater than or equal to 1, of length n, containing the lag of each innovation term in the GARCH estimator.
 %
 % [OUTPUT]
-% params = A vector containing the GARCH and DCC parameters..
-% p = An n-by-n-by-t matrix of floats containing the DCC coefficients.
+% params = A vector containing the GARCH and DCC parameters.
+% p = An n-by-n-by-t matrix of floats containing the conditional correlations.
 % h = A t-by-n matrix of floats containing the conditional variances.
 % e = A t-by-n matrix of floats containing the standardized residuals.
 %
@@ -91,11 +91,11 @@ function [params,p,h,e] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,arch_q,garch_p)
     end
 
     params = [params; dcc_params.'];
-    p = dcc_gjrgarch_fulllikelihood(params,data,dcc_q,dcc_p,arch_q,garch_p);
+    p = dcc_gjrgarch_full(params,data,dcc_q,dcc_p,arch_q,garch_p);
 
 end
 
-function p = dcc_gjrgarch_fulllikelihood(params,data,dcc_q,dcc_p,arch_q,garch_p)
+function p = dcc_gjrgarch_full(params,data,dcc_q,dcc_p,arch_q,garch_p)
 
     [t,k] = size(data);
     data_var = var(data(:,1));
