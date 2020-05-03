@@ -34,7 +34,7 @@ This script calculates and analyses the following risk measures:
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Net Spillovers` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
 
-Some of the aforementioned models have been adjusted and improved according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source for systemic risk measurement.
+Some of the aforementioned models have been improved or extended according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source for systemic risk measurement.
 
 _`The project has been published in "MATLAB Digest - Financial Services" of May 2019.`_
 
