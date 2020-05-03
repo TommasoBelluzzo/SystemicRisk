@@ -156,7 +156,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Optional:* none.
   * **Liquidity Measures:**
     * *Required:* shares (prices), volumes, capitalizations.
-    * *Optional:* none.
+    * *Optional:* state variables.
   * **Spillover Measures:**
     * *Required:* shares (any).
     * *Optional:* none.
