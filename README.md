@@ -12,7 +12,7 @@ This script calculates and analyses the following risk measures:
   * `DCI (Dynamic Causality Index)` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `"In & Out" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `"In & Out - Other" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `Network Centralities`
+  * `Network Centralities: Betweenness, Degree, Closeness, Clustering, Eigenvector & Katz`
 * **CROSS-QUANTILOGRAM MEASURES**
   * `Full Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
   * `Partial Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
