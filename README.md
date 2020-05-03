@@ -61,15 +61,30 @@ The minimum required Matlab version is `R2014b`. In addition, the following prod
 
 Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). Below a list of the supported Excel sheets and their respective content:
 
-* **Shares:** prices or returns of the benchmark index (the time series can have any desired name and must be placed in the second column of the sheet, just after observation dates) and the firms, with daily frequency.
-* **Volumes:** trading volume of the firms, with daily frequency.
+* **Shares:** prices or returns expressed on a logarithmic scale of the benchmark index (the column can be labeled with any desired name and must be placed just after observation dates) and the firms, with daily frequency.
+* **Volumes:** trading volume of the firms expressed in number of traded shares, with daily frequency.
 * **Capitalizations:** market capitalization of the firms, with daily frequency.
-* **CDS:** the risk-free rate (the time series must be called `RF` and must be placed in the second column of the sheet, just after observation dates) and the credit default swap spreads of the firms, with daily frequency.
+* **CDS:** the risk-free rate expressed in decimals (the column must be called `RF` and must be placed just after observation dates) and the credit default swap spreads of the firms expressed in basis points, with daily frequency.
 * **Assets:** book value of assets of the firms, with the given balance sheet elements frequency.
 * **Equity:** book value of equity of the firms, with the given balance sheet elements frequency.
 * **Separate Accounts:** separate accounts of the firms, with the given balance sheet elements frequency.
 * **State Variables:** systemic state variables, with daily frequency.
-* **Groups:** group definitions.
+* **Groups:** group definitions, based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms. For example, the following groups definition:
+
+  > Firms in the Shares Sheet: A, B, C, D, E, F, G, H  
+  > Insurance Companies: 2  
+  > Investment Banks: 2  
+  > Commercial Banks: 3  
+  > Government-sponsored Enterprises: 1
+
+  produces the following outcome:
+
+  > "Insurance Companies" contains A and B  
+  > "Investment Banks" contains C and D  
+  > "Commercial Banks" contains E, F and G  
+  > "Government-sponsored Enterprises" contains H
+
+Balance sheet time series must be expressed in the same currency and scale.
 
 The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
 
@@ -121,47 +136,30 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * detecting and removing outliers;
   * removing rows with NaNs or filling the gaps through interpolation.
 
-* It is not mandatory to include financial time series used by excluded measures. Optional financial time series used by included measures can be omitted, as long as their related contribution isn't necessary. Below a list of required and optional time series for each category of measures:
+* It is not mandatory to include financial time series used by unwanted measures. Optional financial time series used by included measures can be omitted, as long as their contribution isn't necessary. Below a list of required and optional time series for each category of measures:
 
   * **Component Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* none.
   * **Connectedness Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* groups.
   * **Cross-Quantilogram Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* state variables.
   * **Cross-Sectional Measures:**
-    * *Required:* shares, capitalizations, assets, equity.
+    * *Required:* shares (any), capitalizations, assets, equity.
     * *Optional:* separate accounts, state variables.
   * **Default Measures:**
-    * *Required:* shares, capitalizations, cds, assets, equity.
+    * *Required:* shares (any), capitalizations, cds, assets, equity.
     * *Optional:* none.
   * **Spillover Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* none.
   
-* If the `Shares` sheet contains returns instead of prices, values must be expressed on a logarithmic scale. In the `Volumes` sheet, if present, values must be expressed in number of traded shares. Data concerning market capitalization and balance sheet elements, if present, must be expressed in the same currency and scale. In the `CDS` sheet, if present, the risk-free rate must be expressed in decimals while the credit default swap spreads must be expressed in basis points.
-
 * Firms whose `Shares` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain time point onward; defaulted firms are excluded by all the measures, while insolvent firms are excluded only by SCCA default measures.
-  
-* Groups are based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms included in the dataset. For example, the following groups definition:
 
-  > Firms in the Shares Sheet: A, B, C, D, E, F, G, H  
-  > Insurance Companies: 2  
-  > Investment Banks: 2  
-  > Commercial Banks: 3  
-  > Government-sponsored Enterprises: 1
-
-  produces the following outcome:
-
-  > "Insurance Companies" contains A and B  
-  > "Investment Banks" contains C and D  
-  > "Commercial Banks" contains E, F and G  
-  > "Government-sponsored Enterprises" contains H
-
-* If the dataset parsing process is too slow, the best way to solve the issue is to provide a standard unformatted Excel spreadsheet (`.xlsx`) or a binary Excel spreadsheet (`.xlsb`).
+* If the dataset parsing process is too slow, the best way to solve the issue is to provide a standard unformatted Excel spreadsheet (`.xlsx`) or a binary Excel spreadsheet (`.xlsb`). Once a dataset has been parsed, the script stores its output so that the parsing process happens only at first run.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
