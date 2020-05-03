@@ -27,6 +27,8 @@ This script calculates and analyses the following risk measures:
   * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
   * `DIP (Distress Insurance Premium)` by [Black et al. (2012)](https://doi.org/10.2139/ssrn.2181645)
   * `SCCA (Systemic Contingent Claims Analysis)` by [Jobst & Gray (2013)](https://doi.org/10.5089/9781475572780.001)
+* **LIQUIDITY MEASURES**
+  * `ILLIQ` by [Amihud (2002)](https://doi.org/10.1016/S1386-4181(01)00024-6)
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
@@ -151,6 +153,9 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Optional:* separate accounts, state variables.
   * **Default Measures:**
     * *Required:* shares (any), capitalizations, cds, assets, equity.
+    * *Optional:* none.
+  * **Liquidity Measures:**
+    * *Required:* shares (prices), volumes, capitalizations.
     * *Optional:* none.
   * **Spillover Measures:**
     * *Required:* shares (any).
