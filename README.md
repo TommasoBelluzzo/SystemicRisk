@@ -67,7 +67,7 @@ Datasets must be built following the structure of default ones included in every
 * **Volumes:** trading volume of the firms expressed in currency amount, with daily frequency.
 * **Capitalizations:** market capitalization of the firms, with daily frequency.
 * **CDS:** the risk-free rate expressed in decimals (the column must be called `RF` and must be placed just after observation dates) and the credit default swap spreads of the firms expressed in basis points, with daily frequency.
-* **Balance Sheet:** the balance sheet values of the firms expressed with omogeneous currency and scale, with the specified observations frequency, as below:
+* **Balance Sheet:** the balance sheet components of the firms expressed in omogeneous currency and scale, with the specified observations frequency, as below:
   * **Assets (Book Value)**
   * **Equity (Book Value)**
   * **Separate Accounts**
