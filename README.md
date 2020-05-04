@@ -64,10 +64,10 @@ The minimum required Matlab version is `R2014b`. In addition, the following prod
 Datasets must be built following the structure of default ones included in every release of the framework (see `Datasets` folder). Below a list of the supported Excel sheets and their respective content:
 
 * **Shares:** prices or returns expressed on a logarithmic scale of the benchmark index (the column can be labeled with any desired name and must be placed just after observation dates) and the firms, with daily frequency.
-* **Volumes:** trading volume of the firms expressed in number of traded shares, with daily frequency.
+* **Volumes:** trading volume of the firms expressed in currency amount, with daily frequency.
 * **Capitalizations:** market capitalization of the firms, with daily frequency.
 * **CDS:** the risk-free rate expressed in decimals (the column must be called `RF` and must be placed just after observation dates) and the credit default swap spreads of the firms expressed in basis points, with daily frequency.
-* **Balance Sheet:** the balance sheet values of the firms expressed in a omogeneous currency and scale, with the specified observations frequency:
+* **Balance Sheet:** the balance sheet values of the firms expressed with omogeneous currency and scale, with the specified observations frequency, as below:
   * **Assets (Book Value)**
   * **Equity (Book Value)**
   * **Separate Accounts**
