@@ -140,25 +140,25 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 * It is not mandatory to include financial time series used by unwanted measures. Optional financial time series used by included measures can be omitted, as long as their contribution isn't necessary. Below a list of required and optional time series for each category of measures:
 
   * **Component Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* none.
   * **Connectedness Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* groups.
   * **Cross-Quantilogram Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* state variables.
   * **Cross-Sectional Measures:**
-    * *Required:* shares, capitalizations, assets, equity.
+    * *Required:* shares (any), capitalizations, assets, equity.
     * *Optional:* separate accounts, state variables.
   * **Default Measures:**
-    * *Required:* shares, capitalizations, cds, assets, equity.
+    * *Required:* shares (any), capitalizations, cds, assets, equity.
     * *Optional:* none.
   * **Liquidity Measures:**
-    * *Required:* shares, volumes, capitalizations.
+    * *Required:* shares (prices), volumes, capitalizations.
     * *Optional:* state variables.
   * **Spillover Measures:**
-    * *Required:* shares.
+    * *Required:* shares (any).
     * *Optional:* none.
   
 * Firms whose `Shares` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain time point onward; defaulted firms are excluded by all the measures, while insolvent firms are excluded only by SCCA default measures.
