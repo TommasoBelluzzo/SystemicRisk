@@ -1,15 +1,15 @@
 % [INPUT]
-% data = A structure representing the dataset.
+% ds = A structure representing the dataset.
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
+% bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % a = A float [0.01,0.10] representing the target quantile (optional, default=0.05).
 % lags = An integer [10,60] representing the maximum number of lags (optional, default=60).
-% ci_m = A string (either 'SB' for stationary bootstrap or 'SN' for self-normalization) representing the computational approach of confidence intervals (optional, default='SB').
+% ci_m = A string (either 'SB' for Stationary Bootstrap or 'SN' for Self-normalization) representing the computational approach of confidence intervals (optional, default='SB').
 % ci_s = A float {0.005;0.010;0.025;0.050;0.100} representing the significance level of confidence intervals (optional, default=0.050).
 % ci_p = Optional argument whose type depends on the the chosen computational approach of confidence intervals:
-%   - For stationary bootstrap, an integer [10,1000] representing the number of bootstrap iterations (default=100).
-%   - For self-normalization, a float {0.00;0.01;0.03;0.05;0.10;0.15;0.20;0.30} representing the fraction of the sample that corresponds to the minimum subsample size (default=0.10).
+%   - for Stationary Bootstrap, an integer [10,1000] representing the number of bootstrap iterations (default=100);
+%   - for Self-normalization, a float {0.00;0.01;0.03;0.05;0.10;0.15;0.20;0.30} representing the fraction of the sample that corresponds to the minimum subsample size (default=0.10).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -25,10 +25,10 @@ function [result,stopped] = run_cross_quantilogram(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
         ip.addOptional('a',0.05,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.01,'<=',0.10,'scalar'}));
         ip.addOptional('lags',60,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',10,'<=',60,'scalar'}));
         ip.addOptional('ci_m','SB',@(x)any(validatestring(x,{'SB','SN'})));
@@ -40,26 +40,30 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    data = validate_dataset(ipr.data,'cross-quantilogram');
+    ds = validate_dataset(ipr.ds,'cross-quantilogram');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
+    bw = ipr.bw;
+    a = ipr.a;
+    lags = ipr.lags;
     [ci_m,ci_s,ci_p,ci_v] = validate_ci_input(ipr.ci_m,ipr.ci_s,ipr.ci_p);
+    analyze = ipr.analyze;
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_cross_quantilogram_internal(data,temp,out,ipr.bandwidth,ipr.a,ipr.lags,ci_m,ci_s,ci_p,ci_v,ipr.analyze);
+    [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lags,ci_m,ci_s,ci_p,ci_v,analyze);
 
 end
 
-function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwidth,a,lags,ci_m,ci_s,ci_p,ci_v,analyze)
+function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lags,ci_m,ci_s,ci_p,ci_v,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    data = data_initialize(data,bandwidth,a,lags,ci_m,ci_s,ci_p,ci_v);
-    n = data.N;
-    t = data.T;
+    ds = initialize(ds,bw,a,lags,ci_m,ci_s,ci_p,ci_v);
+    n = ds.N;
+    t = ds.T;
 
     step_1 = 0.2;
     step_2 = 1 - step_1;
@@ -77,31 +81,31 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
 
     try
 
-        idx = data.Index;
-        r = data.Returns;
+        idx = ds.Index;
+        r = ds.Returns;
 
         futures(1:n) = parallel.FevalFuture;
         futures_max = 0;
         futures_results = cell(n,1);
 
-        if (data.PartialsIncluded)
-            sv = data.StateVariables;
+        if (ds.PI)
+            sv = ds.StateVariables;
             
             for i = 1:n
-                offset = min(data.Defaults(i) - 1,t);
+                offset = min(ds.Defaults(i) - 1,t);
                 idx_i = idx(1:offset);
                 r_i = r(1:offset,i);
                 sv_i = sv(1:offset,:);
 
-                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,sv_i,data.A,data.Lags,data.CIM,data.CIS,data.CIP,data.CIV);
+                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,sv_i,ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
             end
         else
             for i = 1:n
-                offset = min(data.Defaults(i) - 1,t);
+                offset = min(ds.Defaults(i) - 1,t);
                 idx_i = idx(1:offset);
                 r_i = r(1:offset,i);
 
-                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,[],data.A,data.Lags,data.CIM,data.CIS,data.CIP,data.CIV);
+                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,[],ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
             end
         end
 
@@ -146,7 +150,7 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
     pause(1);
 
     try
-        data = data_finalize_1(data,futures_results);
+        ds = finalize_1(ds,futures_results);
     catch e
         delete(bar);
         rethrow(e);
@@ -158,13 +162,13 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
     
     try
 
-        windows_idx = extract_rolling_windows(data.Index,data.Bandwidth,false);
-        windows_r = extract_rolling_windows(data.Returns,data.Bandwidth,false);
+        windows_idx = extract_rolling_windows(ds.Index,ds.BW);
+        windows_r = extract_rolling_windows(ds.Returns,ds.BW);
         
-        if (data.PartialsIncluded)
-            windows_sv = extract_rolling_windows(data.StateVariables,data.Bandwidth,false);
+        if (ds.PI)
+            windows_sv = extract_rolling_windows(ds.StateVariables,ds.BW);
         else
-            windows_sv = repmat({[]},data.T,1);
+            windows_sv = repmat({[]},ds.T,1);
         end
 
         futures(1:t) = parallel.FevalFuture;
@@ -172,7 +176,7 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_idx{i},windows_r{i},windows_sv{i},data.A,data.Lags,data.CIM,data.CIS,data.CIP,data.CIV);
+            futures(i) = parfeval(@main_loop_2,1,windows_idx{i},windows_r{i},windows_sv{i},ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
         end
 
         for i = 1:t
@@ -216,7 +220,7 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
     pause(1);
 
     try
-        data = data_finalize_2(data,futures_results);
+        ds = finalize_2(ds,futures_results);
     catch e
         delete(bar);
         rethrow(e);
@@ -227,7 +231,7 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
 	pause(1);
     
     try
-        write_results(temp,out,data);
+        write_results(ds,temp,out);
         delete(bar);
     catch e
         delete(bar);
@@ -235,109 +239,107 @@ function [result,stopped] = run_cross_quantilogram_internal(data,temp,out,bandwi
     end
     
     if (analyze)
-        safe_plot(@(id)plot_sequence(data,'Full',id));
-        safe_plot(@(id)plot_windows(data,'Full',id));
+        safe_plot(@(id)plot_sequence(ds,'Full',id));
+        safe_plot(@(id)plot_windows(ds,'Full',id));
         
-        if (data.PartialsIncluded)
-            safe_plot(@(id)plot_sequence(data,'Partial',id));
-            safe_plot(@(id)plot_windows(data,'Partial',id));
+        if (ds.PI)
+            safe_plot(@(id)plot_sequence(ds,'Partial',id));
+            safe_plot(@(id)plot_windows(ds,'Partial',id));
         end
     end
     
-    result = data;
+    result = ds;
 
 end
 
 %% DATA
 
-function data = data_initialize(data,bandwidth,a,lags,ci_m,ci_s,ci_p,ci_v)
+function ds = initialize(ds,bw,a,lags,ci_m,ci_s,ci_p,ci_v)
 
-    n = data.N;
-    t = data.T;
+    n = ds.N;
+    t = ds.T;
 
-    pi = ~isempty(data.StateVariables);
+    ds.A = a;
+    ds.BW = bw;
+    ds.CIM = ci_m;
+    ds.CIP = ci_p;
+    ds.CIS = ci_s;
+    ds.CIV = ci_v;
+    ds.Lags = lags;
+    ds.PI = ~isempty(ds.StateVariables);
 
-    data.A = a;
-    data.Bandwidth = bandwidth;
-    data.CIM = ci_m;
-    data.CIP = ci_p;
-    data.CIS = ci_s;
-    data.CIV = ci_v;
-    data.Lags = lags;
-    data.PartialsIncluded = pi;
-
-    data.CQFullFrom = NaN(lags,n,3);
-    data.CQFullTo = NaN(lags,n,3);
-    data.CQFullFromWindows = NaN(t,3);
-    data.CQFullToWindows = NaN(t,3);
+    ds.CQFullFrom = NaN(lags,n,3);
+    ds.CQFullTo = NaN(lags,n,3);
+    ds.CQFullFromWindows = NaN(t,3);
+    ds.CQFullToWindows = NaN(t,3);
     
-    if (pi)
-        data.CQPartialFrom = NaN(lags,n,3);
-        data.CQPartialTo = NaN(lags,n,3);
-        data.CQPartialFromWindows = NaN(t,3);
-        data.CQPartialToWindows = NaN(t,3);
+    if (ds.PI)
+        ds.CQPartialFrom = NaN(lags,n,3);
+        ds.CQPartialTo = NaN(lags,n,3);
+        ds.CQPartialFromWindows = NaN(t,3);
+        ds.CQPartialToWindows = NaN(t,3);
     end
 
 end
 
-function data = data_finalize_1(data,window_results)
+function ds = finalize_1(ds,window_results)
   
-    n = data.N;
+    n = ds.N;
 
     for i = 1:n
         window_result = window_results{i};
         
         for j = 1:3
-            data.CQFullFrom(:,i,j) = window_result.CQFull(:,1,j);
-            data.CQFullTo(:,i,j) = window_result.CQFull(:,2,j);
+            ds.CQFullFrom(:,i,j) = window_result.CQFull(:,1,j);
+            ds.CQFullTo(:,i,j) = window_result.CQFull(:,2,j);
         end
     end
     
-    if (data.PartialsIncluded)
+    if (ds.PI)
         for i = 1:n
             window_result = window_results{i};
 
             for j = 1:3
-                data.CQPartialFrom(:,i,j) = window_result.CQPartial(:,1,j);
-                data.CQPartialTo(:,i,j) = window_result.CQPartial(:,2,j);
+                ds.CQPartialFrom(:,i,j) = window_result.CQPartial(:,1,j);
+                ds.CQPartialTo(:,i,j) = window_result.CQPartial(:,2,j);
             end
         end
     end
 
 end
 
-function data = data_finalize_2(data,window_results)
+function ds = finalize_2(ds,window_results)
   
-    t = data.T;
-    alpha = 2 / (data.Bandwidth + 1);
+    t = ds.T;
+    alpha = 2 / (ds.BW + 1);
 
     for i = 1:t
         window_result = window_results{i};
-        data.CQFullFromWindows(i,:) = window_result.CQFull(1,:);
-        data.CQFullToWindows(i,:) = window_result.CQFull(2,:);
+        ds.CQFullFromWindows(i,:) = window_result.CQFull(1,:);
+        ds.CQFullToWindows(i,:) = window_result.CQFull(2,:);
     end
 
     for i = 1:3
-        from = data.CQFullFromWindows(:,i);
-        data.CQFullFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
+        from = ds.CQFullFromWindows(:,i);
+        ds.CQFullFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
         
-        to = data.CQFullToWindows(:,i);
-        data.CQFullToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
+        to = ds.CQFullToWindows(:,i);
+        ds.CQFullToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
     end
     
-    if (data.PartialsIncluded)
+    if (ds.PI)
         for i = 1:t
             window_result = window_results{i};
-            data.CQPartialFromWindows(i,:) = window_result.CQPartial(1,:);
-            data.CQPartialToWindows(i,:) = window_result.CQPartial(2,:);
+            ds.CQPartialFromWindows(i,:) = window_result.CQPartial(1,:);
+            ds.CQPartialToWindows(i,:) = window_result.CQPartial(2,:);
         end
         
         for i = 1:3
-            from = data.CQPartialFromWindows(:,i);
-            data.CQPartialFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
+            from = ds.CQPartialFromWindows(:,i);
+            ds.CQPartialFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
             
-            to = data.CQPartialToWindows(:,i);
-            data.CQPartialToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
+            to = ds.CQPartialToWindows(:,i);
+            ds.CQPartialToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
         end
     end
 
@@ -447,7 +449,7 @@ function temp = validate_template(temp)
 
 end
 
-function write_results(temp,out,data)
+function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
 
@@ -469,39 +471,39 @@ function write_results(temp,out,data)
         error('The output file could not be created from the template file.');
     end
     
-    lags = num2cell(repelem(1:data.Lags,1,3).');
-    labels = repmat({'CQ' 'Lower CI' 'Upper CI'},1,data.Lags).';
+    lags = num2cell(repelem(1:ds.Lags,1,3).');
+    labels = repmat({'CQ' 'Lower CI' 'Upper CI'},1,ds.Lags).';
     row_headers = [labels lags];
 
-	dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
+	dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    vars = [row_headers num2cell(reshape(permute(data.CQFullFrom,[3 1 2]),data.Lags * 3,data.N))];
-    tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} data.FirmNames]);
+    vars = [row_headers num2cell(reshape(permute(ds.CQFullFrom,[3 1 2]),ds.Lags * 3,ds.N))];
+    tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full From','WriteRowNames',true);
     
-    vars = [row_headers num2cell(reshape(permute(data.CQFullTo,[3 1 2]),data.Lags * 3,data.N))];
-    tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} data.FirmNames]);
+    vars = [row_headers num2cell(reshape(permute(ds.CQFullTo,[3 1 2]),ds.Lags * 3,ds.N))];
+    tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full To','WriteRowNames',true);
     
-    tab = [dates_str array2table(data.CQFullFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
+    tab = [dates_str array2table(ds.CQFullFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full From Windows','WriteRowNames',true);
     
-    tab = [dates_str array2table(data.CQFullToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
+    tab = [dates_str array2table(ds.CQFullToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full To Windows','WriteRowNames',true);
     
-    if (data.PartialsIncluded)
-        vars = [row_headers num2cell(reshape(permute(data.CQPartialFrom,[3 1 2]),data.Lags * 3,data.N))];
-        tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} data.FirmNames]);
+    if (ds.PI)
+        vars = [row_headers num2cell(reshape(permute(ds.CQPartialFrom,[3 1 2]),ds.Lags * 3,ds.N))];
+        tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
         writetable(tab,out,'FileType','spreadsheet','Sheet','Partial From','WriteRowNames',true);
 
-        vars = [row_headers num2cell(reshape(permute(data.CQPartialTo,[3 1 2]),data.Lags * 3,data.N))];
-        tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} data.FirmNames]);
+        vars = [row_headers num2cell(reshape(permute(ds.CQPartialTo,[3 1 2]),ds.Lags * 3,ds.N))];
+        tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
         writetable(tab,out,'FileType','spreadsheet','Sheet','Partial To','WriteRowNames',true);
 
-        tab = [dates_str array2table(data.CQPartialFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
+        tab = [dates_str array2table(ds.CQPartialFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
         writetable(tab,out,'FileType','spreadsheet','Sheet','Partial From Windows','WriteRowNames',true);
 
-        tab = [dates_str array2table(data.CQPartialToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
+        tab = [dates_str array2table(ds.CQPartialToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
         writetable(tab,out,'FileType','spreadsheet','Sheet','Partial To Windows','WriteRowNames',true);
     else
         if (ispc())
@@ -613,6 +615,10 @@ function window_results = main_loop_2(idx,r,sv,a,lag,ci_m,ci_s,ci_p,ci_v)
 		
         rho = corr(r);
         rho(isnan(rho)) = 0;
+		
+		if (any(eig(rho) <= 0))
+		    rho = rho + (1e-16 .* eye(n))
+        end
 
         r = [r; (normrnd(mu,sigma,[d n]) * chol(rho,'upper'))];
 
@@ -917,9 +923,9 @@ end
 
 %% PLOTTING
 
-function plot_sequence(data,target,id)
+function plot_sequence(ds,target,id)
 
-    lags = data.Lags;
+    lags = ds.Lags;
 
     x = (1:lags).';
     x_limits = [0.3 (lags + 0.7)];
@@ -930,21 +936,21 @@ function plot_sequence(data,target,id)
         x_tick = [1 10:10:lags];
     end
 
-    if (data.PartialsIncluded)
-        y = [data.CQFullFrom(:) data.CQFullTo(:) data.CQPartialFrom(:) data.CQPartialTo(:)];
+    if (ds.PI)
+        y_limits = plot_limits([ds.CQFullFrom(:) ds.CQFullTo(:) ds.CQPartialFrom(:) ds.CQPartialTo(:)],0.1);
     else
-        y = [data.CQFullFrom(:) data.CQFullTo(:)];
+        y_limits = plot_limits([ds.CQFullFrom(:) ds.CQFullTo(:)],0.1);
     end
 
     core = struct();
 
-    core.N = data.N;
+    core.N = ds.N;
     core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
     core.SequenceFunction = @(y,offset)reshape(y(:,offset,:),lags,6);
 	
     core.OuterTitle = 'Cross-Quantilogram Measures';
     core.InnerTitle = [target ' Cross-Quantilograms (Lags)'];
-    core.Labels = data.FirmNames;
+    core.Labels = ds.FirmNames;
     
     core.Plots = 2;
     core.PlotsTitle = {'From' 'To'};
@@ -952,15 +958,17 @@ function plot_sequence(data,target,id)
 
     core.X = x;
     core.XDates = [];
-    core.XLabel = 'Lag';
+    core.XGrid = false;
+    core.XLabel = [];
     core.XLimits = x_limits;
     core.XRotation = [];
     core.XTick = x_tick;
     core.XTickLabels = [];
 
-    core.Y = cat(3,data.(['CQ' target 'From']),data.(['CQ' target 'To']));
-    core.YLabel = 'Value';
-    core.YLimits = find_plot_limits(y,0.1);
+    core.Y = cat(3,ds.(['CQ' target 'From']),ds.(['CQ' target 'To']));
+    core.YGrid = false;
+    core.YLabel = [];
+    core.YLimits = y_limits;
     core.YRotation = [];
     core.YTick = [];
     core.YTickLabels = @(x)sprintf('%.2f',x);
@@ -985,77 +993,73 @@ function plot_sequence(data,target,id)
 
 end
 
-function plot_windows(data,target,id)
+function plot_windows(ds,target,id)
 
-    from = data.(['CQ' target 'FromWindows']);
+    from = ds.(['CQ' target 'FromWindows']);
     [from_cq,from_cil,from_cih] = deal(from(:,1),from(:,2),from(:,3));
     
     below_indices = (from_cq < 0) & (from_cq < from_cil);
-    from_cq_below = NaN(data.T,1);
+    from_cq_below = NaN(ds.T,1);
     from_cq_below(below_indices) = from_cq(below_indices);
     
     above_indices = (from_cq > 0) & (from_cq > from_cih);
-    from_cq_above = NaN(data.T,1);
+    from_cq_above = NaN(ds.T,1);
     from_cq_above(above_indices) = from_cq(above_indices);
     
-    to = data.(['CQ' target 'ToWindows']);
+    to = ds.(['CQ' target 'ToWindows']);
     [to_cq,to_cil,to_cih] = deal(to(:,1),to(:,2),to(:,3));
     
     below_indices = (to_cq < 0) & (to_cq < to_cil);
-    to_cq_below = NaN(data.T,1);
+    to_cq_below = NaN(ds.T,1);
     to_cq_below(below_indices) = to_cq(below_indices);
     
     above_indices = (to_cq > 0) & (to_cq > to_cih);
-    to_cq_above = NaN(data.T,1);
+    to_cq_above = NaN(ds.T,1);
     to_cq_above(above_indices) = to_cq(above_indices);
 
     text = [target ' Cross-Quantilograms (Windows EWMA)'];
 
-    y_limits = find_plot_limits([from_cq to_cq],0.1);
+    y_limits = plot_limits([from_cq to_cq],0.1);
 
     f = figure('Name',['Cross-Quantilogram Measures > ' text],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
-    line(sub_1,[data.DatesNum(1) data.DatesNum(end)],[0 0],'Color',[0 0 0]);
+    line(sub_1,[ds.DatesNum(1) ds.DatesNum(end)],[0 0],'Color',[0 0 0]);
     hold on;
-        plot(sub_1,data.DatesNum,from_cq,'Color',[0.000 0.447 0.741]);
-        plot(sub_1,data.DatesNum,from_cq_below,'Color',[1.000 0.400 0.400]);
-        plot(sub_1,data.DatesNum,from_cq_above,'Color',[1.000 0.400 0.400]);
+        plot(sub_1,ds.DatesNum,from_cq,'Color',[0.000 0.447 0.741]);
+        plot(sub_1,ds.DatesNum,from_cq_below,'Color',[1.000 0.400 0.400]);
+        plot(sub_1,ds.DatesNum,from_cq_above,'Color',[1.000 0.400 0.400]);
     hold off;
-    xlabel(sub_1,'Time');
-    ylabel(sub_1,'Value');
-    set(sub_1,'YLim',y_limits);
     t1 = title(sub_1,'From');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(1,2,2);
-    line(sub_2,[data.DatesNum(1) data.DatesNum(end)],[0 0],'Color',[0 0 0]);
+    line(sub_2,[ds.DatesNum(1) ds.DatesNum(end)],[0 0],'Color',[0 0 0]);
     hold on;
-        plot(sub_2,data.DatesNum,to_cq,'Color',[0.000 0.447 0.741]);
-        plot(sub_2,data.DatesNum,to_cq_below,'Color',[1.000 0.400 0.400]);
-        plot(sub_2,data.DatesNum,to_cq_above,'Color',[1.000 0.400 0.400]);
+        plot(sub_2,ds.DatesNum,to_cq,'Color',[0.000 0.447 0.741]);
+        plot(sub_2,ds.DatesNum,to_cq_below,'Color',[1.000 0.400 0.400]);
+        plot(sub_2,ds.DatesNum,to_cq_above,'Color',[1.000 0.400 0.400]);
     hold off;
-    xlabel(sub_2,'Time');
-    ylabel(sub_2,'Value');
-    set(sub_2,'YLim',y_limits);
     t2 = title(sub_2,'To');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
     
+    set([sub_1 sub_2],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set([sub_1 sub_2],'YLim',y_limits);
+    set([sub_1 sub_2],'XGrid','on','YGrid','on');
+
+    if (ds.MonthlyTicks)
+        date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
+    end
+    
     y_tick = get(sub_1,'YTick');
     y_labels = arrayfun(@(x)sprintf('%.2f',x),y_tick,'UniformOutput',false);
-    set([sub_1 sub_2],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45,'YTick',y_tick,'YTickLabel',y_labels);
-
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
-    else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-        datetick(sub_2,'x','yyyy','KeepLimits');
-    end
+    set([sub_1 sub_2],'YTick',y_tick,'YTickLabel',y_labels);
 
     figure_title(text);
     

@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A structure representing the dataset.
+% ds = A structure representing the dataset.
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k = A float [0.90,0.99] representing the confidence level (optional, default=0.95).
@@ -19,7 +19,7 @@ function [result,stopped] = run_cross_sectional(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
@@ -33,25 +33,31 @@ function [result,stopped] = run_cross_sectional(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    data = validate_dataset(ipr.data,'cross-sectional');
+    ds = validate_dataset(ipr.ds,'cross-sectional');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
+    k = ipr.k;
+    car = ipr.car;
+    sf = ipr.sf;
+    d = ipr.d;
+    fr = ipr.fr;
+    analyze = ipr.analyze;
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_cross_sectional_internal(data,temp,out,ipr.k,ipr.car,ipr.sf,ipr.d,ipr.fr,ipr.analyze);
+    [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,fr,analyze);
 
 end
 
-function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,d,fr,analyze)
+function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,fr,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    data = data_initialize(data,k,car,sf,d,fr);
-    n = data.N;
-    t = data.T;
+    ds = initialize(ds,k,car,sf,d,fr);
+    n = ds.N;
+    t = ds.T;
 
     bar = waitbar(0,'Initializing cross-sectional measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
@@ -63,39 +69,39 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,
 
     try
 
-        idx = data.Index - mean(data.Index);
-        r = data.Returns;
+        r_m = ds.Index - mean(ds.Index);
+        r_x = ds.Returns;
 
-        mc = data.Capitalization;
+        cp = ds.Capitalizations;
 
-        lb = data.Liabilities;
-        lbr = apply_forward_rolling(data.Liabilities,data.DatesNum,data.FR);
+        lb = ds.Liabilities;
+        lbr = apply_forward_rolling(ds.Liabilities,ds.DatesNum,ds.FR);
         
-        sa = data.SeparateAccounts;
+        sa = ds.SeparateAccounts;
         
         if (~isempty(sa))
-            lb = lb - ((1 - data.SF) .* sa);
+            lb = lb - ((1 - ds.SF) .* sa);
             
-            sar = apply_forward_rolling(data.SeparateAccounts,data.DatesNum,data.FR);
-            lbr = lbr - ((1 - data.SF) .* sar);
+            sar = apply_forward_rolling(ds.SeparateAccounts,ds.DatesNum,ds.FR);
+            lbr = lbr - ((1 - ds.SF) .* sar);
         end
 
-        sv = data.StateVariables;
+        sv = ds.StateVariables;
 
         for i = 1:n
-            waitbar((i - 1) / n,bar,['Calculating cross-sectional measures for ' data.FirmNames{i} '...']);
+            waitbar((i - 1) / n,bar,['Calculating cross-sectional measures for ' ds.FirmNames{i} '...']);
 
             if (getappdata(bar,'Stop'))
                 stopped = true;
                 break;
             end
             
-            offset = min(data.Defaults(i) - 1,t);
+            offset = min(ds.Defaults(i) - 1,t);
 
-            r0_m = idx(1:offset);
-            r0_x = r(1:offset,i) - mean(r(1:offset,i));
+            r0_m = r_m(1:offset)- mean(r_m(1:offset));
+            r0_x = r_x(1:offset,i) - mean(r_x(1:offset,i));
 
-            mc_x = mc(1:offset,i);
+            cp_x = cp(1:offset,i);
 
             lb_x = lb(1:offset,i);
             lbr_x = lbr(1:offset,i);
@@ -106,25 +112,25 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,
                 sv_x = sv(1:offset,:);
             end
 
-            [~,p,h,~] = dcc_gjrgarch([r0_m r0_x]);
+            [p,h] = dcc_gjrgarch([r0_m r0_x]);
             s_m = sqrt(h(:,1));
             s_x = sqrt(h(:,2));
             rho = squeeze(p(1,2,:));
 
-            [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,data.A);
-            [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv_x,data.A);
-            [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,data.A,data.D);
-            ses = calculate_ses(lb_x,mc_x,data.CAR);
-            srisk = calculate_srisk(lbr_x,mc_x,lrmes,data.CAR);
+            [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,ds.A);
+            [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv_x,ds.A);
+            [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,ds.A,ds.D);
+            ses = calculate_ses(lb_x,cp_x,ds.CAR);
+            srisk = calculate_srisk(lbr_x,cp_x,lrmes,ds.CAR);
 
-            data.Beta(1:offset,i) = beta;
-            data.VaR(1:offset,i) = -1 * var;
-            data.ES(1:offset,i) = -1 * es;
-            data.CoVaR(1:offset,i) = -1 * covar;
-            data.DeltaCoVaR(1:offset,i) = -1 * dcovar;
-            data.MES(1:offset,i) = -1 * mes;
-            data.SES(1:offset,i) = ses;
-            data.SRISK(1:offset,i) = srisk;
+            ds.Beta(1:offset,i) = beta;
+            ds.VaR(1:offset,i) = -1 * var;
+            ds.ES(1:offset,i) = -1 * es;
+            ds.CoVaR(1:offset,i) = -1 * covar;
+            ds.DeltaCoVaR(1:offset,i) = -1 * dcovar;
+            ds.MES(1:offset,i) = -1 * mes;
+            ds.SES(1:offset,i) = ses;
+            ds.SRISK(1:offset,i) = srisk;
             
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -152,7 +158,7 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,
     pause(1);
 
     try
-        data = data_finalize(data);
+        ds = finalize(ds);
     catch e
         delete(bar);
         rethrow(e);
@@ -163,7 +169,7 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,
     pause(1);
     
     try
-        write_results(temp,out,data);
+        write_results(ds,temp,out);
         delete(bar);
     catch e
         delete(bar);
@@ -171,77 +177,77 @@ function [result,stopped] = run_cross_sectional_internal(data,temp,out,k,car,sf,
     end
     
     if (analyze)
-        safe_plot(@(id)plot_idiosyncratic_averages(data,id));
-        safe_plot(@(id)plot_systemic_averages(data,id));
-        safe_plot(@(id)plot_correlations(data,id));
-        safe_plot(@(id)plot_rankings(data,id));
-        safe_plot(@(id)plot_sequence(data,'CoVaR',id));
-        safe_plot(@(id)plot_sequence(data,'Delta CoVaR',id));
-        safe_plot(@(id)plot_sequence(data,'MES',id));
-        safe_plot(@(id)plot_sequence(data,'SES',id));
-        safe_plot(@(id)plot_sequence(data,'SRISK',id));
+        safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
+        safe_plot(@(id)plot_systemic_averages(ds,id));
+        safe_plot(@(id)plot_correlations(ds,id));
+        safe_plot(@(id)plot_rankings(ds,id));
+        safe_plot(@(id)plot_sequence(ds,'CoVaR',id));
+        safe_plot(@(id)plot_sequence(ds,'Delta CoVaR',id));
+        safe_plot(@(id)plot_sequence(ds,'MES',id));
+        safe_plot(@(id)plot_sequence(ds,'SES',id));
+        safe_plot(@(id)plot_sequence(ds,'SRISK',id));
     end
     
-    result = data;
+    result = ds;
 
 end
 
 %% DATA
 
-function data = data_initialize(data,k,car,sf,d,fr)
+function ds = initialize(ds,k,car,sf,d,fr)
 
-    n = data.N;
-    t = data.T;
+    n = ds.N;
+    t = ds.T;
 
-    data.A = 1 - k;
-    data.CAR = car;
-    data.D = d;
-    data.FR = fr;
-    data.K = k;
-    data.SF = sf;
+    ds.A = 1 - k;
+    ds.CAR = car;
+    ds.D = d;
+    ds.FR = fr;
+    ds.K = k;
+    ds.SF = sf;
 
-    car_label = sprintf('%.0f%%',(data.CAR * 100));
-    d_label = sprintf('%.0f%%',(data.D * 100));
-    k_label = sprintf('%.0f%%',(data.K * 100));
-    data.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
-    data.Labels = {'Beta' ['VaR (K=' k_label ')'] ['ES (K=' k_label ')'] ['CoVaR (K=' k_label ')'] ['Delta CoVaR (K=' k_label ')'] ['MES (K=' k_label ')'] ['SES (CAR=' car_label ')'] ['SRISK (D=' d_label ', CAR=' car_label ')'] 'Averages'};
+    car_label = sprintf('%.0f%%',(ds.CAR * 100));
+    d_label = sprintf('%.0f%%',(ds.D * 100));
+    k_label = sprintf('%.0f%%',(ds.K * 100));
+    ds.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
+    ds.Labels = {'Beta' ['VaR (K=' k_label ')'] ['ES (K=' k_label ')'] ['CoVaR (K=' k_label ')'] ['Delta CoVaR (K=' k_label ')'] ['MES (K=' k_label ')'] ['SES (CAR=' car_label ')'] ['SRISK (D=' d_label ', CAR=' car_label ')'] 'Averages'};
 
-    m = numel(data.LabelsSimple) - 1;
+    m = numel(ds.LabelsSimple) - 1;
     
-    data.Beta = NaN(t,n);
-    data.VaR = NaN(t,n);
-    data.ES = NaN(t,n);
-    data.CoVaR = NaN(t,n);
-    data.DeltaCoVaR = NaN(t,n);
-    data.MES = NaN(t,n);
-    data.SES = NaN(t,n);
-    data.SRISK = NaN(t,n);
-    data.Averages = NaN(t,m);
+    ds.Beta = NaN(t,n);
+    ds.VaR = NaN(t,n);
+    ds.ES = NaN(t,n);
+    ds.CoVaR = NaN(t,n);
+    ds.DeltaCoVaR = NaN(t,n);
+    ds.MES = NaN(t,n);
+    ds.SES = NaN(t,n);
+    ds.SRISK = NaN(t,n);
+    ds.Averages = NaN(t,m);
 
-    data.RankingConcordance = NaN(m,m);
-    data.RankingStability = NaN(1,m);
+    ds.RankingConcordance = NaN(m,m);
+    ds.RankingStability = NaN(1,m);
 
 end
 
-function data = data_finalize(data)
+function ds = finalize(ds)
 
-    n = data.N;
+    n = ds.N;
 
-    weights = max(0,data.Capitalization ./ repmat(sum(data.Capitalization,2,'omitnan'),1,n));
+    weights = max(0,ds.Capitalizations ./ repmat(sum(ds.Capitalizations,2,'omitnan'),1,n));
     
-	beta_avg = sum(data.Beta .* weights,2,'omitnan');
-    var_avg = sum(data.VaR .* weights,2,'omitnan');
-    es_avg = sum(data.ES .* weights,2,'omitnan');
-    covar_avg = sum(data.CoVaR .* weights,2,'omitnan');
-    dcovar_avg = sum(data.DeltaCoVaR .* weights,2,'omitnan');
-    mes_avg = sum(data.MES .* weights,2,'omitnan');
-    ses_avg = sum(data.SES .* weights,2,'omitnan');
-    srisk_avg = sum(data.SRISK .* weights,2,'omitnan');
-    data.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
+	beta_avg = sum(ds.Beta .* weights,2,'omitnan');
+    var_avg = sum(ds.VaR .* weights,2,'omitnan');
+    es_avg = sum(ds.ES .* weights,2,'omitnan');
+    covar_avg = sum(ds.CoVaR .* weights,2,'omitnan');
+    dcovar_avg = sum(ds.DeltaCoVaR .* weights,2,'omitnan');
+    mes_avg = sum(ds.MES .* weights,2,'omitnan');
+    ses_avg = sum(ds.SES .* weights,2,'omitnan');
+    srisk_avg = sum(ds.SRISK .* weights,2,'omitnan');
+    ds.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
 
-    [rc,rs] = evaluate_rankings(data);
-    data.RankingConcordance = rc;
-    data.RankingStability = rs;
+    [rc,rs] = evaluate_rankings(ds);
+    ds.RankingConcordance = rc;
+    ds.RankingStability = rs;
 
 end
 
@@ -301,7 +307,7 @@ function temp = validate_template(temp)
 
 end
 
-function write_results(temp,out,data)
+function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
 
@@ -323,17 +329,17 @@ function write_results(temp,out,data)
         error('The output file could not be created from the template file.');
     end
 
-    dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
+    dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    for i = 1:(numel(data.LabelsSimple) - 1)
-        sheet = data.LabelsSimple{i};
+    for i = 1:(numel(ds.LabelsSimple) - 1)
+        sheet = ds.LabelsSimple{i};
         measure = strrep(sheet,' ','');
 
-        tab = [dates_str array2table(data.(measure),'VariableNames',data.FirmNames)];
+        tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
         writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
     end
 
-    tab = [dates_str array2table(data.Averages,'VariableNames',strrep(data.LabelsSimple(1:end-1),' ','_'))];
+    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSimple(1:end-1),' ','_'))];
     writetable(tab,out,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
 
     if (ispc())
@@ -346,8 +352,8 @@ function write_results(temp,out,data)
         try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
-            for i = 1:numel(data.LabelsSimple)
-                exc_wb.Sheets.Item(data.LabelsSimple{i}).Name = data.Labels{i};
+            for i = 1:numel(ds.LabelsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
             end
             
             exc_wb.Save();
@@ -393,12 +399,14 @@ function [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv,a)
         b = quantile_regression(r0_m,r0_x,a);
         covar = b(1) + (b(2) .* var);
     else
-        b = quantile_regression(r0_m,[r0_x sv],a);
-        covar = b(1) + (b(2) .* var);
+        b = quantile_regression(r0_m(2:end),[r0_x(2:end) sv(1:end-1,:)],a);
+        covar = b(1) + (b(2) .* var(2:end));
 
         for i = 1:size(sv,2)
-            covar = covar + (b(i+2) .* sv(:,i));
+            covar = covar + (b(i+2) .* sv(1:end-1,i));
         end
+        
+        covar = [covar(1); covar];
     end
 
 	dcovar = b(2) .* (var - repmat(median(r0_x),length(r0_m),1));
@@ -424,8 +432,8 @@ function [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,a,d)
     x = ((r0_x ./ s_x) - (rho .* u)) ./ z;
 
     r0_n = 4 / (3 * length(r0_m));
-    r0_s = min([std(r0_m) (iqr(r0_m) / 1.349)]);
-    h = r0_s * (r0_n ^ (-0.2));
+    r0_s = min([std(r0_m ./ s_m) (iqr(r0_m ./ s_m) ./ 1.349)]);
+    h = r0_s * r0_n ^0.2;
 
     f = normcdf(((c ./ s_m) - u) ./ h);
     f_sum = sum(f);
@@ -455,11 +463,11 @@ function srisk = calculate_srisk(lb,eq,lrmes,car)
 
 end
 
-function [rc,rs] = evaluate_rankings(data)
+function [rc,rs] = evaluate_rankings(ds)
 
-    t = data.T;
+    t = ds.T;
 
-    measures = numel(data.LabelsSimple) - 1;
+    measures = numel(ds.LabelsSimple) - 1;
     measures_pairs = nchoosek(1:measures,2);
     
     rc = zeros(measures,measures);
@@ -469,12 +477,12 @@ function [rc,rs] = evaluate_rankings(data)
         pair = measures_pairs(i,:);
 
         index_1 = pair(1);
-        field_1 = strrep(data.LabelsSimple{index_1},' ','');
-        measure_1 = data.(field_1);
+        field_1 = strrep(ds.LabelsSimple{index_1},' ','');
+        measure_1 = ds.(field_1);
         
         index_2 = pair(2);
-        field_2 = strrep(data.LabelsSimple{index_2},' ','');
-        measure_2 = data.(field_2);
+        field_2 = strrep(ds.LabelsSimple{index_2},' ','');
+        measure_2 = ds.(field_2);
         
         for j = 1:t
             [~,rank_1] = sort(measure_1(j,:),'ascend');
@@ -485,8 +493,8 @@ function [rc,rs] = evaluate_rankings(data)
     end
     
     for i = 1:measures
-        field = strrep(data.LabelsSimple{i},' ','');
-        measure = data.(field);
+        field = strrep(ds.LabelsSimple{i},' ','');
+        measure = ds.(field);
         
         for j = t:-1:2
             [~,rank_previous] = sort(measure(j-1,:),'ascend');
@@ -510,7 +518,7 @@ function kcc = kendall_concordance_coefficient(rank_1,rank_2)
 
     for i = 1:k
         x_i = m(:,i);
-        [~,b] = sortrows(x_i);
+        [~,b] = sortrows(x_i,'ascend');
         rm(b,i) = 1:n;
     end
 
@@ -667,49 +675,39 @@ function [ax,big_ax] = gplotmatrix_stable(f,x,labels)
 
 end
 
-function plot_idiosyncratic_averages(data,id)
+function plot_idiosyncratic_averages(ds,id)
 
-    averages = data.Averages(:,1:3);
+    averages = ds.Averages(:,1:3);
     beta = averages(:,1);
     others = averages(:,2:3);
 
-    y_limits_beta = find_plot_limits(beta,0.1,0);
-    y_limits_others = find_plot_limits(others,0.1);
+    y_limits_beta = plot_limits(beta,0.1,0);
+    y_limits_others = plot_limits(others,0.1);
 
     f = figure('Name','Cross-Sectional Measures > Idiosyncratic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,data.DatesNum,smooth_data(beta),'Color',[0.000 0.447 0.741]);
-    xlabel(sub_1,'Time');
-    ylabel(sub_1,'Value');
+    plot(sub_1,ds.DatesNum,smooth_data(beta),'Color',[0.000 0.447 0.741]);
     set(sub_1,'YLim',y_limits_beta);
-    title(sub_1,data.Labels{1});
+    title(sub_1,ds.Labels{1});
     
     sub_2 = subplot(2,2,2);
-    plot(sub_2,data.DatesNum,smooth_data(averages(:,2)),'Color',[0.000 0.447 0.741]);
-    xlabel(sub_2,'Time');
-    ylabel(sub_2,'Value');
+    plot(sub_2,ds.DatesNum,smooth_data(averages(:,2)),'Color',[0.000 0.447 0.741]);
     set(sub_2,'YLim',y_limits_others);
-    title(sub_2,data.Labels{2});
+    title(sub_2,ds.Labels{2});
     
     sub_3 = subplot(2,2,4);
-    plot(sub_3,data.DatesNum,smooth_data(averages(:,3)),'Color',[0.000 0.447 0.741]);
-    xlabel(sub_3,'Time');
-    ylabel(sub_3,'Value');
-    set(sub_3,'YLim',y_limits_others);
-    title(sub_3,data.Labels{3});
+    plot(sub_3,ds.DatesNum,smooth_data(averages(:,3)),'Color',[0.000 0.447 0.741]);
+    set(sub_3,'YLim',y_limits_others,'YTick',get(sub_2,'YTick'),'YTickLabel',get(sub_2,'YTickLabel'),'YTickLabelMode',get(sub_2,'YTickLabelMode'),'YTickMode',get(sub_2,'YTickMode'));
+    title(sub_3,ds.Labels{3});
     
-    set([sub_1 sub_2 sub_3],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_3,'YTick',get(sub_2,'YTick'),'YTickLabel',get(sub_2,'YTickLabel'),'YTickLabelMode',get(sub_2,'YTickLabelMode'),'YTickMode',get(sub_2,'YTickMode'));
+    set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set([sub_1 sub_2 sub_3],'XGrid','on','YGrid','on');
 
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_3,'x','mm/yyyy','KeepLimits','KeepTicks');
+    if (ds.MonthlyTicks)
+        date_ticks([sub_1 sub_2 sub_3],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-        datetick(sub_2,'x','yyyy','KeepLimits');
-        datetick(sub_3,'x','yyyy','KeepLimits');
+        date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
     figure_title('Idiosyncratic Averages');
@@ -720,15 +718,15 @@ function plot_idiosyncratic_averages(data,id)
 
 end
 
-function plot_systemic_averages(data,id)
+function plot_systemic_averages(ds,id)
 
     y_limits = zeros(5,2);
 
-    averages_quantile = data.Averages(:,4:6);
-    y_limits(1:3,:) = repmat(find_plot_limits(averages_quantile,0.1),3,1);
+    averages_quantile = ds.Averages(:,4:6);
+    y_limits(1:3,:) = repmat(plot_limits(averages_quantile,0.1),3,1);
     
-    averages_volume = data.Averages(:,7:8);
-    y_limits(4:5,:) = repmat(find_plot_limits(averages_volume,0.1),2,1);
+    averages_volume = ds.Averages(:,7:8);
+    y_limits(4:5,:) = repmat(plot_limits(averages_volume,0.1),2,1);
     
     subplot_offsets = cell(5,1);
     subplot_offsets{1} = [1 3 5];
@@ -739,23 +737,15 @@ function plot_systemic_averages(data,id)
 
     f = figure('Name','Cross-Sectional Measures > Systemic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
-    subs = NaN(5,1);
+    subs = gobjects(5,1);
     height_delta = NaN;
     
     for i = 1:5
         sub = subplot(9,2,subplot_offsets{i});
-        plot(sub,data.DatesNum,smooth_data(data.Averages(:,i+3)),'Color',[0.000 0.447 0.741]);
-        xlabel(sub,'Time');
-        ylabel(sub,'Value');
+        plot(sub,ds.DatesNum,smooth_data(ds.Averages(:,i+3)),'Color',[0.000 0.447 0.741]);
         set(sub,'YLim',y_limits(i,:));
-        title(sub,data.Labels{i+3});
+        title(sub,ds.Labels{i+3});
 
-        if (data.MonthlyTicks)
-            datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
-        else
-            datetick(sub,'x','yyyy','KeepLimits');
-        end
-        
         if (i == 1)
             sub_position = get(sub,'Position');
             height_old = sub_position(4);
@@ -771,7 +761,14 @@ function plot_systemic_averages(data,id)
         subs(i) = sub;
     end
     
-    set(subs,'XLim',[data.DatesNum(1) data.DatesNum(end)]);
+    set(subs,'XLim',[ds.DatesNum(1) ds.DatesNum(end)]);
+    set(subs,'XGrid','on','YGrid','on');
+    
+    if (ds.MonthlyTicks)
+        date_ticks(subs,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(subs,'x','yyyy','KeepLimits');
+    end
     
     y_tick = get(subs(1),'YTick');
     y_labels = arrayfun(@(x)sprintf('%.2f',x),y_tick,'UniformOutput',false);
@@ -789,32 +786,32 @@ function plot_systemic_averages(data,id)
 
 end
 
-function plot_correlations(data,id)
+function plot_correlations(ds,id)
 
-    mu = mean(data.Averages,1);
-    sigma = std(data.Averages,1);
+    mu = mean(ds.Averages,1);
+    sigma = std(ds.Averages,1);
     
-    [rho,pval] = corr(data.Averages);
+    [rho,pval] = corr(ds.Averages);
     rho(isnan(rho)) = 0;
 
-    z = bsxfun(@minus,data.Averages,mu);
+    z = bsxfun(@minus,ds.Averages,mu);
     z = bsxfun(@rdivide,z,sigma);
     z_limits = [nanmin(z(:)) nanmax(z(:))];
     
-    n = numel(data.LabelsSimple) - 1;
+    n = numel(ds.LabelsSimple) - 1;
 
     f = figure('Name','Cross-Sectional Measures > Correlation Matrix','Units','normalized','Tag',id);
     
-    [ax,big_ax] = gplotmatrix_stable(f,data.Averages,data.LabelsSimple(1:end-1));
+    [ax,big_ax] = gplotmatrix_stable(f,ds.Averages,ds.LabelsSimple(1:end-1));
 
     x_labels = get(ax,'XLabel');
     y_labels = get(ax,'YLabel');
     set([x_labels{:}; y_labels{:}],'FontWeight','bold');
     
     x_labels_grey = arrayfun(@(l)l{1},x_labels);
-    x_labels_grey_indices = ismember({x_labels_grey.String},data.LabelsSimple(1:3));
+    x_labels_grey_indices = ismember({x_labels_grey.String},ds.LabelsSimple(1:3));
     y_labels_grey = arrayfun(@(l)l{1},y_labels);
-    y_labels_grey_indices = ismember({y_labels_grey.String},data.LabelsSimple(1:3));
+    y_labels_grey_indices = ismember({y_labels_grey.String},ds.LabelsSimple(1:3));
     set([x_labels{x_labels_grey_indices}; y_labels{y_labels_grey_indices}],'Color',[0.5 0.5 0.5]);
 
     for i = 1:n
@@ -826,7 +823,8 @@ function plot_correlations(data,id)
             y_limits = mu(i) + (z_limits_current * sigma(i));
 
             set(get(big_ax,'Parent'),'CurrentAxes',ax_ij);
-            set(ax_ij,'XLim',x_limits,'XTick',[],'YLim',y_limits,'YTick',[]);
+            set(ax_ij,'XLim',x_limits,'XTick',[]);
+            set(ax_ij,'YLim',y_limits,'YTick',[]);
             axis(ax_ij,'normal');
 
             if (i ~= j)
@@ -852,17 +850,17 @@ function plot_correlations(data,id)
 
 end
 
-function plot_rankings(data,id)
+function plot_rankings(ds,id)
 
-    labels = data.LabelsSimple(1:end-1);
+    labels = ds.LabelsSimple(1:end-1);
     n = numel(labels);
     seq = 1:n;
     off = seq + 0.5;
 
-    [rs,order] = sort(data.RankingStability);
+    [rs,order] = sort(ds.RankingStability);
     rs_names = labels(order);
     
-    rc = data.RankingConcordance;
+    rc = ds.RankingConcordance;
     rc(rc <= 0.5) = 0.0;
     rc(rc > 0.5) = 1.0;
     rc(logical(eye(n))) = 0.5;
@@ -870,13 +868,14 @@ function plot_rankings(data,id)
     [rc_x,rc_y] = meshgrid(seq,seq);
     rc_x = rc_x(:) + 0.5;
     rc_y = rc_y(:) + 0.5;
-    rc_text = cellstr(num2str(data.RankingConcordance(:),'%.2f'));
+    rc_text = cellstr(num2str(ds.RankingConcordance(:),'%.2f'));
 
     f = figure('Name','Cross-Sectional Measures > Rankings','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_1,'XTickLabel',rs_names,'YLim',[0 1]);
+    set(sub_1,'XTickLabel',rs_names);
+    set(sub_1,'YLim',[0 1]);
     title(sub_1,'Ranking Stability');
 
     if (~verLessThan('MATLAB','8.4'))
@@ -899,10 +898,11 @@ function plot_rankings(data,id)
     sub_2 = subplot(1,2,2);
     pcolor(padarray(rc,[1 1],'post'));
     colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
-    axis image;
+    axis('image');
     text(rc_x, rc_y, rc_text,'FontSize',9,'HorizontalAlignment','center');
-    set(sub_2,'FontWeight','bold','XAxisLocation','bottom','TickLength',[0 0],'YDir','reverse');
-    set(sub_2,'XTick',off,'XTickLabels',labels,'XTickLabelRotation',45,'YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
+    set(sub_2,'FontWeight','bold','TickLength',[0 0]);
+    set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
+    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
     t2 = title(sub_2,'Ranking Concordance');
     t2_position = get(t2,'Position');
     set(t2,'Position',[t2_position(1) 0.2897 t2_position(3)]);
@@ -947,41 +947,43 @@ function plot_rankings(data,id)
 
 end
 
-function plot_sequence(data,target,id)
+function plot_sequence(ds,target,id)
 
-    [~,index] = ismember(target,data.LabelsSimple);
-    plots_title = data.Labels(index);
+    [~,index] = ismember(target,ds.LabelsSimple);
+    plots_title = ds.Labels(index);
 
-    x = data.DatesNum;
+    x = ds.DatesNum;
     x_limits = [x(1) x(end)];
     
-    y = data.(strrep(target,' ',''));
-    y_limits = find_plot_limits(y,0.1);
+    y = ds.(strrep(target,' ',''));
+    y_limits = plot_limits(y,0.1);
     
     core = struct();
 
-    core.N = data.N;
+    core.N = ds.N;
     core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
     core.SequenceFunction = @(y,offset)y(:,offset);
 	
     core.OuterTitle = 'Cross-Sectional Measures';
     core.InnerTitle = [target ' Time Series'];
-    core.Labels = data.FirmNames;
+    core.Labels = ds.FirmNames;
 
     core.Plots = 1;
     core.PlotsTitle = plots_title;
     core.PlotsType = 'H';
     
     core.X = x;
-    core.XDates = data.MonthlyTicks;
-    core.XLabel = 'Time';
+    core.XDates = ds.MonthlyTicks;
+    core.XGrid = true;
+    core.XLabel = [];
     core.XLimits = x_limits;
     core.XRotation = 45;
     core.XTick = [];
-    core.XTickLabels = @(x)sprintf('%.2f',x);
+    core.XTickLabels = [];
 
     core.Y = smooth_data(y);
-    core.YLabel = 'Value';
+    core.YGrid = true;
+    core.YLabel = [];
     core.YLimits = y_limits;
     core.YRotation = [];
     core.YTick = [];

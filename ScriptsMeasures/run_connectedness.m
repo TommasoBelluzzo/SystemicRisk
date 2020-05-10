@@ -1,10 +1,10 @@
 % [INPUT]
-% data = A structure representing the dataset.
+% ds = A structure representing the dataset.
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% significance = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
-% robust = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
+% bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
+% sst = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% rp = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
 % k = A float (0.00,0.20] representing the Granger-causality threshold for non-causal relationships (optional, default=0.06).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -18,12 +18,12 @@ function [result,stopped] = run_connectedness(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('significance',0.05,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.1,'scalar'}));
-        ip.addOptional('robust',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('sst',0.05,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.1,'scalar'}));
+        ip.addOptional('rp',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
         ip.addOptional('k',0.06,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.20,'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -31,24 +31,29 @@ function [result,stopped] = run_connectedness(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    data = validate_dataset(ipr.data,'connectedness');
+    ds = validate_dataset(ipr.ds,'connectedness');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
+    bw = ipr.bw;
+    sst = ipr.sst;
+    rp = ipr.rp;
+    k = ipr.k;
+    analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_connectedness_internal(data,temp,out,ipr.bandwidth,ipr.significance,ipr.robust,ipr.k,ipr.analyze);
+    [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,analyze);
 
 end
 
-function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,significance,robust,k,analyze)
+function [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    data = data_initialize(data,bandwidth,significance,robust,k);
-    t = data.T;
+    ds = initialize(ds,bw,sst,rp,k);
+    t = ds.T;
     
     bar = waitbar(0,'Initializing connectedness measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -60,17 +65,14 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
 
     try
 
-        r = data.Returns;
-        r(isnan(r)) = 0;
-        
-        windows = extract_rolling_windows(r,bandwidth,false);
+        windows = extract_rolling_windows(ds.Returns,ds.BW);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop,1,windows{i},data.Significance,data.Robust,data.GroupDelimiters);
+            futures(i) = parfeval(@main_loop,1,windows{i},ds.SST,ds.RP,ds.GroupDelimiters);
         end
 
         for i = 1:t
@@ -114,7 +116,7 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
     pause(1);
 
     try
-        data = data_finalize(data,futures_results);
+        ds = finalize(ds,futures_results);
     catch e
         delete(bar);
         rethrow(e);
@@ -125,7 +127,7 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
     pause(1);
     
     try
-        write_results(temp,out,data);
+        write_results(ds,temp,out);
         delete(bar);
     catch e
         delete(bar);
@@ -133,90 +135,90 @@ function [result,stopped] = run_connectedness_internal(data,temp,out,bandwidth,s
     end
 
     if (analyze)
-        safe_plot(@(id)plot_indicators(data,id));
-        safe_plot(@(id)plot_network(data,id));
-        safe_plot(@(id)plot_adjacency_matrix(data,id));
-        safe_plot(@(id)plot_centralities(data,id));
+        safe_plot(@(id)plot_indicators(ds,id));
+        safe_plot(@(id)plot_network(ds,id));
+        safe_plot(@(id)plot_adjacency_matrix(ds,id));
+        safe_plot(@(id)plot_centralities(ds,id));
     end
     
-    result = data;
+    result = ds;
 
 end
 
 %% DATA
 
-function data = data_initialize(data,bandwidth,significance,robust,k)
+function ds = initialize(ds,bw,sst,rp,k)
 
-    n = data.N;
-    t = data.T;
+    n = ds.N;
+    t = ds.T;
 
-    data.Bandwidth = bandwidth;
-    data.K = k;
-    data.Robust = robust;
-    data.Significance = significance;
+    ds.BW = bw;
+    ds.K = k;
+    ds.RP = rp;
+    ds.SST = sst;
     
-    data.AdjacencyMatrices = cell(t,1);
-    data.DCI = NaN(t,1);
-    data.ConnectionsInOut = NaN(t,1);
-    data.ConnectionsInOutOther = NaN(t,1);
-    data.BetweennessCentralities = NaN(t,n);
-    data.ClosenessCentralities = NaN(t,n);
-    data.DegreeCentralities = NaN(t,n);
-    data.EigenvectorCentralities = NaN(t,n);
-    data.KatzCentralities = NaN(t,n);
-    data.ClusteringCoefficients = NaN(t,n);
-    data.DegreesIn = NaN(t,n);
-    data.DegreesOut = NaN(t,n);
-    data.Degrees = NaN(t,n);
+    ds.AdjacencyMatrices = cell(t,1);
+    ds.DCI = NaN(t,1);
+    ds.ConnectionsInOut = NaN(t,1);
+    ds.ConnectionsInOutOther = NaN(t,1);
+    ds.BetweennessCentralities = NaN(t,n);
+    ds.ClosenessCentralities = NaN(t,n);
+    ds.DegreeCentralities = NaN(t,n);
+    ds.EigenvectorCentralities = NaN(t,n);
+    ds.KatzCentralities = NaN(t,n);
+    ds.ClusteringCoefficients = NaN(t,n);
+    ds.DegreesIn = NaN(t,n);
+    ds.DegreesOut = NaN(t,n);
+    ds.Degrees = NaN(t,n);
 
-    data.AdjacencyMatrixAverage = NaN(n,n);
-    data.BetweennessCentralitiesAverage = NaN(1,n);
-    data.ClosenessCentralitiesAverage = NaN(1,n);
-    data.DegreeCentralitiesAverage = NaN(1,n);
-    data.EigenvectorCentralitiesAverage = NaN(1,n);
-    data.KatzCentralitiesAverage = NaN(1,n);
-    data.ClusteringCoefficientsAverage = NaN(1,n);
-    data.DegreesInAverage = NaN(1,n);
-    data.DegreesOutAverage = NaN(1,n);
-    data.DegreesAverage = NaN(1,n);
+    ds.AdjacencyMatrixAverage = NaN(n,n);
+    ds.BetweennessCentralitiesAverage = NaN(1,n);
+    ds.ClosenessCentralitiesAverage = NaN(1,n);
+    ds.DegreeCentralitiesAverage = NaN(1,n);
+    ds.EigenvectorCentralitiesAverage = NaN(1,n);
+    ds.KatzCentralitiesAverage = NaN(1,n);
+    ds.ClusteringCoefficientsAverage = NaN(1,n);
+    ds.DegreesInAverage = NaN(1,n);
+    ds.DegreesOutAverage = NaN(1,n);
+    ds.DegreesAverage = NaN(1,n);
 
 end
 
-function data = data_finalize(data,window_results)
+function ds = finalize(ds,window_results)
 
-    t = data.T;
+    t = ds.T;
 
     for i = 1:t
         futures_result = window_results{i};
 
-        data.AdjacencyMatrices{i} = futures_result.AdjacencyMatrix;
-        data.DCI(i) = futures_result.DCI;
-        data.ConnectionsInOut(i) = futures_result.ConnectionsInOut;
-        data.ConnectionsInOutOther(i) = futures_result.ConnectionsInOutOther;
-        data.BetweennessCentralities(i,:) = futures_result.BetweennessCentralities;
-        data.ClosenessCentralities(i,:) = futures_result.ClosenessCentralities;
-        data.DegreeCentralities(i,:) = futures_result.DegreeCentralities;
-        data.EigenvectorCentralities(i,:) = futures_result.EigenvectorCentralities;
-        data.KatzCentralities(i,:) = futures_result.KatzCentralities;
-        data.ClusteringCoefficients(i,:) = futures_result.ClusteringCoefficients;
-        data.DegreesIn(i,:) = futures_result.DegreesIn;
-        data.DegreesOut(i,:) = futures_result.DegreesOut;
-        data.Degrees(i,:) = futures_result.Degrees;
+        ds.AdjacencyMatrices{i} = futures_result.AdjacencyMatrix;
+        ds.DCI(i) = futures_result.DCI;
+        ds.ConnectionsInOut(i) = futures_result.ConnectionsInOut;
+        ds.ConnectionsInOutOther(i) = futures_result.ConnectionsInOutOther;
+        ds.BetweennessCentralities(i,:) = futures_result.BetweennessCentralities;
+        ds.ClosenessCentralities(i,:) = futures_result.ClosenessCentralities;
+        ds.DegreeCentralities(i,:) = futures_result.DegreeCentralities;
+        ds.EigenvectorCentralities(i,:) = futures_result.EigenvectorCentralities;
+        ds.KatzCentralities(i,:) = futures_result.KatzCentralities;
+        ds.ClusteringCoefficients(i,:) = futures_result.ClusteringCoefficients;
+        ds.DegreesIn(i,:) = futures_result.DegreesIn;
+        ds.DegreesOut(i,:) = futures_result.DegreesOut;
+        ds.Degrees(i,:) = futures_result.Degrees;
     end
 
-    am = calculate_average_adjacency_matrix(data.AdjacencyMatrices);
-    data.AdjacencyMatrixAverage = am;
+    am = calculate_average_adjacency_matrix(ds.AdjacencyMatrices);
+    ds.AdjacencyMatrixAverage = am;
     
     [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am);
-    data.BetweennessCentralitiesAverage = bc;
-    data.ClosenessCentralitiesAverage = cc;
-    data.DegreeCentralitiesAverage = dc;
-    data.EigenvectorCentralitiesAverage = ec;
-    data.KatzCentralitiesAverage = kc;
-    data.ClusteringCoefficientsAverage = clc;
-    data.DegreesInAverage = deg_in;
-    data.DegreesOutAverage = deg_out;
-    data.DegreesAverage = deg;
+    ds.BetweennessCentralitiesAverage = bc;
+    ds.ClosenessCentralitiesAverage = cc;
+    ds.DegreeCentralitiesAverage = dc;
+    ds.EigenvectorCentralitiesAverage = ec;
+    ds.KatzCentralitiesAverage = kc;
+    ds.ClusteringCoefficientsAverage = clc;
+    ds.DegreesInAverage = deg_in;
+    ds.DegreesOutAverage = deg_out;
+    ds.DegreesAverage = deg;
 
 end
 
@@ -276,7 +278,7 @@ function temp = validate_template(temp)
 
 end
 
-function write_results(temp,out,data)
+function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
 
@@ -298,19 +300,19 @@ function write_results(temp,out,data)
         error('The output file could not be created from the template file.');
     end
 
-    firm_names = data.FirmNames';
+    firm_names = ds.FirmNames';
 
-    vars = [data.DatesStr num2cell(data.DCI) num2cell(data.ConnectionsInOut) num2cell(data.ConnectionsInOutOther)];
+    vars = [ds.DatesStr num2cell(ds.DCI) num2cell(ds.ConnectionsInOut) num2cell(ds.ConnectionsInOutOther)];
     labels = {'Date' 'DCI' 'Connections_InOut' 'Connections_InOutOther'};
     t1 = cell2table(vars,'VariableNames',labels);
     writetable(t1,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
-    vars = [firm_names num2cell(data.AdjacencyMatrixAverage)];
-    labels = {'Firms' data.FirmNames{:,:}};
+    vars = [firm_names num2cell(ds.AdjacencyMatrixAverage)];
+    labels = {'Firms' ds.FirmNames{:,:}};
     t2 = cell2table(vars,'VariableNames',labels);
     writetable(t2,out,'FileType','spreadsheet','Sheet','Average Adjacency Matrix','WriteRowNames',true);
 
-    vars = [firm_names num2cell(data.BetweennessCentralitiesAverage') num2cell(data.ClosenessCentralitiesAverage') num2cell(data.DegreeCentralitiesAverage') num2cell(data.EigenvectorCentralitiesAverage') num2cell(data.KatzCentralitiesAverage') num2cell(data.ClusteringCoefficientsAverage')];
+    vars = [firm_names num2cell(ds.BetweennessCentralitiesAverage') num2cell(ds.ClosenessCentralitiesAverage') num2cell(ds.DegreeCentralitiesAverage') num2cell(ds.EigenvectorCentralitiesAverage') num2cell(ds.KatzCentralitiesAverage') num2cell(ds.ClusteringCoefficientsAverage')];
     labels = {'Firms' 'BetweennessCentrality' 'ClosenessCentrality' 'DegreeCentrality' 'EigenvectorCentrality' 'KatzCentrality' 'ClusteringCoefficient'};
     t3 = cell2table(vars,'VariableNames',labels);
     writetable(t3,out,'FileType','spreadsheet','Sheet','Average Centrality Measures','WriteRowNames',true);
@@ -319,11 +321,11 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(window,significance,robust,group_delimiters)
+function window_results = main_loop(r,sst,rp,group_delimiters)
 
     window_results = struct();
 
-    am = causal_adjacency(window,significance,robust);
+    am = causal_adjacency(r,sst,rp);
     window_results.AdjacencyMatrix = am;
 
     [dci,number_io,number_ioo] = calculate_connectedness_indicators(am,group_delimiters);
@@ -547,40 +549,40 @@ function kc = calculate_katz_centrality(am,am_len)
 
 end
 
-function am = causal_adjacency(data,significance,robust)
+function am = causal_adjacency(r,sst,rp)
 
-    n = size(data,2);
-    i = repelem((1:n).',n,1);
-    j = repmat((1:n).',n,1); 
+    nans_indices = any(isnan(r),1);
+    n = size(r,2);
+    nok = sum(~nans_indices);
+
+    sequence = (1:n).';
+    sequence(nans_indices) = [];
+
+    i = repelem(sequence,nok,1);
+    j = repmat(sequence,nok,1); 
 
     indices = i == j;
     i(indices) = [];
     j(indices) = [];
 
-    d_in = arrayfun(@(x)data(:,x),i,'UniformOutput',false);
-    d_out = arrayfun(@(x)data(:,x),j,'UniformOutput',false);
+    r_in = arrayfun(@(x)r(:,x),i,'UniformOutput',false);
+    r_out = arrayfun(@(x)r(:,x),j,'UniformOutput',false);
     
-    k = n^2 - n;
+    k = nok^2 - nok;
     pvalues = zeros(k,1);
 
-    if (robust)
+    if (rp)
         for y = 1:k
-            in = d_in{y};
-            out = d_out{y};
-
-            [~,pvalues(y)] = linear_granger_causality(in,out);
+            [~,pvalues(y)] = linear_granger_causality(r_in{y},r_out{y});
         end
     else
         for y = 1:k
-            in = d_in{y};
-            out = d_out{y};
-
-            [pvalues(y),~] = linear_granger_causality(in,out);
+            [pvalues(y),~] = linear_granger_causality(r_in{y},r_out{y});
         end
     end
 
     am = zeros(n);
-    am(sub2ind([n n],i,j)) = pvalues < significance;
+    am(sub2ind([n n],i,j)) = pvalues < sst;
 
 end
 
@@ -651,53 +653,51 @@ end
 
 %% PLOTTING
 
-function plot_indicators(data,id)
+function plot_indicators(ds,id)
 
-    connections_max = max(max([data.ConnectionsInOut data.ConnectionsInOutOther])) * 1.1;
+    connections_max = max(max([ds.ConnectionsInOut ds.ConnectionsInOutOther])) * 1.1;
     
-    threshold_indices = data.DCI >= data.K;
-    threshold = NaN(data.T,1);
+    threshold_indices = ds.DCI >= ds.K;
+    threshold = NaN(ds.T,1);
     threshold(threshold_indices) = connections_max;
 
     f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,smooth_data(data.DCI));
+    plot(sub_1,ds.DatesNum,smooth_data(ds.DCI));
     hold on;
-        plot(sub_1,data.DatesNum,repmat(data.K,[data.T 1]),'Color',[1 0.4 0.4]);
+        plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1 0.4 0.4]);
     hold off;
+    set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set(sub_1,'XGrid','on','YGrid','on');
     t1 = title(sub_1,'Dynamic Causality Index');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,1,2);
-    area_1 = area(sub_2,data.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
+    area_1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
     hold on;
-        area_2 = area(sub_2,data.DatesNum,smooth_data(data.ConnectionsInOut),'EdgeColor','none','FaceColor','b');
-        if (data.Groups == 0)
-            area_3 = area(sub_2,data.DatesNum,NaN(data.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+        area_2 = area(sub_2,ds.DatesNum,smooth_data(ds.ConnectionsInOut),'EdgeColor','none','FaceColor','b');
+        if (ds.Groups == 0)
+            area_3 = area(sub_2,ds.DatesNum,NaN(ds.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         else
-            area_3 = area(sub_2,data.DatesNum,smooth_data(data.ConnectionsInOutOther),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_3 = area(sub_2,ds.DatesNum,smooth_data(ds.ConnectionsInOutOther),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
-    set(sub_2,'YLim',[0 connections_max]);
+    set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45,'YLim',[0 connections_max]);
     legend(sub_2,[area_2 area_3 area_1],'In & Out','In & Out - Other','Granger-causality Threshold','Location','best');
     t2 = title(sub_2,'Connections');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+    if (ds.MonthlyTicks)
+        date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-        datetick(sub_2,'x','yyyy','KeepLimits');
+        date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
-    
-    set([sub_1 sub_2],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
-    
+
     figure_title('Indicators');
     
     pause(0.01);
@@ -706,40 +706,40 @@ function plot_indicators(data,id)
 
 end
 
-function plot_network(data,id)
+function plot_network(ds,id)
 
-    if (data.Groups == 0)
-        group_colors = repmat(lines(1),data.N,1);
+    if (ds.Groups == 0)
+        group_colors = repmat(lines(1),ds.N,1);
     else
-        group_colors = zeros(data.N,3);
-        group_delimiters_len = length(data.GroupDelimiters);
-        group_lines = lines(data.Groups);
+        group_colors = zeros(ds.N,3);
+        group_delimiters_len = length(ds.GroupDelimiters);
+        group_lines = lines(ds.Groups);
 
         for i = 1:group_delimiters_len
-            group_delimiter = data.GroupDelimiters(i);
+            group_delimiter = ds.GroupDelimiters(i);
 
             if (i == 1)
                 group_colors(1:group_delimiter,:) = repmat(group_lines(i,:),group_delimiter,1);
             else
-                group_delimiter_prev = data.GroupDelimiters(i-1) + 1;
+                group_delimiter_prev = ds.GroupDelimiters(i-1) + 1;
                 group_colors(group_delimiter_prev:group_delimiter,:) = repmat(group_lines(i,:),group_delimiter - group_delimiter_prev + 1,1);
             end
 
             if (i == group_delimiters_len)
-                group_colors(group_delimiter+1:end,:) = repmat(group_lines(i+1,:),data.N - group_delimiter,1);
+                group_colors(group_delimiter+1:end,:) = repmat(group_lines(i+1,:),ds.N - group_delimiter,1);
             end
         end
     end
     
-	weights = mean(data.Degrees,1,'omitnan');
+	weights = mean(ds.Degrees,1,'omitnan');
 	weights = weights ./ mean(weights);
 	weights = (weights - min(weights)) ./ (max(weights) - min(weights));
     weights = (weights .* 3.75) + 0.25;
     
-    theta = linspace(0,(2 * pi),(data.N + 1)).';
+    theta = linspace(0,(2 * pi),(ds.N + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
-    [i,j] = find(data.AdjacencyMatrixAverage);
+    [i,j] = find(ds.AdjacencyMatrixAverage);
     [~,order] = sort(max(i,j));
     i = i(order);
     j = j(order);
@@ -757,16 +757,16 @@ function plot_network(data,id)
         end
     hold off;
 
-    if (data.Groups == 0)
+    if (ds.Groups == 0)
         hold on;
             for i = 1:size(xy,1)
                 line(xy(i,1),xy(i,2),'Color',group_colors(i,:),'LineStyle','none','Marker','.','MarkerSize',(35 + (15 * weights(i))));
             end
         hold off;
     else
-        d_inc = data.GroupDelimiters + 1;
+        d_inc = ds.GroupDelimiters + 1;
 
-        lines_ref = NaN(data.Groups,1);
+        lines_ref = NaN(ds.Groups,1);
         lines_off = 1;
 
         hold on;
@@ -781,13 +781,13 @@ function plot_network(data,id)
             end
         hold off;
 
-        legend(sub,lines_ref,data.GroupNames,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
+        legend(sub,lines_ref,ds.GroupNames,'Units','normalized','Position',[0.85 0.12 0.001 0.001]);
     end
 
     axis(sub,[-1 1 -1 1]);
-    axis equal off;
+    axis('equal','off');
 
-    labels = text((xy(:,1) .* 1.075), (xy(:,2) .* 1.075),data.FirmNames,'FontSize',10);
+    labels = text((xy(:,1) .* 1.075), (xy(:,2) .* 1.075),ds.FirmNames,'FontSize',10);
     set(labels,{'Rotation'},num2cell(theta * (180 / pi())));
 
     figure_title('Network Graph');
@@ -798,13 +798,13 @@ function plot_network(data,id)
 
 end
 
-function plot_adjacency_matrix(data,id)
+function plot_adjacency_matrix(ds,id)
 
-    am = data.AdjacencyMatrixAverage;
-    am(logical(eye(data.N))) = 0.5;
+    am = ds.AdjacencyMatrixAverage;
+    am(logical(eye(ds.N))) = 0.5;
     am = padarray(am,[1 1],'post');
 
-    off = data.N + 0.5;
+    off = ds.N + 0.5;
 
     f = figure('Name','Connectedness Measures > Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -813,8 +813,9 @@ function plot_adjacency_matrix(data,id)
     axis image;
 
     ax = gca();
-    set(ax,'XAxisLocation','top','TickLength',[0 0],'YDir','reverse');
-    set(ax,'XTick',1.5:off,'XTickLabels',data.FirmNames,'XTickLabelRotation',45,'YTick',1.5:off,'YTickLabels',data.FirmNames,'YTickLabelRotation',45);
+    set(ax,'TickLength',[0 0]);
+    set(ax,'XAxisLocation','top','XTick',1.5:off,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
+    set(ax,'YDir','reverse','YTick',1.5:off,'YTickLabels',ds.FirmNames,'YTickLabelRotation',45);
     
     figure_title('Average Adjacency Matrix');
 
@@ -824,22 +825,22 @@ function plot_adjacency_matrix(data,id)
 
 end
 
-function plot_centralities(data,id)
+function plot_centralities(ds,id)
 
-    seq = 1:data.N;
+    seq = 1:ds.N;
     
-    [bc,order] = sort(data.BetweennessCentralitiesAverage);
-    bc_names = data.FirmNames(order);
-    [cc,order] = sort(data.ClosenessCentralitiesAverage);
-    cc_names = data.FirmNames(order);
-    [dc,order] = sort(data.DegreeCentralitiesAverage);
-    dc_names = data.FirmNames(order);
-    [ec,order] = sort(data.EigenvectorCentralitiesAverage);
-    ec_names = data.FirmNames(order);
-    [kc,order] = sort(data.KatzCentralitiesAverage);
-    kc_names = data.FirmNames(order);
-    [clc,order] = sort(data.ClusteringCoefficientsAverage);
-    clc_names = data.FirmNames(order);
+    [bc,order] = sort(ds.BetweennessCentralitiesAverage);
+    bc_names = ds.FirmNames(order);
+    [cc,order] = sort(ds.ClosenessCentralitiesAverage);
+    cc_names = ds.FirmNames(order);
+    [dc,order] = sort(ds.DegreeCentralitiesAverage);
+    dc_names = ds.FirmNames(order);
+    [ec,order] = sort(ds.EigenvectorCentralitiesAverage);
+    ec_names = ds.FirmNames(order);
+    [kc,order] = sort(ds.KatzCentralitiesAverage);
+    kc_names = ds.FirmNames(order);
+    [clc,order] = sort(ds.ClusteringCoefficientsAverage);
+    clc_names = ds.FirmNames(order);
 
     f = figure('Name','Connectedness Measures > Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -873,7 +874,7 @@ function plot_centralities(data,id)
     set(sub_6,'XTickLabel',clc_names);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (data.N + 1)],'XTick',seq,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (ds.N + 1)],'XTick',seq,'XTickLabelRotation',90);
 
     figure_title('Average Centrality Measures');
     

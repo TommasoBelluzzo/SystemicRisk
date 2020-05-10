@@ -1,8 +1,8 @@
 % [INPUT]
-% data = A structure representing the dataset.
+% ds = A structure representing the dataset.
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
-% bandwidth = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
+% bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % k = A float [0.90,0.99] representing the confidence level used to calculate the CATFIN (optional, default=0.99).
 % f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio (optional, default=0.2).
 % q = A float (0.5,1.0) representing the quantile threshold of the Turbulence Index (optional, default=0.75).
@@ -18,10 +18,10 @@ function [result,stopped] = run_component(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bandwidth',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
         ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
         ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.2,'<=',0.8,'scalar'}));
         ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'real','finite','>',0.5,'<',1,'scalar'}));
@@ -31,24 +31,29 @@ function [result,stopped] = run_component(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    data = validate_dataset(ipr.data,'component');
+    ds = validate_dataset(ipr.ds,'component');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
+    bw = ipr.bw;
+    k = ipr.k;
+    f = ipr.f;
+    q = ipr.q;
+    analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_component_internal(data,temp,out,ipr.bandwidth,ipr.k,ipr.f,ipr.q,ipr.analyze);
+    [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze);
 
 end
 
-function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q,analyze)
+function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    data = data_initialize(data,bandwidth,k,f,q);
-    t = data.T;
+    ds = initialize(ds,bw,k,f,q);
+    t = ds.T;
 
     rng(double(bitxor(uint16('T'),uint16('B'))));
 	cleanup_1 = onCleanup(@()rng('default'));
@@ -63,15 +68,15 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
 
     try
 
-        windows_fr = extract_rolling_windows(data.Returns,bandwidth,false);
-        windows_pr = extract_rolling_windows(data.CATFINReturns,bandwidth,false);
+        windows_rf = extract_rolling_windows(ds.Returns,ds.BW);
+        windows_rc = extract_rolling_windows(ds.CATFINReturns,ds.BW);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop,1,windows_fr{i},windows_pr{i},data.Components,data.A);
+            futures(i) = parfeval(@main_loop,1,windows_rf{i},windows_rc{i},ds.Components,ds.A);
         end
 
         for i = 1:t
@@ -115,7 +120,7 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     pause(1);
 
     try
-        data = data_finalize(data,futures_results);
+        ds = finalize(ds,futures_results);
     catch e
         delete(bar);
         rethrow(e);
@@ -126,7 +131,7 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     pause(1);
     
     try
-        write_results(temp,out,data);
+        write_results(ds,temp,out);
         delete(bar);
     catch e
         delete(bar);
@@ -134,92 +139,92 @@ function [result,stopped] = run_component_internal(data,temp,out,bandwidth,k,f,q
     end
 
     if (analyze)
-        safe_plot(@(id)plot_indicators_catfin(data,id));
-        safe_plot(@(id)plot_indicators_other(data,id));
-        safe_plot(@(id)plot_pca(data,id));
+        safe_plot(@(id)plot_indicators_catfin(ds,id));
+        safe_plot(@(id)plot_indicators_other(ds,id));
+        safe_plot(@(id)plot_pca(ds,id));
     end
     
-    result = data;
+    result = ds;
 
 end
 
 %% DATA
 
-function data = data_initialize(data,bandwidth,k,f,q)
+function ds = initialize(ds,bw,k,f,q)
 
-    n = data.N;
-    t = data.T;
+    n = ds.N;
+    t = ds.T;
 
-    r = data.Returns;
+    r = ds.Returns;
     rw = 1 ./ (repmat(n,t,1) - sum(isnan(r),2));
 
-    data.A = 1 - k;
-    data.Bandwidth = bandwidth;
-    data.Components = round(data.N * f,0);
-    data.F = f;
-    data.K = k;
-    data.Q = q;
+    ds.A = 1 - k;
+    ds.BW = bw;
+    ds.Components = round(ds.N * f,0);
+    ds.F = f;
+    ds.K = k;
+    ds.Q = q;
 
-    k_label = sprintf('%.0f%%',(data.K * 100));
-    data.Labels = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    data.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    data.LabelsVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
+    k_label = sprintf('%.0f%%',(ds.K * 100));
+    ds.Labels = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    ds.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    ds.LabelsVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
 
-    data.CATFINReturns = sum(r .* repmat(rw,1,n),2,'omitnan');
-    data.CATFINVaR = NaN(t,4);
-    data.CATFINFirstCoefficients = NaN(1,3);
-    data.CATFINFirstExplained = NaN;
-    data.CATFIN = NaN(t,1);
+    ds.CATFINReturns = sum(r .* repmat(rw,1,n),2,'omitnan');
+    ds.CATFINVaR = NaN(t,4);
+    ds.CATFINFirstCoefficients = NaN(1,3);
+    ds.CATFINFirstExplained = NaN;
+    ds.CATFIN = NaN(t,1);
     
-    data.AbsorptionRatio = NaN(t,1);
-    data.CorrelationSurprise = NaN(t,1);
-    data.TurbulenceIndex = NaN(t,1);
+    ds.AbsorptionRatio = NaN(t,1);
+    ds.CorrelationSurprise = NaN(t,1);
+    ds.TurbulenceIndex = NaN(t,1);
 
-    data.PCACoefficients = cell(t,1);
-    data.PCAExplained = cell(t,1);
-    data.PCAExplainedSums = NaN(t,4);
-    data.PCAScores = cell(t,1);
+    ds.PCACoefficients = cell(t,1);
+    ds.PCAExplained = cell(t,1);
+    ds.PCAExplainedSums = NaN(t,4);
+    ds.PCAScores = cell(t,1);
     
-    data.PCACoefficientsOverall = NaN(n,n);
-    data.PCAExplainedOverall = NaN(n,1);
-    data.PCAExplainedSumsOverall = NaN(1,4);
-    data.PCAScoresOverall = NaN(t,n);
+    ds.PCACoefficientsOverall = NaN(n,n);
+    ds.PCAExplainedOverall = NaN(n,1);
+    ds.PCAExplainedSumsOverall = NaN(1,4);
+    ds.PCAScoresOverall = NaN(t,n);
 
 end
 
-function data = data_finalize(data,results)
+function ds = finalize(ds,results)
 
-    t = data.T;
+    t = ds.T;
 
     for i = 1:t
         window_result = results{i};
         
-        data.CATFINVaR(i,:) = window_result.CATFINVaR;
+        ds.CATFINVaR(i,:) = window_result.CATFINVaR;
         
-        data.AbsorptionRatio(i) = window_result.AbsorptionRatio;
-        data.CorrelationSurprise(i) = window_result.CorrelationSurprise;
-        data.TurbulenceIndex(i) = window_result.TurbulenceIndex;
+        ds.AbsorptionRatio(i) = window_result.AbsorptionRatio;
+        ds.CorrelationSurprise(i) = window_result.CorrelationSurprise;
+        ds.TurbulenceIndex(i) = window_result.TurbulenceIndex;
         
-        data.PCACoefficients{i} = window_result.PCACoefficients;
-        data.PCAExplained{i} = window_result.PCAExplained;
-        data.PCAExplainedSums(i,:) = fliplr([cumsum([window_result.PCAExplained(1) window_result.PCAExplained(2) window_result.PCAExplained(3)]) 100]);
-        data.PCAScores{i} = window_result.PCAScores;
+        ds.PCACoefficients{i} = window_result.PCACoefficients;
+        ds.PCAExplained{i} = window_result.PCAExplained;
+        ds.PCAExplainedSums(i,:) = fliplr([cumsum([window_result.PCAExplained(1) window_result.PCAExplained(2) window_result.PCAExplained(3)]) 100]);
+        ds.PCAScores{i} = window_result.PCAScores;
     end
 
-    data.CATFINVaR(:,4) = sanitize_data(data.CATFINVaR(:,4),data.DatesNum,[],[]);
+    ds.CATFINVaR(:,4) = sanitize_data(ds.CATFINVaR(:,4),ds.DatesNum,[],[]);
 
-    [coefficients,scores,explained] = calculate_pca(data.CATFINVaR,false);
-    data.CATFIN = scores(:,1);
-    data.CATFINFirstCoefficients = coefficients(:,1).';
-    data.CATFINFirstExplained = explained(1);
+    [coefficients,scores,explained] = calculate_pca(ds.CATFINVaR,false);
+    ds.CATFIN = scores(:,1);
+    ds.CATFINFirstCoefficients = coefficients(:,1).';
+    ds.CATFINFirstExplained = explained(1);
 
-    data.AbsorptionRatio = sanitize_data(data.AbsorptionRatio,data.DatesNum,[],[0 1]);
+    ds.AbsorptionRatio = sanitize_data(ds.AbsorptionRatio,ds.DatesNum,[],[0 1]);
 
-    [coefficients,scores,explained] = calculate_overall_pca(data.Returns);
-    data.PCACoefficientsOverall = coefficients;
-    data.PCAExplainedOverall = explained;
-    data.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
-    data.PCAScoresOverall = scores;
+    [coefficients,scores,explained] = calculate_overall_pca(ds.Returns);
+    ds.PCACoefficientsOverall = coefficients;
+    ds.PCAExplainedOverall = explained;
+    ds.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
+    ds.PCAScoresOverall = scores;
 
 end
 
@@ -279,7 +284,7 @@ function temp = validate_template(temp)
 
 end
 
-function write_results(temp,out,data)
+function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
 
@@ -301,26 +306,26 @@ function write_results(temp,out,data)
         error('The results file could not be created from the template file.');
     end
 
-    dates_str = cell2table(data.DatesStr,'VariableNames',{'Date'});
+    dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    labels = strrep(data.LabelsVaR,'-','_');
-    t1 = [dates_str array2table(data.CATFINVaR,'VariableNames',labels)];
+    labels = strrep(ds.LabelsVaR,'-','_');
+    t1 = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
     writetable(t1,out,'FileType','spreadsheet','Sheet','CATFIN VaR','WriteRowNames',true);
 
     labels = {'Absorption_Ratio' 'CATFIN' 'Correlation_Surprise' 'Turbulence_Index'};
-    t2 = [dates_str array2table([data.AbsorptionRatio data.CATFIN data.CorrelationSurprise data.TurbulenceIndex],'VariableNames',labels)];
+    t2 = [dates_str array2table([ds.AbsorptionRatio ds.CATFIN ds.CorrelationSurprise ds.TurbulenceIndex],'VariableNames',labels)];
     writetable(t2,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
     labels = {'PC' 'ExplainedVariance'};
-    t3 = array2table([(1:data.N).' data.PCAExplainedOverall],'VariableNames',labels);
+    t3 = array2table([(1:ds.N).' ds.PCAExplainedOverall],'VariableNames',labels);
     writetable(t3,out,'FileType','spreadsheet','Sheet','PCA Overall Explained','WriteRowNames',true);
 
-    labels = [{'Firms'} data.FirmNames];
-    t4 = cell2table([data.FirmNames.' num2cell(data.PCACoefficientsOverall)],'VariableNames',labels);
+    labels = [{'Firms'} ds.FirmNames];
+    t4 = cell2table([ds.FirmNames.' num2cell(ds.PCACoefficientsOverall)],'VariableNames',labels);
     writetable(t4,out,'FileType','spreadsheet','Sheet','PCA Overall Coefficients','WriteRowNames',true);
 
-    labels = data.FirmNames;
-    t5 = [dates_str array2table(data.PCAScoresOverall,'VariableNames',labels)];
+    labels = ds.FirmNames;
+    t5 = [dates_str array2table(ds.PCAScoresOverall,'VariableNames',labels)];
     writetable(t5,out,'FileType','spreadsheet','Sheet','PCA Overall Scores','WriteRowNames',true);
     
     if (ispc())
@@ -333,8 +338,8 @@ function write_results(temp,out,data)
         try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
-            for i = 1:numel(data.LabelsSimple)
-                exc_wb.Sheets.Item(data.LabelsSimple{i}).Name = data.Labels{i};
+            for i = 1:numel(ds.LabelsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
             end
             
             exc_wb.Save();
@@ -353,22 +358,22 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(window_fr,window_pr,components,a)
+function window_results = main_loop(rf,rc,components,a)
 
     window_results = struct();
 
-    nan_indices = sum(isnan(window_fr),1) > 0;
-    window_fr(:,nan_indices) = [];
+    nan_indices = sum(isnan(rf),1) > 0;
+    rf(:,nan_indices) = [];
 
-    [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(window_pr,a,0.98,0.05);
+    [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(rc,a,0.98,0.05);
     window_results.CATFINVaR = -1 .* min(0,[var_np var_gpd var_gev var_sged]);
     
-    [ar,cs,ti] = calculate_component_indicators(window_fr,components);
+    [ar,cs,ti] = calculate_component_indicators(rf,components);
     window_results.AbsorptionRatio = ar;
     window_results.CorrelationSurprise = cs;
     window_results.TurbulenceIndex = ti;
     
-    [coefficients,scores,explained] = calculate_pca(window_fr,true);
+    [coefficients,scores,explained] = calculate_pca(rf,true);
     window_results.PCACoefficients = coefficients;
     window_results.PCAExplained = explained;
     window_results.PCAScores = scores;
@@ -530,41 +535,43 @@ end
 
 %% PLOTTING
 
-function plot_indicators_catfin(data,id)
+function plot_indicators_catfin(ds,id)
 
-    r = max(0,-data.CATFINReturns);
-    y_limits = find_plot_limits([-data.CATFINVaR r],0.1,0);
+    r = max(0,-ds.CATFINReturns);
+    y_limits = plot_limits([-ds.CATFINVaR r],0.1,0);
 
     f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
+    subs = gobjects(5,1);
+    
     sub_1 = subplot(2,4,[1 4]);
-    plot(sub_1,data.DatesNum,smooth_data(data.CATFIN),'Color',[0.000 0.447 0.741]);
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
-    t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',data.K * 100) ', PCA.EV=' sprintf('%.2f%%',data.CATFINFirstExplained) ')']);
+    plot(sub_1,ds.DatesNum,smooth_data(ds.CATFIN),'Color',[0.000 0.447 0.741]);
+    set(sub_1,'XGrid','on','YGrid','on');
+    t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',ds.K * 100) ', PCA.EV=' sprintf('%.2f%%',ds.CATFINFirstExplained) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
-
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-    else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-    end
+    
+    subs(1) = sub_1;
     
     for i = 1:4
         sub = subplot(2,4,i + 4);
-        plot(sub,data.DatesNum,r,'Color',[0.000 0.447 0.741]);
+        plot(sub,ds.DatesNum,r,'Color',[0.000 0.447 0.741]);
         hold on;
-            plot(sub,data.DatesNum,smooth_data(data.CATFINVaR(:,i)),'Color',[1 0.4 0.4],'LineWidth',1.5);
+            plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaR(:,i),5),'Color',[1 0.4 0.4],'LineWidth',1.5);
         hold off;
-        set(sub,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45,'YLim',y_limits);
-        title(sub,[data.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',data.CATFINFirstCoefficients(i)) ')']);
+        set(sub,'YLim',y_limits);
+        title(sub,[ds.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']);
+        
+        subs(i+1) = sub;
+    end
+    
+    set(subs,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
 
-        if (data.MonthlyTicks)
-            datetick(sub,'x','mm/yyyy','KeepLimits','KeepTicks');
-        else
-            datetick(sub,'x','yyyy','KeepLimits');
-        end
+    if (ds.MonthlyTicks)
+        date_ticks(subs,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(subs,'x','yyyy','KeepLimits');
     end
 
     figure_title('CATFIN Indicator');
@@ -575,75 +582,67 @@ function plot_indicators_catfin(data,id)
 
 end
 
-function plot_indicators_other(data,id)
+function plot_indicators_other(ds,id)
 
-    alpha = 2 / (data.Bandwidth + 1);
+    alpha = 2 / (ds.BW + 1);
     
-    ar = data.AbsorptionRatio;
+    ar = ds.AbsorptionRatio;
     ar_limit = fix(min(ar) * 10) / 10;
 
-    ti_th = NaN(data.T,1);
+    ti_th = NaN(ds.T,1);
 
-    for i = 1:data.T
-        ti_th(i) = quantile(data.TurbulenceIndex(max(1,i-data.Bandwidth):min(data.T,i+data.Bandwidth)),data.Q);
+    for i = 1:ds.T
+        ti_th(i) = quantile(ds.TurbulenceIndex(max(1,i-ds.BW):min(ds.T,i+ds.BW)),ds.Q);
     end
 
-    ti_ma = [data.TurbulenceIndex(1); filter(alpha,[1 (alpha - 1)],data.TurbulenceIndex(2:end),(1 - alpha) * data.TurbulenceIndex(1))];
-	cs_ma = [data.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],data.CorrelationSurprise(2:end),(1 - alpha) * data.CorrelationSurprise(1))];
+    ti_ma = [ds.TurbulenceIndex(1); filter(alpha,[1 (alpha - 1)],ds.TurbulenceIndex(2:end),(1 - alpha) * ds.TurbulenceIndex(1))];
+	cs_ma = [ds.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],ds.CorrelationSurprise(2:end),(1 - alpha) * ds.CorrelationSurprise(1))];
 
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,data.DatesNum,smooth_data(data.AbsorptionRatio),'Color',[0.000 0.447 0.741]);
-    xlabel(sub_1,'Time');
-    ylabel(sub_1,'Value');
+    plot(sub_1,ds.DatesNum,smooth_data(ds.AbsorptionRatio),'Color',[0.000 0.447 0.741]);
+    set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',[ar_limit 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) * 100,'UniformOutput',false));
-    t1 = title(sub_1,['Absorption Ratio (F=' sprintf('%.2f',data.F) ')']);
+    set(sub_1,'XGrid','on','YGrid','on');
+    t1 = title(sub_1,['Absorption Ratio (F=' sprintf('%.2f',ds.F) ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,2,2);
-    p2 = plot(sub_2,data.DatesNum,data.TurbulenceIndex,'Color',[0.65 0.65 0.65]);
+    p2 = plot(sub_2,ds.DatesNum,ds.TurbulenceIndex,'Color',[0.65 0.65 0.65]);
     p2.Color(4) = 0.35;
     hold on;
-        p21 = plot(sub_2,data.DatesNum,ti_ma,'Color',[0.000 0.447 0.741]);
-        p22 = plot(sub_2,data.DatesNum,ti_th,'Color',[1 0.4 0.4]);
+        p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741]);
+        p22 = plot(sub_2,ds.DatesNum,ti_th,'Color',[1 0.4 0.4]);
     hold off;
-    xlabel(sub_2,'Time');
-    ylabel(sub_2,'Value');
+    set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     l = legend(sub_2,[p21 p22],'EWMA','Threshold','Location','best');
     set(l,'NumColumns',2,'Units','normalized');
     l_position = get(l,'Position');
-    set(l,'Position',[0.6710 0.4799 l_position(3) l_position(4)]);
-    t2 = title(sub_2,['Turbulence Index (Q=' sprintf('%.2f',data.Q) ')']);
+    set(l,'Position',[0.6710 0.4895 l_position(3) l_position(4)]);
+    t2 = title(sub_2,['Turbulence Index (Q=' sprintf('%.2f',ds.Q) ')']);
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
     
     sub_3 = subplot(2,2,4);
-    p3 = plot(sub_3,data.DatesNum,data.CorrelationSurprise,'Color',[0.65 0.65 0.65]);
+    p3 = plot(sub_3,ds.DatesNum,ds.CorrelationSurprise,'Color',[0.65 0.65 0.65]);
     p3.Color(4) = 0.35;
     hold on;
-        plot(sub_3,data.DatesNum,cs_ma,'Color',[0.000 0.447 0.741]);
+        plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741]);
     hold off;
-    xlabel(sub_3,'Time');
-    ylabel(sub_3,'Value');
+    set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     t3 = title(sub_3,'Correlation Surprise');
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
-    
-    set([sub_1 sub_2 sub_3],'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
 
-    if (data.MonthlyTicks)
-        datetick(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
-        datetick(sub_3,'x','mm/yyyy','KeepLimits','KeepTicks');
+    if (ds.MonthlyTicks)
+        date_ticks([sub_1 sub_2 sub_3],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
-        datetick(sub_1,'x','yyyy','KeepLimits');
-        datetick(sub_2,'x','yyyy','KeepLimits');
-        datetick(sub_3,'x','yyyy','KeepLimits');
+        date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
     figure_title('Other Indicators');
@@ -654,16 +653,16 @@ function plot_indicators_other(data,id)
 
 end
 
-function plot_pca(data,id)
+function plot_pca(ds,id)
 
-    coefficients = data.PCACoefficientsOverall(:,1:3);
+    coefficients = ds.PCACoefficientsOverall(:,1:3);
     [coefficients_rows,coefficients_columns] = size(coefficients);
     [~,indices] = max(abs(coefficients),[],1);
     coefficients_max_len = sqrt(max(sum(coefficients.^2,2)));
     coefficients_columns_sign = sign(coefficients(indices + (0:coefficients_rows:((coefficients_columns-1)*coefficients_rows))));
     coefficients = bsxfun(@times,coefficients,coefficients_columns_sign);
 
-    scores = data.PCAScoresOverall(:,1:3);
+    scores = ds.PCAScoresOverall(:,1:3);
     scores_rows = size(scores,1);
     scores = bsxfun(@times,(coefficients_max_len .* (scores ./ max(abs(scores(:))))),coefficients_columns_sign);
     
@@ -687,32 +686,39 @@ function plot_pca(data,id)
     f = figure('Name','Component Measures > Principal Component Analysis','Units','normalized','Tag',id);
 
     sub_1 = subplot(1,2,1);
-    line_1 = line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'LineStyle','-','Marker','none');
-    line_2 = line(x_area(2:3,:),y_area(2:3,:),z_area(2:3,:),'LineStyle','none','Marker','.');
-    set([line_1 line_2],'Color','b');
-    line(x_points,y_points,z_points,'Color','r','LineStyle','none','Marker','.');
+    line(x_area(1:2,:),y_area(1:2,:),z_area(1:2,:),'Color',[0 0 1],'LineStyle','-','Marker','none');
+    hold on;
+        line(x_area(2:3,:),y_area(2:3,:),z_area(2:3,:),'Color',[0 0 1],'LineStyle','none','Marker','.');
+        line(x_points,y_points,z_points,'Color',[1 0 0],'LineStyle','none','Marker','.');
+        line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color',[0 0 0]);
+    hold off;
     view(sub_1,coefficients_columns);
-    grid on;
-    line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color','k');
-    axis tight;
+    axis('tight');
+    set(sub_1,'XGrid','on','YGrid','on','ZGrid','on');
     xlabel(sub_1,'PC 1');
     ylabel(sub_1,'PC 2');
     zlabel(sub_1,'PC 3');
     title('Coefficients & Scores');
 
     sub_2 = subplot(1,2,2);
-    area_1 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
+    area_1 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
     hold on;
-        area_2 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,2),'FaceColor','g');
-        area_3 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,3),'FaceColor','b');
-        area_4 = area(sub_2,data.DatesNum,data.PCAExplainedSums(:,4),'FaceColor','r');
+        area_2 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,2),'FaceColor','g');
+        area_3 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,3),'FaceColor','b');
+        area_4 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,4),'FaceColor','r');
     hold off;
-    datetick('x','yyyy','KeepLimits');
     set([area_1 area_2 area_3 area_4],'EdgeColor','none');
-    set(sub_2,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTick',[],'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
-    legend(sub_2,sprintf('PC 4-%d',data.N),'PC 3','PC 2','PC 1','Location','southeast');
+    set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
+    set(sub_2,'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
+    legend(sub_2,sprintf('PC 4-%d',ds.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 
+    if (ds.MonthlyTicks)
+        date_ticks(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(sub_2,'x','yyyy','KeepLimits');
+    end
+    
     figure_title('Principal Component Analysis');
     
     pause(0.01);
