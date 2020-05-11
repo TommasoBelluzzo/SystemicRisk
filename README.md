@@ -1,6 +1,6 @@
 # Systemic Risk
 
-This script calculates and analyses the following risk measures:
+This framework calculates and analyses the following systemic risk measures:
 
 * **COMPONENT MEASURES**
   * `Absorption Ratio` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
