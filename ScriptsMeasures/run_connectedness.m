@@ -655,16 +655,20 @@ end
 
 function plot_indicators(ds,id)
 
-    connections_max = max(max([ds.ConnectionsInOut ds.ConnectionsInOutOther])) * 1.1;
+    dci = smooth_data(ds.DCI);
+    io = smooth_data(ds.ConnectionsInOut);
+    ioo = smooth_data(ds.ConnectionsInOutOther);
+
+    connections_max = max(max([io ioo])) * 1.1;
     
-    threshold_indices = ds.DCI >= ds.K;
+    threshold_indices = dci >= ds.K;
     threshold = NaN(ds.T,1);
     threshold(threshold_indices) = connections_max;
 
     f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,1,1);
-    plot(sub_1,ds.DatesNum,smooth_data(ds.DCI));
+    plot(sub_1,ds.DatesNum,dci);
     hold on;
         plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1 0.4 0.4]);
     hold off;
@@ -678,11 +682,11 @@ function plot_indicators(ds,id)
     sub_2 = subplot(2,1,2);
     area_1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
     hold on;
-        area_2 = area(sub_2,ds.DatesNum,smooth_data(ds.ConnectionsInOut),'EdgeColor','none','FaceColor','b');
+        area_2 = area(sub_2,ds.DatesNum,io,'EdgeColor','none','FaceColor','b');
         if (ds.Groups == 0)
             area_3 = area(sub_2,ds.DatesNum,NaN(ds.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         else
-            area_3 = area(sub_2,ds.DatesNum,smooth_data(ds.ConnectionsInOutOther),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            area_3 = area(sub_2,ds.DatesNum,ioo,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45,'YLim',[0 connections_max]);

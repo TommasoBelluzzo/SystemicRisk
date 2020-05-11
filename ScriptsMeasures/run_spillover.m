@@ -550,11 +550,12 @@ end
 function plot_index(ds,id)
 
     si = ds.SI;
+	y = smooth_data(si);
 
     f = figure('Name','Spillover Measures > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,6,1:5);
-    plot(sub_1,ds.DatesNum,smooth_data(si));
+    plot(sub_1,ds.DatesNum,y);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
     
@@ -565,10 +566,9 @@ function plot_index(ds,id)
     end
     
     sub_2 = subplot(1,6,6);
-    boxplot(sub_2,si,'Notch','on','Symbol','k.');
+    boxplot(sub_2,y,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
-    delete(findobj(f,'-regexp','Tag','\w*Outlier'));
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
     
     if (strcmp(ds.FEVD,'G'))

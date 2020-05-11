@@ -478,6 +478,10 @@ function plot_averages(ds,id)
     if (ds.CI)
         illiq_covariates = ds.Averages(:,find(strcmp('ILLIQ Covariates',ds.Labels),1,'first'));
         
+        indices = (abs(illiq_covariates - illiq) > 0.01);
+        illiq_delta = NaN(ds.T,1);
+        illiq_delta(indices) = illiq_covariates(indices);
+        
         sub_1 = subplot(3,2,1);
         plot(sub_1,ds.DatesNum,illiq,'Color',[0.000 0.447 0.741]);
         set(sub_1,'YLim',[0 1.1]);
@@ -485,6 +489,9 @@ function plot_averages(ds,id)
         
         sub_6 = subplot(3,2,2);
         plot(sub_6,ds.DatesNum,illiq_covariates,'Color',[0.000 0.447 0.741]);
+        hold on;
+            plot(sub_6,ds.DatesNum,illiq_delta,'Color',[0.494 0.184 0.556]);
+        hold off;
         set(sub_6,'YLim',[0 1.1]);
         title(sub_6,'ILLIQ Covariates');
     else
@@ -518,21 +525,24 @@ function plot_averages(ds,id)
     set([sub_1 sub_2 sub_3 sub_4 sub_5],'XGrid','on','YGrid','on');
     
     if (ds.CI)
-        set(sub_6,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-        set(sub_6,'XGrid','on','YGrid','on');
+        set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+        set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XGrid','on','YGrid','on');
+    else
+        set([sub_1 sub_2 sub_3 sub_4 sub_5],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+        set([sub_1 sub_2 sub_3 sub_4 sub_5],'XGrid','on','YGrid','on');
     end
 
     if (ds.MonthlyTicks)
-        date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5],'x','mm/yyyy','KeepLimits','KeepTicks');
-        
         if (ds.CI)
-            date_ticks(sub_6,'x','mm/yyyy','KeepLimits','KeepTicks');
+            date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'x','mm/yyyy','KeepLimits','KeepTicks');
+        else
+            date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5],'x','mm/yyyy','KeepLimits','KeepTicks');
         end
     else
-        date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5],'x','yyyy','KeepLimits');
-        
         if (ds.CI)
-            date_ticks(sub_6,'x','yyyy','KeepLimits','KeepTicks');
+            date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'x','yyyy','KeepLimits');
+        else
+            date_ticks([sub_1 sub_2 sub_3 sub_4 sub_5],'x','yyyy','KeepLimits');
         end
     end
 
@@ -606,6 +616,16 @@ function plot_sequence_illiq(ds,id)
             sub = subs(i);
             
             plot(sub,x,y_i,'Color',[0.000 0.447 0.741]);
+            
+            if (i == 2)
+                indices = (abs(y_i - y(:,1)) > 0.01);
+                delta = NaN(numel(y_i),1);
+                delta(indices) = y_i(indices);
+                
+                hold(sub,'on');
+                    plot(sub,x,delta,'Color',[0.494 0.184 0.556]);
+                hold(sub,'on');
+            end
             
             d = find(isnan(y_i),1,'first');
 

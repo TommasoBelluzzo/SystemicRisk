@@ -73,9 +73,7 @@ function plot_boxes(name,x,firm_names,id)
     set(ax,'XTick',1:n,'XTickLabels',firm_names,'XTickLabelRotation',45);
     set(ax,'YLim',[y_low y_high]);
 
-    t = figure_title(name);
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title(name);
 
     pause(0.01);
     frame = get(f,'JavaFrame');

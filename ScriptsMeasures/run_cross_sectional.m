@@ -761,7 +761,7 @@ function plot_systemic_averages(ds,id)
         subs(i) = sub;
     end
     
-    set(subs,'XLim',[ds.DatesNum(1) ds.DatesNum(end)]);
+    set(subs,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(subs,'XGrid','on','YGrid','on');
     
     if (ds.MonthlyTicks)
