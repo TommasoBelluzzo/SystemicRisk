@@ -171,15 +171,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 ## Screenshots
 
-![Cross-Sectional Measures](https://i.imgur.com/VxmTnEs.png)
-
-![Connectedness Measures](https://i.imgur.com/yFBndPc.png)
-
-![Network](https://i.imgur.com/rTnsYxa.png)
-
-![Spillover Measures](https://i.imgur.com/jYCCoQr.png)
-
-![Component Measures](https://i.imgur.com/m11XsbX.png)
+![Screenshots](https://i.imgur.com/iNdY2To.gif)
 
 ## Donation
 
