@@ -180,3 +180,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 ![Spillover Measures](https://i.imgur.com/jYCCoQr.png)
 
 ![Component Measures](https://i.imgur.com/m11XsbX.png)
+
+## Donation
+
+[![PayPal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=ASMXC3LYNV96J)
