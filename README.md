@@ -183,4 +183,6 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 ## Donation
 
+If you find this project useful to you, please consider making a donation to support it.
+
 [![PayPal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=ASMXC3LYNV96J)
