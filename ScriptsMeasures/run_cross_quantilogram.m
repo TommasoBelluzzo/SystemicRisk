@@ -950,9 +950,9 @@ function plot_sequence(ds,target,id)
 	
     core.OuterTitle = 'Cross-Quantilogram Measures';
     core.InnerTitle = [target ' Cross-Quantilograms (Lags)'];
-    core.Labels = ds.FirmNames;
-    
+
     core.Plots = 2;
+	core.PlotsLabels = ds.FirmNames;
     core.PlotsTitle = {'From' 'To'};
     core.PlotsType = 'V';
 

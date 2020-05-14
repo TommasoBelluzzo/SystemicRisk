@@ -4,7 +4,7 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
-% lst = A float (0,Inf) representing the long-term to short-term liabilities ratio used for the calculation of D2C and D2D default barriers (optional, default=3).
+% lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used for the calculation of D2C and D2D default barriers (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
 % c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
 % l = A float [0.05,0.20] representing the importance sampling threshold used to calculate the DIP (optional, default=0.10).
@@ -28,7 +28,7 @@ function [result,stopped] = run_default(varargin)
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
         ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
-        ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'scalar'}));
+        ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'vector'}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
         ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',50,'<=',1000,'scalar'}));
         ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.05,'<=',0.20,'scalar'}));
@@ -47,7 +47,7 @@ function [result,stopped] = run_default(varargin)
     s = validate_s(ipr.s,ds.N);
     bw = ipr.bw;
     rr = ipr.rr;
-    lst = ipr.lst;
+    lst = validate_lst(ipr.lst,ds.N);
     car = ipr.car;
     c = ipr.c;
     l = ipr.l;
@@ -97,7 +97,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
 
         for i = 1:n
             offsets = [ds.Defaults(i) ds.Insolvencies(i)] - 1;
-            futures(i) = parfeval(@main_loop_1,1,firms_data{i},offsets,r,ds.ST,ds.DT,ds.LCAR,ds.OP);
+            futures(i) = parfeval(@main_loop_1,1,firms_data{i},offsets,r,ds.ST(i),ds.DT(i),ds.LCAR,ds.OP);
         end
 
         for i = 1:n
@@ -251,13 +251,13 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     n = ds.N;
     t = ds.T;
 
-    q = [0.900:0.025:0.975 0.99];
+    q = [(0.900:0.025:0.975) 0.99];
 
     ds.A = 1 - k;
     ds.BW = bw;
     ds.C = c;
     ds.CAR = car;
-    ds.DT = max(0.5,0.7 - (0.3 * (1 / lst)));
+    ds.DT = max(0.5,0.7 - (0.3 .* (1 ./ lst)));
     ds.K = k;
     ds.L = l;
     ds.LCAR = 1 / (1 - car);
@@ -268,12 +268,11 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     ds.QDiff = diff([ds.Q 1]);
     ds.RR = rr;
     ds.S = s;
-    ds.ST =  1 / (1 + lst);
+    ds.ST =  1 ./ (1 + lst);
 
     car_label = sprintf('%.0f%%',(ds.CAR * 100));
-    lst_label = sprintf('%g',ds.LST);
     ds.LabelsIndicators = {'Average D2D' 'Average D2C' 'Portfolio D2D' 'Portfolio D2C' 'DIP' 'SCCA Joint ES'};
-    ds.LabelsSheet = {['D2D (LST=' lst_label ')'] ['D2C (LST=' lst_label ', CAR=' car_label ')'] 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
+    ds.LabelsSheet = {'D2D' ['D2C (CAR=' car_label ')'] 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
     ds.LabelsSheetSimple = {'D2D' 'D2C' 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
 
     ds.D2D = NaN(t,n);
@@ -326,6 +325,20 @@ function ds = finalize_2(ds,window_results)
     
     w = round(nthroot(ds.BW,1.81),0); 
     ds.Indicators(:,5) = sanitize_data(ds.Indicators(:,5),ds.DatesNum,w,[]);
+
+end
+
+function lst = validate_lst(lst,n)
+
+    if (isscalar(lst))
+        lst = ones(1,n) .* lst;
+    else
+        if (numel(lst) ~= n)
+            error(['The number of lst coefficients, when specified as a vector, must be equal to the number of firms (' num2str(n) ').']);
+        end
+        
+        lst = lst(:).';
+    end
 
 end
 
@@ -554,25 +567,26 @@ function [d2d,d2c] = calculate_distances(va,va_m,db,r,t,lcar)
 
 end
 
-function [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(data)
+function [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds)
 
-    n = data.N;
-    cp = distress_data(data.Capitalizations,data.Insolvencies);
-    lb = distress_data(data.Liabilities,data.Insolvencies);
+    n = ds.N;
+    t = ds.T;
+
+    cp = ds.Capitalizations;
+    lb = ds.Liabilities;
+    r = max(0,ds.RiskFreeRate);
 
     weights = cp ./ repmat(sum(cp,2,'omitnan'),1,n);
-
-    d2d_avg = sum(data.D2D .* weights,2,'omitnan');
-    d2c_avg = sum(data.D2C .* weights,2,'omitnan');
+    d2d_avg = sum(ds.D2D .* weights,2,'omitnan');
+    d2c_avg = sum(ds.D2C .* weights,2,'omitnan');
 
 	cp = max(1e-6,sum(cp,2,'omitnan'));
-    lb = max(1e-6,sum(lb,2,'omitnan'));
-    db = (lb .* data.ST) + (data.DT .* (lb .* (1 - data.ST)));
-    r = max(0,data.RiskFreeRate);
+    lbs = lb .* repmat(ds.ST,t,1);
+    lbl = repmat(ds.DT,t,1) .* (lb .* (1 - repmat(ds.ST,t,1)));
+    db = max(1e-6,sum(lbs + lbl,2,'omitnan'));
 
-    [va,va_m] = kmv_model(cp,db,r,1,data.OP);
-
-	[d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,data.LCAR);
+    [va,va_m] = kmv_model(cp,db,r,1,ds.OP);
+	[d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,ds.LCAR);
     
 end
 
@@ -1145,9 +1159,9 @@ function plot_sequence(ds,target,distance,id)
 	
     core.OuterTitle = 'Default Measures';
     core.InnerTitle = [target ' Time Series'];
-    core.Labels = ds.FirmNames;
 
     core.Plots = 1;
+	core.PlotsLabels = ds.FirmNames;
     core.PlotsTitle = plots_title;
     core.PlotsType = 'H';
     

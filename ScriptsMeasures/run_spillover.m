@@ -671,9 +671,9 @@ function plot_sequence(ds,id)
 	
     core.OuterTitle = 'Spillover Measures';
     core.InnerTitle = 'Spillovers Time Series';
-    core.Labels = ds.FirmNames;
 
     core.Plots = 3;
+	core.PlotsLabels = ds.FirmNames;
     core.PlotsTitle = {'From' 'To' 'Net'};
     core.PlotsType = 'V';
     

@@ -13,7 +13,7 @@
 %
 % [OUTPUT]
 % m = A vector of floats (0,Inf) of length t representing the conditional means.
-% m = A vector of floats (0,Inf) of length t representing the Cox-Snell residuals.
+% e = A vector of floats (0,Inf) of length t representing the Cox-Snell residuals.
 % mem_params = A vector of floats representing the MEM parameters.
 % dist_params = A vector of floats representing the distribution parameters.
 

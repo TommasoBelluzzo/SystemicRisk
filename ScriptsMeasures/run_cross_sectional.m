@@ -966,9 +966,9 @@ function plot_sequence(ds,target,id)
 	
     core.OuterTitle = 'Cross-Sectional Measures';
     core.InnerTitle = [target ' Time Series'];
-    core.Labels = ds.FirmNames;
 
     core.Plots = 1;
+	core.PlotsLabels = ds.FirmNames;
     core.PlotsTitle = plots_title;
     core.PlotsType = 'H';
     

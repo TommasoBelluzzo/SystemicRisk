@@ -6,7 +6,7 @@
 % bwm = An integer [21,90) representing the dimension of the medium bandwidth (optional, default=21).
 % bws = An integer [5,21) representing the dimension of the short bandwidth (optional, default=5).
 % mem = A string ('B' for Baseline MEM, 'A' for Asymmetric MEM, 'P' for Asymmetric Power MEM, 'S' for Spline MEM) representing the MEM type used to calculate the ILLIQ (optional, default='B').
-% w = An integer [500,Inf) representing the number of sweeps used to calculate the RIS (optional, default=1000).
+% w = An integer [500,Inf) representing the number of sweeps used to calculate the RIS (optional, default=500).
 % c = A float (0,Inf) representing the starting coefficient value used to calculate the RIS (optional, default=0.01).
 % s2 = A float (0,Inf) representing the starting variance of innovations used to calculate the RIS (optional, default=0.0004).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
@@ -28,7 +28,7 @@ function [result,stopped] = run_liquidity(varargin)
         ip.addOptional('bwm',21,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<',90,'scalar'}));
         ip.addOptional('bws',5,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',5,'<',21,'scalar'}));
         ip.addOptional('mem','B',@(x)any(validatestring(x,{'A','B','P','S'})));
-        ip.addOptional('w',1000,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',500}));
+        ip.addOptional('w',500,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',500}));
         ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
         ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
@@ -110,14 +110,23 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
  
             if (ci)
                 sv_x = sv(1:offset,:);
-                [illiq,illiq_covariates] = calculate_illiq(r_x,v_x,sv_x,mag,ds.BWM,ds.MEM);
+                [illiq,illiq_covariates,knots] = calculate_illiq(r_x,v_x,sv_x,mag,ds.BWM,ds.MEM);
                 
                 ds.ILLIQ(1:offset,i) = illiq;
                 ds.ILLIQCovariates(1:offset,i) = illiq_covariates;
+                
+                if (~isempty(knots))
+                    ds.ILLIQKnots(i) = knots(1);
+                    ds.ILLIQCovariatesKnots(i) = knots(2);
+                end
             else
-                illiq = calculate_illiq(r_x,v_x,[],mag,ds.BWM,ds.MEM);
+                [illiq,~,knots] = calculate_illiq(r_x,v_x,[],mag,ds.BWM,ds.MEM);
                 
                 ds.ILLIQ(1:offset,i) = illiq;
+                
+                if (~isempty(knots))
+                    ds.ILLIQKnots(i) = knots(1);
+                end
             end
 
             ds.RIS(1:offset,i) = calculate_ris(p_x,ds.BWL,ds.SW,ds.C,ds.S2);
@@ -197,21 +206,32 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     ds.S2 = s2;
     ds.SW = w;
     
-    ds.Labels = {'HHLR' 'ILLIQ' 'RIS' 'TR' 'VR' 'Averages'};
-    
+    ds.LabelsSimple = {'HHLR' 'ILLIQ'  'RIS' 'TR' 'VR' 'Averages'};
+    ds.Labels = {'HHLR' ['ILLIQ (MEM=' ds.MEM ')'] 'RIS' 'TR' 'VR' 'Averages'};
+
     ds.HHLR = NaN(t,n);
     ds.ILLIQ = NaN(t,n);
     
+    if (strcmp(ds.MEM,'S'))
+        ds.ILLIQKnots = NaN(1,n);
+    end
+    
     if (ds.CI)
-        ds.Labels = [ds.Labels(1:2) {'ILLIQ Covariates'} ds.Labels(3:end)];
+        ds.LabelsSimple = [ds.LabelsSimple(1:2) {'ILLIQ Covariates'} ds.LabelsSimple(3:end)];
+        ds.Labels = [ds.Labels(1:2) {['ILLIQ Covariates (MEM=' ds.MEM ')']} ds.Labels(3:end)];
+        
         ds.ILLIQCovariates = NaN(t,n);
+        
+        if (strcmp(ds.MEM,'S'))
+            ds.ILLIQCovariatesKnots = NaN(1,n);
+        end
     end
     
     ds.RIS = NaN(t,n);
     ds.TR = NaN(t,n);
     ds.VR = NaN(t,n);
     
-    ds.Averages = NaN(t,numel(ds.Labels) - 1);
+    ds.Averages = NaN(t,numel(ds.LabelsSimple) - 1);
 
 end
 
@@ -338,14 +358,14 @@ function write_results(ds,temp,out)
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
     for i = 1:(numel(ds.Labels) - 1)
-        sheet = ds.Labels{i};
+        sheet = ds.LabelsSimple{i};
         measure = strrep(sheet,' ','');
 
         tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
         writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
     end
 
-    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.Labels(1:end-1),' ','_'))];
+    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSimple(1:end-1),' ','_'))];
     writetable(tab,out,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
 
     if (~ds.CI && ispc())
@@ -359,6 +379,10 @@ function write_results(ds,temp,out)
             exc_wb = excel.Workbooks.Open(out,0,false);
 
             exc_wb.Sheets.Item('ILLIQ Covariates').Delete();
+            
+            for i = 1:numel(ds.LabelsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
+            end
             
             exc_wb.Save();
             exc_wb.Close();
@@ -394,7 +418,7 @@ function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
     
 end
 
-function [illiq,illiq_covariates] = calculate_illiq(r,v,sv,mag,bwm,mem)
+function [illiq,illiq_covariates,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
 
     alpha = 2 / (bwm + 1);
 
@@ -406,16 +430,26 @@ function [illiq,illiq_covariates] = calculate_illiq(r,v,sv,mag,bwm,mem)
         input = [input r];
     end
     
-    illiq = multiplicative_error(input,mem);
+    knots = [];
+
+    [illiq,~,mem_params] = multiplicative_error(input,mem);
     illiq = [illiq(1); filter(alpha,[1 (alpha - 1)],illiq(2:end),(1 - alpha) * illiq(1))];
 	illiq = (illiq - min(illiq)) ./ (max(illiq) - min(illiq));
+    
+    if (strcmp(mem,'S'))
+        knots(1) = mem_params(1);
+    end
     
     if (isempty(sv))
         illiq_covariates = [];
     else
-        illiq_covariates = multiplicative_error([input sv],mem);
+        [illiq_covariates,~,mem_params] = multiplicative_error([input sv],mem);
         illiq_covariates = [illiq_covariates(1); filter(alpha,[1 (alpha - 1)],illiq_covariates(2:end),(1 - alpha) * illiq_covariates(1))];
         illiq_covariates = (illiq_covariates - min(illiq_covariates)) ./ (max(illiq_covariates) - min(illiq_covariates));
+        
+        if (strcmp(mem,'S'))
+            knots(2) = mem_params(1);
+        end
     end
 
 end
@@ -468,15 +502,15 @@ end
 function plot_averages(ds,id)
 
     hhlr = ds.Averages(:,1);
-    illiq = ds.Averages(:,find(strcmp('ILLIQ',ds.Labels),1,'first'));
-    ris = ds.Averages(:,find(strcmp('RIS',ds.Labels),1,'first'));
-    tr = ds.Averages(:,find(strcmp('TR',ds.Labels),1,'first'));
-    vr = ds.Averages(:,find(strcmp('VR',ds.Labels),1,'first'));
+    illiq = ds.Averages(:,find(strcmp('ILLIQ',ds.LabelsSimple),1,'first'));
+    ris = ds.Averages(:,find(strcmp('RIS',ds.LabelsSimple),1,'first'));
+    tr = ds.Averages(:,find(strcmp('TR',ds.LabelsSimple),1,'first'));
+    vr = ds.Averages(:,find(strcmp('VR',ds.LabelsSimple),1,'first'));
 
     f = figure('Name','Liquidity Measures > Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     if (ds.CI)
-        illiq_covariates = ds.Averages(:,find(strcmp('ILLIQ Covariates',ds.Labels),1,'first'));
+        illiq_covariates = ds.Averages(:,find(strcmp('ILLIQ Covariates',ds.LabelsSimple),1,'first'));
         
         indices = (abs(illiq_covariates - illiq) > 0.01);
         illiq_delta = NaN(ds.T,1);
@@ -485,7 +519,7 @@ function plot_averages(ds,id)
         sub_1 = subplot(3,2,1);
         plot(sub_1,ds.DatesNum,illiq,'Color',[0.000 0.447 0.741]);
         set(sub_1,'YLim',[0 1.1]);
-        title(sub_1,'ILLIQ');
+        title(sub_1,ds.Labels{2});
         
         sub_6 = subplot(3,2,2);
         plot(sub_6,ds.DatesNum,illiq_covariates,'Color',[0.000 0.447 0.741]);
@@ -493,33 +527,33 @@ function plot_averages(ds,id)
             plot(sub_6,ds.DatesNum,illiq_delta,'Color',[0.494 0.184 0.556]);
         hold off;
         set(sub_6,'YLim',[0 1.1]);
-        title(sub_6,'ILLIQ Covariates');
+        title(sub_6,ds.Labels{3});
     else
         sub_1 = subplot(3,2,1:2);
         plot(sub_1,ds.DatesNum,illiq,'Color',[0.000 0.447 0.741]);
         set(sub_1,'YLim',[0 1.1]);
-        title(sub_1,'ILLIQ');
+        title(sub_1,ds.Labels{2});
     end
 
     sub_2 = subplot(3,2,3);
     plot(sub_2,ds.DatesNum,hhlr,'Color',[0.000 0.447 0.741]);
     set(sub_2,'YLim',plot_limits(hhlr,0.1,0));
-    title(sub_2,'HHLR');
+    title(sub_2,ds.Labels{1});
     
     sub_3 = subplot(3,2,4);
     plot(sub_3,ds.DatesNum,ris,'Color',[0.000 0.447 0.741]);
     set(sub_3,'YLim',plot_limits(ris,0.1,0));
-    title(sub_3,'RIS');
+    title(sub_3,ds.Labels{4});
     
     sub_4 = subplot(3,2,5);
     plot(sub_4,ds.DatesNum,tr,'Color',[0.000 0.447 0.741]);
     set(sub_4,'YLim',plot_limits(tr,0.1,0));
-    title(sub_4,'TR');
+    title(sub_4,ds.Labels{5});
 
     sub_5 = subplot(3,2,6);
     plot(sub_5,ds.DatesNum,vr,'Color',[0.000 0.447 0.741]);
     set(sub_5,'YLim',plot_limits(vr,0.1,0));
-    title(sub_5,'VR');
+    title(sub_5,ds.Labels{6});
     
     set([sub_1 sub_2 sub_3 sub_4 sub_5],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_1 sub_2 sub_3 sub_4 sub_5],'XGrid','on','YGrid','on');
@@ -567,13 +601,28 @@ function plot_sequence_illiq(ds,id)
         y = zeros(t,n,k);
         y(:,:,1) = ds.ILLIQ;
         y(:,:,2) = ds.ILLIQCovariates;
-        
-        plots_title = {'ILLIQ' 'ILLIQ Covariates'};
+  
+        if (strcmp(ds.MEM,'S'))
+            knots_1 = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQKnots,'UniformOutput',false);
+            knots_2 = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQCovariatesKnots,'UniformOutput',false);
+            plots_labels = [strcat(ds.FirmNames,knots_1); strcat(ds.FirmNames,knots_2)];
+        else
+            plots_labels = ds.FirmNames;
+        end
+
+        plots_title = ds.Labels(2:3);
     else
         k = 1;
         y = ds.ILLIQ;
+        
+        if (strcmp(ds.MEM,'S'))
+            knots = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQKnots,'UniformOutput',false);
+            plots_labels = strcat(ds.FirmNames,knots);
+        else
+            plots_labels = ds.FirmNames;
+        end
 
-        plots_title = {'ILLIQ'};
+        plots_title = ds.Labels(2);
     end
 
     core = struct();
@@ -584,9 +633,9 @@ function plot_sequence_illiq(ds,id)
 	
     core.OuterTitle = 'Liquidity Measures';
     core.InnerTitle = 'ILLIQ Time Series';
-    core.Labels = ds.FirmNames;
 
     core.Plots = k;
+	core.PlotsLabels = plots_labels;
     core.PlotsTitle = plots_title;
     core.PlotsType = 'V';
     
@@ -658,9 +707,9 @@ function plot_sequence_other(ds,target,id)
 	
     core.OuterTitle = 'Liquidity Measures';
     core.InnerTitle = [target ' Time Series'];
-    core.Labels = ds.FirmNames;
 
     core.Plots = 1;
+	core.PlotsLabels = ds.FirmNames;
     core.PlotsTitle = [];
     core.PlotsType = 'H';
     

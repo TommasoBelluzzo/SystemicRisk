@@ -125,9 +125,9 @@ function sequential_plot_internal(core,id)
         end
 
         if (~isempty(core.PlotsTitle))
-            t = title(sub,[core.PlotsTitle{i} ' - ' core.Labels{1}]);
+            t = title(sub,[core.PlotsTitle{i} ' - ' core.PlotsLabels{i,1}]);
         else
-            t = title(sub,core.Labels{1});
+            t = title(sub,core.PlotsLabels{i,1});
         end
 
         set(t,'Units','normalized');
@@ -140,10 +140,10 @@ function sequential_plot_internal(core,id)
 
     figure_title(core.InnerTitle);
 
-    setappdata(f,'Labels',core.Labels);
     setappdata(f,'N',core.N);
     setappdata(f,'Offset',1);
     setappdata(f,'PlotFunction',core.PlotFunction);
+	setappdata(f,'PlotsLabels',core.PlotsLabels);
     setappdata(f,'PlotsTitle',core.PlotsTitle);
     setappdata(f,'PlotsType',core.PlotsType);
     setappdata(f,'SequenceFunction',core.SequenceFunction);
@@ -165,20 +165,36 @@ function core = validate_core(core)
     
     validate_field(core,'OuterTitle',{'char'},{'nonempty','size',[1 NaN]});
     validate_field(core,'InnerTitle',{'char'},{'nonempty','size',[1 NaN]});
-    validate_field(core,'Labels',{'cellstr'},{'nonempty','size',[1 n]});
 
     plots = validate_field(core,'Plots',{'double'},{'real','finite','integer','>=',1,'scalar'});
+    plots_labels = validate_field(core,'PlotsLabels',{'cellstr'},{'nonempty','size',[NaN n]});
     validate_field(core,'PlotsTitle',{'cellstr'},{'optional','nonempty','size',[1 plots]});
     validate_field(core,'PlotsType',{'str'},{'optional','H','V'});
+    
+    plots_labels_rows = size(plots_labels,1);
+    
+    if (plots_labels_rows == 1)
+        if (plots > 1)
+            plots_labels = repmat(plots_labels,plots,1);
+        end
+    else
+        if (plots_labels_rows ~= plots)
+            error('The structure must define a ''PlotsLabels'' field with the number of rows equal to 1 or ''Plots''.');
+        end
+    end
 
     x = validate_field(core,'X',{'double'},{'real','finite','nonempty'});
-    validate_field(core,'XDates',{'logical'},{'optional','scalar'});
+    x_dates = validate_field(core,'XDates',{'logical'},{'optional','scalar'});
     validate_field(core,'XGrid',{'logical'},{'scalar'});
     validate_field(core,'XLabel',{'char'},{'optional','nonempty','size',[1 NaN]});
     validate_field(core,'XLimits',{'double'},{'real','finite','nonempty','size',[NaN 2]});
     validate_field(core,'XRotation',{'double'},{'optional','real','finite','>=',0,'<=',360,'scalar'});
     validate_field(core,'XTick',{'double'},{'optional','real','finite','nonempty','size',[1 NaN]});
-    validate_field(core,'XTickLabels',{'cellfun'},{'optional','nonempty','size',[1 n]});
+    x_tick_labels = validate_field(core,'XTickLabels',{'cellfun'},{'optional','nonempty','size',[1 n]});
+    
+    if (~isempty(x_dates) && ~isempty(x_tick_labels))
+        error('The structure cannot define both ''XDates'' and ''XTickLabels'' fields.');
+    end
 
     y = validate_field(core,'Y',{'double'},{'real','nonempty'});
     validate_field(core,'YGrid',{'logical'},{'scalar'});
@@ -202,14 +218,12 @@ function core = validate_core(core)
     if (~any(y_size == n))
         error(['The structure field ''Y'' is invalid.' newline() 'Expected value to have one size matching the field ''N''.']);
     end
-
-	if (~any(ismember(y_size,x_size)))
+    
+    if (~any(ismember(y_size,x_size)))
         error(['The structure field ''Y'' is invalid.' newline() 'Expected value to have one size matching the number of elements of the field ''X''.']);
-	end
-
-	if (~isempty(core.XDates) && ~isempty(core.XTickLabels))
-        error('The structure cannot define both ''XDates'' and ''XTickLabels''.');
     end
+    
+    core.PlotsLabels = plots_labels;
     
 end
 
@@ -262,7 +276,7 @@ function value = validate_field(data,field_name,field_type,field_validator)
                 error(['The structure field ''' field_name ''' is invalid.' newline() 'Expected value to be a function handle or a cell array of non-empty character vectors.']);
             end
         elseif (value_iscellstr || value_iscellfun)
-            if (~iscellstr(value) || any(cellfun(@length,value) == 0)) %#ok<ISCLSTR>
+            if (~iscellstr(value) || any(any(cellfun(@length,value) == 0))) %#ok<ISCLSTR>
                 error(['The structure field ''' field_name ''' is invalid.' newline() 'Expected value to be a cell array of non-empty character vectors.']);
             end
             
@@ -280,7 +294,7 @@ end
 
 function draw_time_series(f,offset)
 
-    labels = getappdata(f,'Labels');
+    plots_labels = getappdata(f,'PlotsLabels');
     plot_function = getappdata(f,'PlotFunction');
     plots_title = getappdata(f,'PlotsTitle');
     plots_type = getappdata(f,'PlotsType');
@@ -302,9 +316,9 @@ function draw_time_series(f,offset)
         hold(subs(i),'off');
         
         if (~isempty(plots_title))
-            t = title(subs(i),[plots_title{i} ' - ' labels{offset}]);
+            t = title(subs(i),[plots_title{i} ' - ' plots_labels{i,offset}]);
         else
-            t = title(subs(i),labels{offset});
+            t = title(subs(i),plots_labels{i,offset});
         end
 
         set(t,'Units','normalized');
