@@ -32,10 +32,10 @@ This framework calculates and analyses the following systemic risk measures:
   * `RIS (Roll Implicit Spread)` by [Hasbrouck (2009)](https://doi.org/10.1111/j.1540-6261.2009.01469.x)
   * `Classic Indicators: Hui-Heubel Liquidity Ratio, Turnover Ratio & Variance Ratio`
 * **REGIME-SWITCHING MEASURES**
-  * `2-States Model: High & Low Variance`
-  * `3-States Model: High, Medium & Low Variance`
-  * `4-States Model: High & Low Variance With Corrections`
-  * `Indicators: Average Probability of High Variance, Joint Probability of High Variance`
+  * `2-States Model: High & Low Volatility`
+  * `3-States Model: High, Medium & Low Volatility`
+  * `4-States Model: High & Low Volatility With Corrections`
+  * `Indicators: Average Probability of High Volatility, Joint Probability of High Volatility`
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
