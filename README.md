@@ -31,6 +31,12 @@ This framework calculates and analyses the following systemic risk measures:
   * `ILLIQ (Illiquidity Measure)` by [Amihud (2002)](https://doi.org/10.1016/S1386-4181(01)00024-6)
   * `RIS (Roll Implicit Spread)` by [Hasbrouck (2009)](https://doi.org/10.1111/j.1540-6261.2009.01469.x)
   * `Classic Indicators: Hui-Heubel Liquidity Ratio, Turnover Ratio & Variance Ratio`
+* **REGIME-SWITCHING MEASURES**
+  * `2-States Model: High & Low Variance`
+  * `3-States Model: High, Medium & Low Variance`
+  * `4-States Model: High & Low Variance With Corrections`
+  * `Average Probability Indicator of High Variance`
+  * `Joint Probability Indicator of High Variance`
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
