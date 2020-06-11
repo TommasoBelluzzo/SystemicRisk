@@ -35,8 +35,7 @@ This framework calculates and analyses the following systemic risk measures:
   * `2-States Model: High & Low Variance`
   * `3-States Model: High, Medium & Low Variance`
   * `4-States Model: High & Low Variance With Corrections`
-  * `Average Probability Indicator of High Variance`
-  * `Joint Probability Indicator of High Variance`
+  * `Indicators: Average Probability of High Variance, Joint Probability of High Variance`
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
@@ -167,6 +166,9 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * **Liquidity Measures:**
     * *Required:* shares (prices), volumes, capitalizations.
     * *Optional:* state variables.
+  * **Regime-Switching Measures:**
+    * *Required:* shares (any).
+    * *Optional:* none.
   * **Spillover Measures:**
     * *Required:* shares (any).
     * *Optional:* none.
