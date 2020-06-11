@@ -361,8 +361,8 @@ function c_hat = nearest_spd(c)
         k = k + 1;
 
         if (p ~= 0)
-            e = min(eig(c_hat));
-            c_hat = c_hat + (((-e * k^2) + eps(e)) * eye(size(c)));
+            d = min(eig(c_hat));
+            c_hat = c_hat + (((-d * k^2) + eps(d)) * eye(size(c)));
         end
     end
 
@@ -585,44 +585,43 @@ end
 
 function plot_spillovers(ds,id)
 
-    spillovers_from = smooth_data(ds.SpilloversFrom);
-    spillovers_from = bsxfun(@rdivide,spillovers_from,sum(spillovers_from,2,'omitnan'));
+    from = smooth_data(ds.SpilloversFrom);
+    from = bsxfun(@rdivide,from,sum(from,2,'omitnan'));
     
-    spillovers_to = smooth_data(ds.SpilloversTo);
-    spillovers_to = bsxfun(@rdivide,spillovers_to,sum(spillovers_to,2,'omitnan'));
+    to = smooth_data(ds.SpilloversTo);
+    to = bsxfun(@rdivide,to,sum(to,2,'omitnan'));
 
-    spillovers_net = smooth_data(ds.SpilloversNet);
-    spillovers_net = [min(spillovers_net,[],2,'omitnan') max(spillovers_net,[],2,'omitnan')];
-    spillovers_net_avg = mean(spillovers_net,2);
+    net = smooth_data(ds.SpilloversNet);
+    net = [min(net,[],2,'omitnan') max(net,[],2,'omitnan')];
 
     f = figure('Name','Spillover Measures > Spillovers','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,1);
-    area(sub_1,ds.DatesNum,spillovers_from,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
+    area(sub_1,ds.DatesNum,from,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_1,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) * 100,'UniformOutput',false));
+    set(sub_1,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) .* 100,'UniformOutput',false));
     t2 = title(sub_1,'Spillovers From Others');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
     sub_2 = subplot(2,2,3);
-    area(sub_2,ds.DatesNum,spillovers_to,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
+    area(sub_2,ds.DatesNum,to,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_2,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) * 100,'UniformOutput',false));
+    set(sub_2,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) .* 100,'UniformOutput',false));
     t3 = title(sub_2,'Spillovers To Others');
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
     
     sub_3 = subplot(2,2,[2 4]);
-    fill(sub_3,[ds.DatesNum; flipud(ds.DatesNum)],[spillovers_net(:,1); fliplr(spillovers_net(:,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
+    fill(sub_3,[ds.DatesNum; flipud(ds.DatesNum)],[net(:,1); fliplr(net(:,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
     hold on;
-        plot(sub_3,ds.DatesNum,spillovers_net_avg,'Color',[0.000 0.447 0.741]);
+        plot(sub_3,ds.DatesNum,mean(net,2),'Color',[0.000 0.447 0.741]);
         plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_3,'YLim',[-1 1],'YTick',-1:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(-1:0.2:1) * 100,'UniformOutput',false));
+    set(sub_3,'YLim',[-1 1],'YTick',-1:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(-1:0.2:1) .* 100,'UniformOutput',false));
     set(sub_3,'XGrid','on','YGrid','on');
     t4 = title(sub_3,'Net Spillovers');
     set(t4,'Units','normalized');
@@ -650,76 +649,97 @@ end
 function plot_sequence(ds,id)
 
     n = ds.N;
-    ft = [ds.SpilloversFrom ds.SpilloversTo];
-    net = ds.SpilloversNet;
-
-    x = ds.DatesNum;
-    x_limits = [x(1) x(end)];
-
-    y_max_ft = max(max(ft));
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
     
-    y_limits = zeros(3,2);
-    y_limits(1,:) = [0 1];
-    y_limits(2,:) = plot_limits(y_max_ft,0.1,0);
-    y_limits(3,:) = [-1 1];
+    from_all = smooth_data(ds.SpilloversFrom);
+    to_all = smooth_data(ds.SpilloversTo);
+    net_all = smooth_data(ds.SpilloversNet);
+
+    data = [repmat({dn},1,n); mat2cell(from_all,t,ones(1,n)); mat2cell(to_all,t,ones(1,n)); mat2cell(net_all,t,ones(1,n))];
+    
+    x_limits = [dn(1) dn(end)];
+    
+    ft = [from_all to_all];
+    y_limits_from = [0 1];
+    y_limits_to = plot_limits(max(max(ft)),0.1,0);
+    y_limits_to(2) = ceil(y_limits_to(2) * 10) / 10;
+    y_limits_net = [-1 1];
+    
+    y_tick_from = 0:0.2:1;
+    y_tick_to = 0:0.2:y_limits_to(2);
+    y_tick_net = -1:0.2:1;
+    y_tick_labels = @(x)sprintf('%.f%%',x * 100);
 
     core = struct();
 
-    core.N = ds.N;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
-    core.SequenceFunction = @(y,offset)[y(:,offset,1) y(:,offset,2) y(:,offset,3)];
-	
-    core.OuterTitle = 'Spillover Measures';
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = 'Spillover Measures > Spillovers Time Series';
     core.InnerTitle = 'Spillovers Time Series';
+    core.SequenceTitles = ds.FirmNames;
 
-    core.Plots = 3;
-	core.PlotsLabels = ds.FirmNames;
-    core.PlotsTitle = {'From' 'To' 'Net'};
-    core.PlotsType = 'V';
+    core.PlotsAllocation = [3 1];
+    core.PlotsSpan = {1 2 3};
+    core.PlotsTitle = [repmat({'From'},1,n); repmat({'To'},1,n); repmat({'Net'},1,n)];
+
+    core.XDates = {mt mt mt};
+    core.XGrid = {true true true};
+    core.XLabel = {[] [] []};
+    core.XLimits = {x_limits x_limits x_limits};
+    core.XRotation = {45 45 45};
+    core.XTick = {[] [] []};
+    core.XTickLabels = {[] [] []};
+
+    core.YGrid = {true true true};
+    core.YLabel = {[] [] []};
+    core.YLimits = {y_limits_from y_limits_to y_limits_net};
+    core.YRotation = {[] [] []};
+    core.YTick = {y_tick_from y_tick_to y_tick_net};
+    core.YTickLabels = {y_tick_labels y_tick_labels y_tick_labels};
     
-    core.X = x;
-    core.XDates = ds.MonthlyTicks;
-    core.XGrid = true;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = 45;
-    core.XTick = [];
-    core.XTickLabels = [];
-
-    core.Y = cat(3,smooth_data(ft(:,1:n)),smooth_data(ft(:,n+1:end)),smooth_data(net));
-    core.YGrid = true;
-    core.YLabel = [];
-    core.YLimits = y_limits;
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = [];
-
     sequential_plot(core,id);
 
-    function plot_function(subs,x,y)
+    function plot_function(subs,data)
 
-        for i = 1:3
-            y_i = y(:,i);
-            sub = subs(i);
-            
-            plot(sub,x,y_i,'Color',[0.000 0.447 0.741]);
-            
-            if (i == 3)
-                hold(sub,'on');
-                    plot(sub,x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
-                hold(sub,'off');
-            end
-            
-            d = find(isnan(y_i),1,'first');
-
-            if (~isempty(d))
-                xd = x(d) - 1;
-
-                hold(sub,'on');
-                    plot(sub,[xd xd],get(sub,'YLim'),'Color',[1 0.4 0.4]);
-                hold(sub,'on');
-            end
+        x = data{1};
+        from = data{2};
+        to = data{3};
+        net = data{4};
+        
+        d = find(isnan(net),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x(d) - 1;
         end
+
+        plot(subs(1),x,from,'Color',[0.000 0.447 0.741]);
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'on');
+        end
+        
+        plot(subs(2),x,to,'Color',[0.000 0.447 0.741]);
+        hold(subs(2),'on');
+            plot(subs(2),x,ones(numel(x),1),'Color',[1 0.4 0.4]);
+            if (~isempty(xd))
+                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1 0.4 0.4]);
+            end
+        hold(subs(2),'off');
+
+        plot(subs(3),x,net,'Color',[0.000 0.447 0.741]);
+        hold(subs(3),'on');
+            plot(subs(3),x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
+            if (~isempty(xd))
+                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1 0.4 0.4]);
+            end
+        hold(subs(3),'off');
 
     end
 

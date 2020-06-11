@@ -12,8 +12,8 @@
 % p = An integer [1,Inf) representing the second order of the model (optional, default=1).
 %
 % [OUTPUT]
-% m = A vector of floats (0,Inf) of length t representing the conditional means.
-% e = A vector of floats (0,Inf) of length t representing the Cox-Snell residuals.
+% m = A vector of floats of length t representing the conditional means.
+% e = A vector of floats of length t representing the Cox-Snell residuals.
 % mem_params = A vector of floats representing the MEM parameters.
 % dist_params = A vector of floats representing the distribution parameters.
 
@@ -87,12 +87,12 @@ function [params,mu,e] = multiplicative_error_baseline(v,z,q,p,options)
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.10 / q)); (ones(p,1) .* (0.75 / p)); (ones(zn,1) .* (0.01 / zn)); 0.5];
-    ac = [[-eye(qpz) zeros(qpz,1)]; [ones(1,qpz) 0]];
-    bc = [(ones(qpz,1) .* -tol); (1 - tol)];
+    ai = [[-eye(qpz) zeros(qpz,1)]; [ones(1,qpz) 0]];
+    bi = [(ones(qpz,1) .* -tol); (1 - tol)];
     lb = ones(qpz + 1,1) .* tol;
     ub = [Inf(q,1); ones(p,1); Inf(zn + 1,1);];
 
-    params = fmincon(@(x)likelihood(x,v,z,vn,vm,zn,q,p,offset,qp,qpz),x0,ac,bc,[],[],lb,ub,[],options);
+    params = fmincon(@(x)likelihood(x,v,z,vn,vm,zn,q,p,offset,qp,qpz),x0,ai,bi,[],[],lb,ub,[],options);
     [~,mu,e] = likelihood(params,v,z,vn,vm,zn,q,p,offset,qp,qpz);
 
     function [ll,mu,e] = likelihood(x,v,z,vn,vm,zn,q,p,offset,qp,qpz)
@@ -147,12 +147,12 @@ function [params,mu,e] = multiplicative_error_asymmetric(v,d,z,q,p,options)
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); (ones(q,1) .* (0.10 / q)); (ones(p,1) .* (0.70 / p)); (ones(zn,1) .* (0.01 / zn)); 0.5];
-    ac = [[-eye(q2pz) zeros(q2pz,1)]; [ones(1,q) (ones(1,q) .* 0.5) ones(1,p) ones(1,zn) 0]];
-    bc = [(ones(q2pz,1) .* -tol); (1 - tol)];
+    ai = [[-eye(q2pz) zeros(q2pz,1)]; [ones(1,q) (ones(1,q) .* 0.5) ones(1,p) ones(1,zn) 0]];
+    bi = [(ones(q2pz,1) .* -tol); (1 - tol)];
     lb = ones(q2pz + 1,1) .* tol;
     ub = [Inf(q2,1); ones(p,1); Inf(zn + 1,1);];
 
-    params = fmincon(@(x)likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz),x0,ac,bc,[],[],lb,ub,[],options);
+    params = fmincon(@(x)likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz),x0,ai,bi,[],[],lb,ub,[],options);
     [~,mu,e] = likelihood(params,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz);
 
     function [ll,mu,e] = likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz)
@@ -209,12 +209,12 @@ function [params,mu,e] = multiplicative_error_asymmetric_power(v,d,z,q,p,options
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); zeros(q,1); (ones(p,1) .* (0.75 / p)); 0.3; (ones(zn,1) .* (0.01 / zn)); 0.5];
-    ac = [[-1 zeros(1,q2pz)]; [zeros(pz,2) -eye(pz) zeros(pz,1)]; [ones(1,q) zeros(1,q) ones(1,p) 0 ones(1,zn) 0]];
-    bc = [(ones(q,1) .* -tol); (ones(pz,1) .* -tol); (1 - tol)];
+    ai = [[-1 zeros(1,q2pz)]; [zeros(pz,2) -eye(pz) zeros(pz,1)]; [ones(1,q) zeros(1,q) ones(1,p) 0 ones(1,zn) 0]];
+    bi = [(ones(q,1) .* -tol); (ones(pz,1) .* -tol); (1 - tol)];
     lb = [(ones(q,1) .* tol); (ones(q,1) .* -1); (ones(pz + 1,1) .* tol)];
     ub = [Inf(q,1); ones(q,1); ones(p,1); Inf(zn + 2,1);];
 
-    params = fmincon(@(x)likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz),x0,ac,bc,[],[],lb,ub,[],options);
+    params = fmincon(@(x)likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz),x0,ai,bi,[],[],lb,ub,[],options);
     [~,mu,e] = likelihood(params,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz);
 
     function [ll,mu,e] = likelihood(x,v,d,z,vn,vm,zn,q,p,offset,q2,q2p,q2pz)
@@ -284,12 +284,12 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
         kz = k + zn;
 
         x0 = [(ones(q,1) .* (0.10 / q)); (ones(p,1) .* (0.75 / p)); vm; zeros(kz + 1,1); 0.5];
-        ac = [[-eye(qp) zeros(qp,kz + 3)]; [ones(1,qp) zeros(1,kz + 2) 0]];
-        bc = [(ones(qp,1) .* -tol); (1 - tol)];
+        ai = [[-eye(qp) zeros(qp,kz + 3)]; [ones(1,qp) zeros(1,kz + 2) 0]];
+        bi = [(ones(qp,1) .* -tol); (1 - tol)];
         lb = [(ones(qp,1) .* tol); zeros(kz + 2,1); tol];
         ub = [Inf(q,1); ones(p,1); Inf(kz + 3,1)];
 
-        params = fmincon(@(x)fh(x,k,qpk,qpkz),x0,ac,bc,[],[],lb,ub,[],options);
+        params = fmincon(@(x)fh(x,k,qpk,qpkz),x0,ai,bi,[],[],lb,ub,[],options);
         [~,mu,e,t] = fh(params,k,qpk,qpkz);
         
         params_list{k - 1} = params;

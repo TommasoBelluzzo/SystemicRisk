@@ -7,7 +7,7 @@ function ds = validate_dataset(varargin)
     persistent measures_list;
     
     if (isempty(measures_list))
-        measures_list = {'component','connectedness','cross-quantilogram','cross-sectional','default','liquidity','spillover'};
+        measures_list = {'component','connectedness','cross-quantilogram','cross-sectional','default','liquidity','regime-switching','spillover'};
     end
     
     persistent ip;
@@ -87,6 +87,7 @@ function ds = validate_dataset_internal(ds,measures)
     validate_field(ds,'SupportsCrossSectional',{'logical'},{'scalar'});
     validate_field(ds,'SupportsDefault',{'logical'},{'scalar'});
     validate_field(ds,'SupportsLiquidity',{'logical'},{'scalar'});
+    validate_field(ds,'SupportsRegimeSwitching',{'logical'},{'scalar'});
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
     
     if (~isempty(measures))

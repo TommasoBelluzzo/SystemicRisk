@@ -13,8 +13,8 @@
 % p = An n-by-n-by-t matrix of floats representing the conditional correlations.
 % h = A t-by-n matrix of floats representing the conditional variances.
 % e = A t-by-n matrix of floats representing the standardized residuals.
-% dcc_params = A vector of floats representing the DCC parameters.
-% gjr_params = A cell array of float vectors representing the GARCH parameters.
+% dcc_params = A row vector of floats of length 2 representing the DCC parameters.
+% gjr_params = An n-by-1 cell array of float vectors containing the GARCH parameters.
 %
 % [NOTES]
 % Credit goes to Kevin Sheppard, the author of the original code.
@@ -187,11 +187,11 @@ function params = dcc(e,q,p,options)
     tol = 2 * options.TolCon;
 
     x0 = [((ones(1,q) .* 0.01) ./ q) ((ones(1,p) .* 0.97) ./ p)];
-    ac = ones(1,qp);
-    bc = 1 - tol;
+    ai = ones(1,qp);
+    bi = 1 - tol;
     lb = zeros(1,qp) + tol;
 
-    params = fmincon(@(x)dcc_likelihood(x,e,n,q,p,qpm,qpmt,qp),x0,ac,bc,[],[],lb,[],[],options);
+    params = fmincon(@(x)dcc_likelihood(x,e,n,q,p,qpm,qpmt,qp),x0,ai,bi,[],[],lb,[],[],options);
     
     function ll = dcc_likelihood(x,e,n,q,p,qpm,qpmt,qp)
 
@@ -248,15 +248,15 @@ function [params,h] = gjrgarch(data,q,p,options)
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); (ones(q,1) .* (0.10 / q)); ((ones(p,1) .* 0.75) ./ p)];
-    ac = [-eye(q2p); ones(1,q) (ones(1,q) .* 0.5) ones(1,p)];
-    bc = [(ones(q2p,1) .* -tol); (1 - tol)];
+    ai = [-eye(q2p); ones(1,q) (ones(1,q) .* 0.5) ones(1,p)];
+    bi = [(ones(q2p,1) .* -tol); (1 - tol)];
     lb = ones(1,q2p) .* tol;
 
     s = std(data,1);
     data = [s(ones(max(p,q),1)); data];
     s2 = var(data);
 
-    params = fmincon(@(x)gjrgarch_likelihood(x,data,s,s2,q,p,qpm,qpm1,q2),x0,ac,bc,[],[],lb,[],[],options);
+    params = fmincon(@(x)gjrgarch_likelihood(x,data,s,s2,q,p,qpm,qpm1,q2),x0,ai,bi,[],[],lb,[],[],options);
     [~,h] = gjrgarch_likelihood(params,data,s,s2,q,p,qpm,qpm1,q2);
 
     function [ll,h] = gjrgarch_likelihood(x,data,s,s2,q,p,qpm,qpm1,q2)

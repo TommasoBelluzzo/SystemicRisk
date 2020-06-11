@@ -64,7 +64,9 @@ function ys = smoothing_function(y,s,w)
         z2 = double(~nan_indices);
 
         ys = smoothing_function(z1,s,w) ./ smoothing_function(z2,s,w);
-	end
+    end
+    
+    ys(nan_indices) = NaN;
 
 end
 

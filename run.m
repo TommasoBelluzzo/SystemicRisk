@@ -78,7 +78,7 @@ addpath(paths_base);
 
 %% DATASET
 
-ds_version = 'v1.8';
+ds_version = 'v2.0';
 ds_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
@@ -126,6 +126,7 @@ setup = {
     'CrossSectional'     true     true     @(ds,temp,file,analysis)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analysis);
     'Default'            true     true     @(ds,temp,file,analysis)run_default(ds,temp,file,252,0.4,3,0.08,100,0.10,3,'BSM',0.95,analysis);
     'Liquidity'          true     true     @(ds,temp,file,analysis)run_liquidity(ds,temp,file,252,21,5,'B',500,0.01,0.0004,analysis);
+    'RegimeSwitching'    true     true     @(ds,temp,file,analysis)run_regime_switching(ds,temp,file,true,true,true,analysis);
     'Spillover'          true     true     @(ds,temp,file,analysis)run_spillover(ds,temp,file,252,10,2,4,'G',analysis);
 };
 

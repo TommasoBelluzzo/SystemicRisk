@@ -293,6 +293,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
 	ds.SupportsCrossSectional = supports_cross_sectional;
 	ds.SupportsDefault = supports_default;
     ds.SupportsLiquidity = supports_liquidity;
+    ds.SupportsRegimeSwitching = true;
 	ds.SupportsSpillover = true;
 
 end

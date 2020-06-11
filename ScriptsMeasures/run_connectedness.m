@@ -680,17 +680,17 @@ function plot_indicators(ds,id)
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,1,2);
-    area_1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
+    a1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
     hold on;
-        area_2 = area(sub_2,ds.DatesNum,io,'EdgeColor','none','FaceColor','b');
+        a2 = area(sub_2,ds.DatesNum,io,'EdgeColor','none','FaceColor','b');
         if (ds.Groups == 0)
-            area_3 = area(sub_2,ds.DatesNum,NaN(ds.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            a3 = area(sub_2,ds.DatesNum,NaN(ds.T,1),'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         else
-            area_3 = area(sub_2,ds.DatesNum,ioo,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
+            a3 = area(sub_2,ds.DatesNum,ioo,'EdgeColor','none','FaceColor',[0.678 0.922 1]);
         end
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45,'YLim',[0 connections_max]);
-    legend(sub_2,[area_2 area_3 area_1],'In & Out','In & Out - Other','Granger-causality Threshold','Location','best');
+    legend(sub_2,[a2 a3 a1],'In & Out','In & Out - Other','Granger-causality Threshold','Location','best');
     t2 = title(sub_2,'Connections');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
@@ -813,7 +813,7 @@ function plot_adjacency_matrix(ds,id)
     f = figure('Name','Connectedness Measures > Average Adjacency Matrix','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     pcolor(am);
-    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
     axis image;
 
     ax = gca();
@@ -831,7 +831,7 @@ end
 
 function plot_centralities(ds,id)
 
-    seq = 1:ds.N;
+    sequence = 1:ds.N;
     
     [bc,order] = sort(ds.BetweennessCentralitiesAverage);
     bc_names = ds.FirmNames(order);
@@ -849,36 +849,37 @@ function plot_centralities(ds,id)
     f = figure('Name','Connectedness Measures > Average Centrality Measures','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,3,1);
-    bar(sub_1,seq,bc,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_1,sequence,bc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_1,'XTickLabel',bc_names);
     title('Betweenness Centrality');
     
     sub_2 = subplot(2,3,2);
-    bar(sub_2,seq,cc,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_2,sequence,cc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_2,'XTickLabel',cc_names);
     title('Closeness Centrality');
     
     sub_3 = subplot(2,3,3);
-    bar(sub_3,seq,dc,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_3,sequence,dc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_3,'XTickLabel',dc_names);
     title('Degree Centrality');
     
     sub_4 = subplot(2,3,4);
-    bar(sub_4,seq,ec,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_4,sequence,ec,'FaceColor',[0.749 0.862 0.933]);
     set(sub_4,'XTickLabel',ec_names);
     title('Eigenvector Centrality');
     
     sub_5 = subplot(2,3,5);
-    bar(sub_5,seq,kc,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_5,sequence,kc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_5,'XTickLabel',kc_names);
     title('Katz Centrality');
 
     sub_6 = subplot(2,3,6);
-    bar(sub_6,seq,clc,'FaceColor',[0.749 0.862 0.933]);
+    bar(sub_6,sequence,clc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_6,'XTickLabel',clc_names);
     title('Clustering Coefficient');
     
-    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (ds.N + 1)],'XTick',seq,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (ds.N + 1)],'XTick',sequence,'XTickLabelRotation',90);
+    set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'YGrid','on');
 
     figure_title('Average Centrality Measures');
     

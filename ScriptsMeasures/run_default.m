@@ -1133,75 +1133,86 @@ end
 
 function plot_sequence(ds,target,distance,id)
 
-    [~,index] = ismember(target,ds.LabelsSheetSimple);
-    plots_title = ds.LabelsSheet(index);
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
     
-    if (strcmp(plots_title,ds.LabelsSheetSimple(index)))
-        plots_title = [];
+    if (distance)
+        ts = smooth_data(ds.(strrep(target,' ','')));
+    else
+        ts = smooth_data(ds.(strrep(target,' ','')));
     end
+    
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
-    x = ds.DatesNum;
-    x_limits = [x(1) x(end)];
+    [~,index] = ismember(target,ds.LabelsSheetSimple);
+    plots_title = repmat(ds.LabelsSheet(index),1,n);
+    
+    x_limits = [dn(1) dn(end)];
 
     if (distance)
-        y = ds.(strrep(target,' ',''));
-        y_limits = plot_limits(y,0.1,[],[],-1);
+        y_limits = plot_limits(ts,0.1,[],[],-1);
     else
-        y = ds.(strrep(target,' ',''));
-        y_limits = plot_limits(y,0.1);
+        y_limits = plot_limits(ts,0.1);
     end
 
     core = struct();
 
-    core.N = ds.N;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y,distance);
-    core.SequenceFunction = @(y,offset)y(:,offset);
-	
-    core.OuterTitle = 'Default Measures';
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data,distance);
+
+    core.OuterTitle = ['Default Measures > ' target ' Time Series'];
     core.InnerTitle = [target ' Time Series'];
+    core.SequenceTitles = ds.FirmNames;
 
-    core.Plots = 1;
-	core.PlotsLabels = ds.FirmNames;
+    core.PlotsAllocation = [1 1];
+    core.PlotsSpan = {1};
     core.PlotsTitle = plots_title;
-    core.PlotsType = 'H';
-    
-    core.X = x;
-    core.XDates = ds.MonthlyTicks;
-    core.XGrid = true;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = 45;
-    core.XTick = [];
-    core.XTickLabels = [];
 
-    core.Y = smooth_data(y);
-    core.YGrid = true;
-    core.YLabel = [];
-    core.YLimits = y_limits;
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = [];
+    core.XDates = {mt};
+    core.XGrid = {true};
+    core.XLabel = {[]};
+    core.XLimits = {x_limits};
+    core.XRotation = {45};
+    core.XTick = {[]};
+    core.XTickLabels = {[]};
+
+    core.YGrid = {true};
+    core.YLabel = {[]};
+    core.YLimits = {y_limits};
+    core.YRotation = {[]};
+    core.YTick = {[]};
+    core.YTickLabels = {[]};
 
     sequential_plot(core,id);
     
-    function plot_function(subs,x,y,distance)
+    function plot_function(subs,data,distance)
 
-        plot(subs,x,y,'Color',[0.000 0.447 0.741]);
-        
-        if (distance)
-            hold on;
-                plot(subs,x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
-            hold off;
-        end
+        x = data{1};
+        y = data{2};
         
         d = find(isnan(y),1,'first');
         
-        if (~isempty(d))
+        if (isempty(d))
+            xd = [];
+        else
             xd = x(d) - 1;
-            
-            hold on;
-                plot(subs,[xd xd],get(subs,'YLim'),'Color',[1 0.4 0.4]);
-            hold off;
+        end
+        
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+        
+        if (distance)
+            hold(subs(1),'on');
+                plot(subs(1),x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
         end
 
     end

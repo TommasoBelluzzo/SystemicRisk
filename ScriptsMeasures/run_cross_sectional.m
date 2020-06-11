@@ -861,8 +861,8 @@ function plot_rankings(ds,id)
     rs_names = labels(order);
     
     rc = ds.RankingConcordance;
-    rc(rc <= 0.5) = 0.0;
-    rc(rc > 0.5) = 1.0;
+    rc(rc <= 0.5) = 0;
+    rc(rc > 0.5) = 1;
     rc(logical(eye(n))) = 0.5;
     
     [rc_x,rc_y] = meshgrid(seq,seq);
@@ -897,9 +897,9 @@ function plot_rankings(ds,id)
     
     sub_2 = subplot(1,2,2);
     pcolor(padarray(rc,[1 1],'post'));
-    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933])
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
     axis('image');
-    text(rc_x, rc_y, rc_text,'FontSize',9,'HorizontalAlignment','center');
+    text(rc_x,rc_y,rc_text,'FontSize',9,'HorizontalAlignment','center');
     set(sub_2,'FontWeight','bold','TickLength',[0 0]);
     set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
     set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
@@ -949,60 +949,70 @@ end
 
 function plot_sequence(ds,target,id)
 
-    [~,index] = ismember(target,ds.LabelsSimple);
-    plots_title = ds.Labels(index);
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+    ts = smooth_data(ds.(strrep(target,' ','')));
 
-    x = ds.DatesNum;
-    x_limits = [x(1) x(end)];
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
     
-    y = ds.(strrep(target,' ',''));
-    y_limits = plot_limits(y,0.1);
+    [~,index] = ismember(target,ds.LabelsSimple);
+    plots_title = repmat(ds.Labels(index),1,n);
     
+    x_limits = [dn(1) dn(end)];
+    y_limits = plot_limits(ts,0.1);
+
     core = struct();
 
-    core.N = ds.N;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
-    core.SequenceFunction = @(y,offset)y(:,offset);
-	
-    core.OuterTitle = 'Cross-Sectional Measures';
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = ['Cross-Sectional Measures > ' target ' Time Series'];
     core.InnerTitle = [target ' Time Series'];
+    core.SequenceTitles = ds.FirmNames;
 
-    core.Plots = 1;
-	core.PlotsLabels = ds.FirmNames;
+    core.PlotsAllocation = [1 1];
+    core.PlotsSpan = {1};
     core.PlotsTitle = plots_title;
-    core.PlotsType = 'H';
-    
-    core.X = x;
-    core.XDates = ds.MonthlyTicks;
-    core.XGrid = true;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = 45;
-    core.XTick = [];
-    core.XTickLabels = [];
 
-    core.Y = smooth_data(y);
-    core.YGrid = true;
-    core.YLabel = [];
-    core.YLimits = y_limits;
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = [];
+    core.XDates = {mt};
+    core.XGrid = {true};
+    core.XLabel = {[]};
+    core.XLimits = {x_limits};
+    core.XRotation = {45};
+    core.XTick = {[]};
+    core.XTickLabels = {[]};
+
+    core.YGrid = {true};
+    core.YLabel = {[]};
+    core.YLimits = {y_limits};
+    core.YRotation = {[]};
+    core.YTick = {[]};
+    core.YTickLabels = {[]};
 
     sequential_plot(core,id);
     
-    function plot_function(subs,x,y)
+    function plot_function(subs,data)
 
-        plot(subs,x,y,'Color',[0.000 0.447 0.741]);
-
+        x = data{1};
+        y = data{2};
+        
         d = find(isnan(y),1,'first');
         
-        if (~isempty(d))
+        if (isempty(d))
+            xd = [];
+        else
             xd = x(d) - 1;
-            
-            hold on;
-                plot(subs,[xd xd],get(subs,'YLim'),'Color',[1 0.4 0.4]);
-            hold off;
+        end
+        
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
         end
 
     end

@@ -537,7 +537,7 @@ function plot_averages(ds,id)
 
     sub_2 = subplot(3,2,3);
     plot(sub_2,ds.DatesNum,hhlr,'Color',[0.000 0.447 0.741]);
-    set(sub_2,'YLim',plot_limits(hhlr,0.1,0));
+    set(sub_2,'YLim',[0 1]);
     title(sub_2,ds.Labels{1});
     
     sub_3 = subplot(3,2,4);
@@ -547,7 +547,7 @@ function plot_averages(ds,id)
     
     sub_4 = subplot(3,2,5);
     plot(sub_4,ds.DatesNum,tr,'Color',[0.000 0.447 0.741]);
-    set(sub_4,'YLim',plot_limits(tr,0.1,0));
+    set(sub_4,'YLim',[0 1]);
     title(sub_4,ds.Labels{5});
 
     sub_5 = subplot(3,2,6);
@@ -590,101 +590,124 @@ end
 
 function plot_sequence_illiq(ds,id)
 
+    ds.CI = false;
+    ds.MEM = 'A';
+
     n = ds.N;
     t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
 
-    x = ds.DatesNum;
-    x_limits = [x(1) x(end)];
-    
     if (ds.CI)
         k = 2;
-        y = zeros(t,n,k);
-        y(:,:,1) = ds.ILLIQ;
-        y(:,:,2) = ds.ILLIQCovariates;
+        
+        data = [repmat({dn},1,n); mat2cell(ds.ILLIQ,t,ones(1,n)); mat2cell(ds.ILLIQCovariates,t,ones(1,n))];
+        
+        plots_allocation = [2 1];
+        plots_span = {1 2};
   
         if (strcmp(ds.MEM,'S'))
-            knots_1 = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQKnots,'UniformOutput',false);
-            knots_2 = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQCovariatesKnots,'UniformOutput',false);
-            plots_labels = [strcat(ds.FirmNames,knots_1); strcat(ds.FirmNames,knots_2)];
+            label_1 = strrep(ds.Labels{2},')','');
+            titles_1 = arrayfun(@(x)sprintf([label_1 ', KNOTS=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
+            label_2 = strrep(ds.Labels{3},')','');
+            titles_2 = arrayfun(@(x)sprintf([label_2 ', KNOTS=%d)'],x),ds.ILLIQCovariatesKnots,'UniformOutput',false);
+            plots_title = [titles_1; titles_2];
         else
-            plots_labels = ds.FirmNames;
+            plots_title = [repmat(ds.Labels(2),1,n); repmat(ds.Labels(3),1,n)];
         end
-
-        plots_title = ds.Labels(2:3);
     else
         k = 1;
-        y = ds.ILLIQ;
         
+        data = [repmat({dn},1,n); mat2cell(ds.ILLIQ,t,ones(1,n))];
+        
+        plots_allocation = [1 1];
+        plots_span = {1};
+
         if (strcmp(ds.MEM,'S'))
-            knots = arrayfun(@(x)sprintf(' (KNOTS=%d)',x),ds.ILLIQKnots,'UniformOutput',false);
-            plots_labels = strcat(ds.FirmNames,knots);
+            label = strrep(ds.Labels{2},')','');
+            plots_title = arrayfun(@(x)sprintf([label ', KNOTS=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
         else
-            plots_labels = ds.FirmNames;
+            plots_title = repmat(ds.Labels(2),1,n);
         end
-
-        plots_title = ds.Labels(2);
     end
+    
+    empty_param = repmat({[]},1,k);
 
+    x_dates = repmat({mt},1,k);
+    x_grid = repmat({true},1,k);
+    x_limits = repmat({[dn(1) dn(end)]},1,k);
+    x_rotation = repmat({45},1,k);
+    
+    y_grid = repmat({true},1,k);
+    y_limits = repmat({[0 1]},1,k);
+    
     core = struct();
 
     core.N = n;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
-    core.SequenceFunction = @(y,offset)reshape(y(:,offset,:),t,k);
-	
-    core.OuterTitle = 'Liquidity Measures';
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data,k);
+
+    core.OuterTitle = 'Liquidity Measures > ILLIQ Time Series';
     core.InnerTitle = 'ILLIQ Time Series';
+    core.SequenceTitles = ds.FirmNames;
 
-    core.Plots = k;
-	core.PlotsLabels = plots_labels;
+    core.PlotsAllocation = plots_allocation;
+    core.PlotsSpan = plots_span;
     core.PlotsTitle = plots_title;
-    core.PlotsType = 'V';
-    
-    core.X = x;
-    core.XDates = ds.MonthlyTicks;
-    core.XGrid = true;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = 45;
-    core.XTick = [];
-    core.XTickLabels = [];
 
-    core.Y = y;
-    core.YGrid = true;
-    core.YLabel = [];
-    core.YLimits = [0 1.1];
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = [];
+    core.XDates = x_dates;
+    core.XGrid = x_grid;
+    core.XLabel = empty_param;
+    core.XLimits = x_limits;
+    core.XRotation = x_rotation;
+    core.XTick = empty_param;
+    core.XTickLabels = empty_param;
+
+    core.YGrid = y_grid;
+    core.YLabel = empty_param;
+    core.YLimits = y_limits;
+    core.YRotation = empty_param;
+    core.YTick = empty_param;
+    core.YTickLabels = empty_param;
 
     sequential_plot(core,id);
     
-    function plot_function(subs,x,y)
+    function plot_function(subs,data,k)
 
-        for i = 1:size(y,2)
-            y_i = y(:,i);
-            sub = subs(i);
-            
-            plot(sub,x,y_i,'Color',[0.000 0.447 0.741]);
-            
-            if (i == 2)
-                indices = (abs(y_i - y(:,1)) > 0.01);
-                delta = NaN(numel(y_i),1);
-                delta(indices) = y_i(indices);
-                
-                hold(sub,'on');
-                    plot(sub,x,delta,'Color',[0.494 0.184 0.556]);
-                hold(sub,'on');
-            end
-            
-            d = find(isnan(y_i),1,'first');
+        x = data{1};
+        y1 = data{2};
+        
+        d = find(isnan(y1),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x(d) - 1;
+        end
+        
+        plot(subs(1),x,y1,'Color',[0.000 0.447 0.741]);
+        
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
 
-            if (~isempty(d))
-                xd = x(d) - 1;
+        if (k == 2)
+            y2 = data{3};
+            
+            indices = (abs(y2 - y1) > 0.01);
+            delta = NaN(numel(y2),1);
+            delta(indices) = y2(indices);
+            
+            plot(subs(2),x,y2,'Color',[0.000 0.447 0.741]);
 
-                hold(sub,'on');
-                    plot(sub,[xd xd],get(sub,'YLim'),'Color',[1 0.4 0.4]);
-                hold(sub,'on');
-            end
+            hold(subs(2),'on');
+                plot(subs(2),x,delta,'Color',[0.494 0.184 0.556]);
+                if (~isempty(xd))
+                    plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1 0.4 0.4]);
+                end
+            hold(subs(2),'off');
         end
 
     end
@@ -693,57 +716,74 @@ end
 
 function plot_sequence_other(ds,target,id)
 
-    x = ds.DatesNum;
-    x_limits = [x(1) x(end)];
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+    ts = ds.(strrep(target,' ',''));
 
-	y = ds.(strrep(target,' ',''));
-    y_limits = plot_limits(y,0.1,0);
+	data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
+    plots_title = repmat(ds.Labels(find(strcmp(target,ds.LabelsSimple),1,'first')),1,n);
+    
+    x_limits = [dn(1) dn(end)];
+    
+    if (strcmp(target,'HHLR') || strcmp(target,'TR'))
+        y_limits = [0 1];
+    else
+        y_limits = plot_limits(ts,0.1,0);
+    end
+    
     core = struct();
 
-    core.N = ds.N;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
-    core.SequenceFunction = @(y,offset)y(:,offset);
-	
-    core.OuterTitle = 'Liquidity Measures';
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = ['Liquidity Measures > ' target ' Time Series'];
     core.InnerTitle = [target ' Time Series'];
+    core.SequenceTitles = ds.FirmNames;
 
-    core.Plots = 1;
-	core.PlotsLabels = ds.FirmNames;
-    core.PlotsTitle = [];
-    core.PlotsType = 'H';
-    
-    core.X = x;
-    core.XDates = ds.MonthlyTicks;
-    core.XGrid = true;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = 45;
-    core.XTick = [];
-    core.XTickLabels = [];
+    core.PlotsAllocation = [1 1];
+    core.PlotsSpan = {1};
+    core.PlotsTitle = plots_title;
 
-    core.Y = y;
-    core.YGrid = true;
-    core.YLabel = [];
-    core.YLimits = y_limits;
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = [];
+    core.XDates = {mt};
+    core.XGrid = {true};
+    core.XLabel = {[]};
+    core.XLimits = {x_limits};
+    core.XRotation = {45};
+    core.XTick = {[]};
+    core.XTickLabels = {[]};
+
+    core.YGrid = {true};
+    core.YLabel = {[]};
+    core.YLimits = {y_limits};
+    core.YRotation = {[]};
+    core.YTick = {[]};
+    core.YTickLabels = {[]};
 
     sequential_plot(core,id);
     
-    function plot_function(subs,x,y)
-
-        plot(subs,x,y,'Color',[0.000 0.447 0.741]);
-
+    function plot_function(subs,data)
+        
+        x = data{1};
+        y = data{2};
+        
         d = find(isnan(y),1,'first');
         
-        if (~isempty(d))
+        if (isempty(d))
+            xd = [];
+        else
             xd = x(d) - 1;
-            
-            hold on;
-                plot(subs,[xd xd],get(subs,'YLim'),'Color',[1 0.4 0.4]);
-            hold off;
+        end
+
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
         end
 
     end

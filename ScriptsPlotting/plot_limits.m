@@ -15,12 +15,12 @@ function l = plot_limits(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','2d','nonempty'}));
-        ip.addRequired('a',@(x)validateattributes(x,{'double'},{'real','finite','>=',0.00,'<=',0.20,'scalar'}));
-        ip.addOptional('ll',[],@(x)validateattributes(x,{'double'},{'real'}));
-        ip.addOptional('ul',[],@(x)validateattributes(x,{'double'},{'real'}));
-        ip.addOptional('lc',[],@(x)validateattributes(x,{'double'},{'real'}));
-        ip.addOptional('uc',[],@(x)validateattributes(x,{'double'},{'real'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' '2d' 'nonempty'}));
+        ip.addRequired('a',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.00 '<=' 0.20 'scalar'}));
+        ip.addOptional('ll',[],@(x)validateattributes(x,{'double'},{'real' 'finite'}));
+        ip.addOptional('ul',[],@(x)validateattributes(x,{'double'},{'real' 'finite'}));
+        ip.addOptional('lc',[],@(x)validateattributes(x,{'double'},{'real' 'finite'}));
+        ip.addOptional('uc',[],@(x)validateattributes(x,{'double'},{'real' 'finite'}));
     end
 
     ip.parse(varargin{:});
@@ -88,7 +88,16 @@ function [ll,ul,lc,uc] = validate_input(data,ll,ul,lc,uc)
     end
 
     ll_def = ~isempty(ll);
+    
+    if (ll_def && ~isscalar(ll))
+        error('The value of ''ll'' is invalid. Expected input to be a scalar.');
+    end
+
     ul_def = ~isempty(ul);
+    
+    if (ul_def && ~isscalar(ul))
+        error('The value of ''ul'' is invalid. Expected input to be a scalar.');
+    end
     
     if (ll_def && ul_def)
         error('The parameters ''ll'' and ''ul'' cannot be both defined.');
@@ -96,54 +105,22 @@ function [ll,ul,lc,uc] = validate_input(data,ll,ul,lc,uc)
     
     lc_def = ~isempty(lc);
     
+    if (lc_def && ~isscalar(lc))
+        error('The value of ''lc'' is invalid. Expected input to be a scalar.');
+    end
+    
     if (ll_def && lc_def)
         error('The parameters ''ll'' and ''lc'' cannot be both defined.');
     end
     
     uc_def = ~isempty(uc);
     
-    if (ul_def && uc_def)
-        error('The parameters ''ul'' and ''uc'' cannot be both defined.');
-    end
-
-    if (ll_def)
-        if (~isscalar(ll))
-            error('The value of ''ll'' is invalid. Expected input to be a scalar.');
-        end
-
-        if (~isfinite(ll))
-            error('The value of ''ll'' is invalid. Expected input to be finite.');
-        end
-    end
-
-    if (ul_def)
-        if (~isscalar(ul))
-            error('The value of ''ul'' is invalid. Expected input to be a scalar.');
-        end
-
-        if (~isfinite(ul))
-            error('The value of ''ul'' is invalid. Expected input to be finite.');
-        end
+    if (uc_def && ~isscalar(uc))
+        error('The value of ''uc'' is invalid. Expected input to be a scalar.');
     end
     
-    if (lc_def)
-        if (~isscalar(lc))
-            error('The value of ''lc'' is invalid. Expected input to be a scalar.');
-        end
-
-        if (~isfinite(lc))
-            error('The value of ''lc'' is invalid. Expected input to be finite.');
-        end
-    end
-
-    if (uc_def)
-        if (~isscalar(uc))
-            error('The value of ''uc'' is invalid. Expected input to be a scalar.');
-        end
-
-        if (~isfinite(uc))
-            error('The value of ''uc'' is invalid. Expected input to be finite.');
-        end
+    if (ul_def && uc_def)
+        error('The parameters ''ul'' and ''uc'' cannot be both defined.');
     end
 
 end

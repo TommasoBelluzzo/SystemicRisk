@@ -603,7 +603,7 @@ function plot_indicators_other(ds,id)
     sub_1 = subplot(2,2,[1 3]);
     plot(sub_1,ds.DatesNum,smooth_data(ds.AbsorptionRatio),'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_1,'YLim',[ar_limit 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) * 100,'UniformOutput',false));
+    set(sub_1,'YLim',[ar_limit 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) .* 100,'UniformOutput',false));
     set(sub_1,'XGrid','on','YGrid','on');
     t1 = title(sub_1,['Absorption Ratio (F=' sprintf('%.2f',ds.F) ')']);
     set(t1,'Units','normalized');
@@ -701,13 +701,13 @@ function plot_pca(ds,id)
     title('Coefficients & Scores');
 
     sub_2 = subplot(1,2,2);
-    area_1 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
+    a1 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,1),'FaceColor',[0.7 0.7 0.7]);
     hold on;
-        area_2 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,2),'FaceColor','g');
-        area_3 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,3),'FaceColor','b');
-        area_4 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,4),'FaceColor','r');
+        a2 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,2),'FaceColor','g');
+        a3 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,3),'FaceColor','b');
+        a4 = area(sub_2,ds.DatesNum,ds.PCAExplainedSums(:,4),'FaceColor','r');
     hold off;
-    set([area_1 area_2 area_3 area_4],'EdgeColor','none');
+    set([a1 a2 a3 a4],'EdgeColor','none');
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
     set(sub_2,'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
     legend(sub_2,sprintf('PC 4-%d',ds.N),'PC 3','PC 2','PC 1','Location','southeast');

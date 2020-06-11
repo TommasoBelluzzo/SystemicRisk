@@ -64,9 +64,6 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     ds = initialize(ds,bw,a,lags,ci_m,ci_s,ci_p,ci_v);
     n = ds.N;
     t = ds.T;
-
-    step_1 = 0.2;
-    step_2 = 1 - step_1;
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
 	cleanup_1 = onCleanup(@()rng('default'));
@@ -76,7 +73,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     cleanup_2 = onCleanup(@()delete(bar));
     
     pause(1);
-    waitbar(0,bar,'Calculating cross-quantilogram measures (step 1 of 2)...');
+    waitbar(0,bar,'Calculating cross-quantilogram measures...');
     pause(1);
 
     try
@@ -97,7 +94,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
                 r_i = r(1:offset,i);
                 sv_i = sv(1:offset,:);
 
-                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,sv_i,ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
+                futures(i) = parfeval(@main_loop,1,idx_i,r_i,sv_i,ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
             end
         else
             for i = 1:n
@@ -105,7 +102,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
                 idx_i = idx(1:offset);
                 r_i = r(1:offset,i);
 
-                futures(i) = parfeval(@main_loop_1,1,idx_i,r_i,[],ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
+                futures(i) = parfeval(@main_loop,1,idx_i,r_i,[],ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
             end
         end
 
@@ -119,7 +116,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
             futures_results{future_index} = value;
             
             futures_max = max([future_index futures_max]);
-            waitbar(step_1 * ((futures_max - 1) / n),bar);
+            waitbar((futures_max - 1) / n,bar);
 
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -146,81 +143,11 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     end
     
     pause(1);
-    waitbar(step_1,bar,'Finalizing cross-quantilogram measures (step 1 of 2)...');
+    waitbar(1,bar,'Finalizing cross-quantilogram measures...');
     pause(1);
 
     try
-        ds = finalize_1(ds,futures_results);
-    catch e
-        delete(bar);
-        rethrow(e);
-    end
-    
-    pause(1);
-    waitbar(step_1,bar,'Calculating cross-quantilogram measures (step 2 of 2)...');
-    pause(1);
-    
-    try
-
-        windows_idx = extract_rolling_windows(ds.Index,ds.BW);
-        windows_r = extract_rolling_windows(ds.Returns,ds.BW);
-        
-        if (ds.PI)
-            windows_sv = extract_rolling_windows(ds.StateVariables,ds.BW);
-        else
-            windows_sv = repmat({[]},ds.T,1);
-        end
-
-        futures(1:t) = parallel.FevalFuture;
-        futures_max = 0;
-        futures_results = cell(t,1);
-
-        for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_idx{i},windows_r{i},windows_sv{i},ds.A,ds.Lags,ds.CIM,ds.CIS,ds.CIP,ds.CIV);
-        end
-
-        for i = 1:t
-            if (getappdata(bar,'Stop'))
-                stopped = true;
-                break;
-            end
-            
-            [future_index,value] = fetchNext(futures);
-            futures_results{future_index} = value;
-            
-            futures_max = max([future_index futures_max]);
-            waitbar(step_1 + (step_2 * ((futures_max - 1) / t)),bar);
-
-            if (getappdata(bar,'Stop'))
-                stopped = true;
-                break;
-            end
-        end
-
-    catch e
-    end
-    
-    try
-        cancel(futures);
-    catch
-    end
-
-    if (~isempty(e))
-        delete(bar);
-        rethrow(e);
-    end
-    
-    if (stopped)
-        delete(bar);
-        return;
-    end
-    
-    pause(1);
-    waitbar(1,bar,'Finalizing cross-quantilogram measures (step 2 of 2)...');
-    pause(1);
-
-    try
-        ds = finalize_2(ds,futures_results);
+        ds = finalize(ds,futures_results);
     catch e
         delete(bar);
         rethrow(e);
@@ -240,11 +167,9 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     
     if (analyze)
         safe_plot(@(id)plot_sequence(ds,'Full',id));
-        safe_plot(@(id)plot_windows(ds,'Full',id));
         
         if (ds.PI)
             safe_plot(@(id)plot_sequence(ds,'Partial',id));
-            safe_plot(@(id)plot_windows(ds,'Partial',id));
         end
     end
     
@@ -257,7 +182,6 @@ end
 function ds = initialize(ds,bw,a,lags,ci_m,ci_s,ci_p,ci_v)
 
     n = ds.N;
-    t = ds.T;
 
     ds.A = a;
     ds.BW = bw;
@@ -270,19 +194,15 @@ function ds = initialize(ds,bw,a,lags,ci_m,ci_s,ci_p,ci_v)
 
     ds.CQFullFrom = NaN(lags,n,3);
     ds.CQFullTo = NaN(lags,n,3);
-    ds.CQFullFromWindows = NaN(t,3);
-    ds.CQFullToWindows = NaN(t,3);
     
     if (ds.PI)
         ds.CQPartialFrom = NaN(lags,n,3);
         ds.CQPartialTo = NaN(lags,n,3);
-        ds.CQPartialFromWindows = NaN(t,3);
-        ds.CQPartialToWindows = NaN(t,3);
     end
 
 end
 
-function ds = finalize_1(ds,window_results)
+function ds = finalize(ds,window_results)
   
     n = ds.N;
 
@@ -303,43 +223,6 @@ function ds = finalize_1(ds,window_results)
                 ds.CQPartialFrom(:,i,j) = window_result.CQPartial(:,1,j);
                 ds.CQPartialTo(:,i,j) = window_result.CQPartial(:,2,j);
             end
-        end
-    end
-
-end
-
-function ds = finalize_2(ds,window_results)
-  
-    t = ds.T;
-    alpha = 2 / (ds.BW + 1);
-
-    for i = 1:t
-        window_result = window_results{i};
-        ds.CQFullFromWindows(i,:) = window_result.CQFull(1,:);
-        ds.CQFullToWindows(i,:) = window_result.CQFull(2,:);
-    end
-
-    for i = 1:3
-        from = ds.CQFullFromWindows(:,i);
-        ds.CQFullFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
-        
-        to = ds.CQFullToWindows(:,i);
-        ds.CQFullToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
-    end
-    
-    if (ds.PI)
-        for i = 1:t
-            window_result = window_results{i};
-            ds.CQPartialFromWindows(i,:) = window_result.CQPartial(1,:);
-            ds.CQPartialToWindows(i,:) = window_result.CQPartial(2,:);
-        end
-        
-        for i = 1:3
-            from = ds.CQPartialFromWindows(:,i);
-            ds.CQPartialFromWindows(:,i) = [from(1); filter(alpha,[1 (alpha - 1)],from(2:end),(1 - alpha) * from(1))];
-            
-            to = ds.CQPartialToWindows(:,i);
-            ds.CQPartialToWindows(:,i) = [to(1); filter(alpha,[1 (alpha - 1)],to(2:end),(1 - alpha) * to(1))];
         end
     end
 
@@ -423,7 +306,7 @@ function temp = validate_template(temp)
         end
     end
 
-    sheets = {'Full From' 'Full To' 'Full From Windows' 'Full To Windows' 'Partial From' 'Partial To' 'Partial From Windows' 'Partial To Windows'};
+    sheets = {'Full From' 'Full To' 'Partial From' 'Partial To'};
     
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
@@ -475,8 +358,6 @@ function write_results(ds,temp,out)
     labels = repmat({'CQ' 'Lower CI' 'Upper CI'},1,ds.Lags).';
     row_headers = [labels lags];
 
-	dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
-
     vars = [row_headers num2cell(reshape(permute(ds.CQFullFrom,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full From','WriteRowNames',true);
@@ -484,12 +365,6 @@ function write_results(ds,temp,out)
     vars = [row_headers num2cell(reshape(permute(ds.CQFullTo,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet','Full To','WriteRowNames',true);
-    
-    tab = [dates_str array2table(ds.CQFullFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Full From Windows','WriteRowNames',true);
-    
-    tab = [dates_str array2table(ds.CQFullToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Full To Windows','WriteRowNames',true);
     
     if (ds.PI)
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialFrom,[3 1 2]),ds.Lags * 3,ds.N))];
@@ -499,12 +374,6 @@ function write_results(ds,temp,out)
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialTo,[3 1 2]),ds.Lags * 3,ds.N))];
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
         writetable(tab,out,'FileType','spreadsheet','Sheet','Partial To','WriteRowNames',true);
-
-        tab = [dates_str array2table(ds.CQPartialFromWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','Partial From Windows','WriteRowNames',true);
-
-        tab = [dates_str array2table(ds.CQPartialToWindows,'VariableNames',{'CQ' 'Lower_CI' 'Upper_CI'})];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','Partial To Windows','WriteRowNames',true);
     else
         if (ispc())
             try
@@ -518,8 +387,6 @@ function write_results(ds,temp,out)
 
                 exc_wb.Sheets.Item('Partial From').Delete();
                 exc_wb.Sheets.Item('Partial To').Delete();
-                exc_wb.Sheets.Item('Partial From Windows').Delete();
-                exc_wb.Sheets.Item('Partial To Windows').Delete();
 
                 exc_wb.Save();
                 exc_wb.Close();
@@ -538,7 +405,7 @@ end
 
 %% MEASURES
 
-function window_results = main_loop_1(idx,r,sv,a,lags,ci_m,ci_s,ci_p,ci_v)
+function window_results = main_loop(idx,r,sv,a,lags,ci_m,ci_s,ci_p,ci_v)
 
     window_results = struct();
 
@@ -590,95 +457,6 @@ function window_results = main_loop_1(idx,r,sv,a,lags,ci_m,ci_s,ci_p,ci_v)
         end
         
         window_results.CQPartial = cq_partial;
-    end
-
-end
-
-function window_results = main_loop_2(idx,r,sv,a,lag,ci_m,ci_s,ci_p,ci_v)
-
-    window_results = struct();
-
-	nan_indices = sum(isnan(r),1) > 0;
-    r(:,nan_indices) = [];
-    
-    [t,n] = size(r);
-
-    sv_empty = isempty(sv);
-    
-    if (t < (lag * 2))
-        d = (lag * 2) - t;
-
-        idx = [idx; normrnd(mean(idx),std(idx),[d 1])];
-
-        mu = ones(d,1) .* mean(r,1);
-        sigma = ones(d,1) .* std(r,1);
-		
-        rho = corr(r);
-        rho(isnan(rho)) = 0;
-		
-		if (any(eig(rho) <= 0))
-		    rho = rho + (1e-16 .* eye(n))
-        end
-
-        r = [r; (normrnd(mu,sigma,[d n]) * chol(rho,'upper'))];
-
-        if (~sv_empty)
-            mu = ones(d,1) .* mean(sv,1);
-            sigma = ones(d,1) .* std(sv,1);
-            sv = [sv; normrnd(mu,sigma,[d size(sv,2)])];
-        end
-    end
-    
-    cq_full = zeros(n,2,3);
-
-    for i = 1:n
-        r_i = r(:,i);
-        
-        from = [r_i idx];
-        to = [idx r_i];
-
-        if (strcmp(ci_m,'SB'))
-            [cq,cv] = calculate_stationary_bootstrap(from,a,lag,ci_s,ci_p);
-            cq_full(i,1,:) = [cq cv];
-
-            [cq,cv] = calculate_stationary_bootstrap(to,a,lag,ci_s,ci_p);
-            cq_full(i,2,:) = [cq cv];
-        else
-            [cq,cv] = calculate_self_normalization(from,a,lag,ci_v,ci_p);
-            cq_full(i,1,:) = [cq cv];
-
-            [cq,cv] = calculate_self_normalization(to,a,lag,ci_v,ci_p);
-            cq_full(i,2,:) = [cq cv];
-        end
-    end
-    
-    window_results.CQFull = squeeze(mean(cq_full,1));
-    
-    if (~sv_empty)
-        cq_partial = zeros(n,2,3);
-        
-        for i = 1:n
-            r_i = r(:,i);
-        
-            from = [r_i idx sv];
-            to = [idx r_i sv];
-
-            if (strcmp(ci_m,'SB'))
-                [cq,cv] = calculate_stationary_bootstrap(from,a,1,ci_s,ci_p);
-                cq_partial(i,1,:) = [cq cv];
-
-                [cq,cv] = calculate_stationary_bootstrap(to,a,1,ci_s,ci_p);
-                cq_partial(i,2,:) = [cq cv];
-            else
-                [cq,cv] = calculate_self_normalization(from,a,1,ci_v,ci_p);
-                cq_partial(i,1,:) = [cq cv];
-
-                [cq,cv] = calculate_self_normalization(to,a,1,ci_v,ci_p);
-                cq_partial(i,2,:) = [cq cv];
-            end
-        end
-        
-        window_results.CQPartial = squeeze(mean(cq_partial,1));
     end
 
 end
@@ -925,9 +703,23 @@ end
 
 function plot_sequence(ds,target,id)
 
+    n = ds.N;
     lags = ds.Lags;
+    cq_from_all = ds.(['CQ' target 'From']);
+    cq_to_all = ds.(['CQ' target 'To']);
+    
+    data = [repmat({(1:lags).'},1,n); cell(6,20)];
+    
+    for i = 1:n
+        for j = 2:4
+            data{j,i} = cq_from_all(:,i,j-1);
+        end
+        
+        for j = 5:7
+            data{j,i} = cq_to_all(:,i,j-4);
+        end
+    end
 
-    x = (1:lags).';
     x_limits = [0.3 (lags + 0.7)];
     
     if (lags <= 20)
@@ -941,130 +733,62 @@ function plot_sequence(ds,target,id)
     else
         y_limits = plot_limits([ds.CQFullFrom(:) ds.CQFullTo(:)],0.1);
     end
+    
+    y_tick_labels = @(x)sprintf('%.2f',x);
 
     core = struct();
 
-    core.N = ds.N;
-    core.PlotFunction = @(subs,x,y)plot_function(subs,x,y);
-    core.SequenceFunction = @(y,offset)reshape(y(:,offset,:),lags,6);
-	
-    core.OuterTitle = 'Cross-Quantilogram Measures';
-    core.InnerTitle = [target ' Cross-Quantilograms (Lags)'];
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
 
-    core.Plots = 2;
-	core.PlotsLabels = ds.FirmNames;
-    core.PlotsTitle = {'From' 'To'};
-    core.PlotsType = 'V';
+    core.OuterTitle = ['Cross-Quantilogram Measures > ' target ' Cross-Quantilograms'];
+    core.InnerTitle = [target ' Cross-Quantilograms'];
+    core.SequenceTitles = ds.FirmNames;
 
-    core.X = x;
-    core.XDates = [];
-    core.XGrid = false;
-    core.XLabel = [];
-    core.XLimits = x_limits;
-    core.XRotation = [];
-    core.XTick = x_tick;
-    core.XTickLabels = [];
+    core.PlotsAllocation = [2 1];
+    core.PlotsSpan = {1 2};
+    core.PlotsTitle = [repmat({'From'},1,n); repmat({'To'},1,n)];
 
-    core.Y = cat(3,ds.(['CQ' target 'From']),ds.(['CQ' target 'To']));
-    core.YGrid = false;
-    core.YLabel = [];
-    core.YLimits = y_limits;
-    core.YRotation = [];
-    core.YTick = [];
-    core.YTickLabels = @(x)sprintf('%.2f',x);
+    core.XDates = {[] []};
+    core.XGrid = {false false};
+    core.XLabel = {[] []};
+    core.XLimits = {x_limits x_limits};
+    core.XRotation = {[] []};
+    core.XTick = {x_tick x_tick};
+    core.XTickLabels = {[] []};
+
+    core.YGrid = {false false};
+    core.YLabel = {[] []};
+    core.YLimits = {y_limits y_limits};
+    core.YRotation = {[] []};
+    core.YTick = {[] []};
+    core.YTickLabels = {y_tick_labels y_tick_labels};
 
     sequential_plot(core,id);
     
-    function plot_function(subs,x,y)
+    function plot_function(subs,data)
+        
+        x = data{1};
+        cq_from = data{2};
+        cq_from_cl = data{3};
+        cq_from_ch = data{4};
+        cq_to = data{5};
+        cq_to_cl = data{6};
+        cq_to_ch = data{7};
 
-        for i = 0:1
-            sub = subs(i+1);
-            
-            j = i * 3;
-
-            bar(sub,x,y(:,j+1),0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
-            hold(sub,'on');
-                plot(sub,x,y(:,j+2),'Color',[1 0.4 0.4],'LineWidth',1);
-                plot(sub,x,y(:,j+3),'Color',[1 0.4 0.4],'LineWidth',1);
-            hold(sub,'off');
-        end
+        bar(subs(1),x,cq_from,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
+        hold(subs(1),'on');
+            plot(subs(1),x,cq_from_cl,'Color',[1 0.4 0.4],'LineWidth',1);
+            plot(subs(1),x,cq_from_ch,'Color',[1 0.4 0.4],'LineWidth',1);
+        hold(subs(1),'off');
+        
+        bar(subs(2),x,cq_to,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
+        hold(subs(2),'on');
+            plot(subs(2),x,cq_to_cl,'Color',[1 0.4 0.4],'LineWidth',1);
+            plot(subs(2),x,cq_to_ch,'Color',[1 0.4 0.4],'LineWidth',1);
+        hold(subs(2),'off');
         
     end
-
-end
-
-function plot_windows(ds,target,id)
-
-    from = ds.(['CQ' target 'FromWindows']);
-    [from_cq,from_cil,from_cih] = deal(from(:,1),from(:,2),from(:,3));
-    
-    below_indices = (from_cq < 0) & (from_cq < from_cil);
-    from_cq_below = NaN(ds.T,1);
-    from_cq_below(below_indices) = from_cq(below_indices);
-    
-    above_indices = (from_cq > 0) & (from_cq > from_cih);
-    from_cq_above = NaN(ds.T,1);
-    from_cq_above(above_indices) = from_cq(above_indices);
-    
-    to = ds.(['CQ' target 'ToWindows']);
-    [to_cq,to_cil,to_cih] = deal(to(:,1),to(:,2),to(:,3));
-    
-    below_indices = (to_cq < 0) & (to_cq < to_cil);
-    to_cq_below = NaN(ds.T,1);
-    to_cq_below(below_indices) = to_cq(below_indices);
-    
-    above_indices = (to_cq > 0) & (to_cq > to_cih);
-    to_cq_above = NaN(ds.T,1);
-    to_cq_above(above_indices) = to_cq(above_indices);
-
-    text = [target ' Cross-Quantilograms (Windows EWMA)'];
-
-    y_limits = plot_limits([from_cq to_cq],0.1);
-
-    f = figure('Name',['Cross-Quantilogram Measures > ' text],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
-
-    sub_1 = subplot(1,2,1);
-    line(sub_1,[ds.DatesNum(1) ds.DatesNum(end)],[0 0],'Color',[0 0 0]);
-    hold on;
-        plot(sub_1,ds.DatesNum,from_cq,'Color',[0.000 0.447 0.741]);
-        plot(sub_1,ds.DatesNum,from_cq_below,'Color',[1.000 0.400 0.400]);
-        plot(sub_1,ds.DatesNum,from_cq_above,'Color',[1.000 0.400 0.400]);
-    hold off;
-    t1 = title(sub_1,'From');
-    set(t1,'Units','normalized');
-    t1_position = get(t1,'Position');
-    set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
-
-    sub_2 = subplot(1,2,2);
-    line(sub_2,[ds.DatesNum(1) ds.DatesNum(end)],[0 0],'Color',[0 0 0]);
-    hold on;
-        plot(sub_2,ds.DatesNum,to_cq,'Color',[0.000 0.447 0.741]);
-        plot(sub_2,ds.DatesNum,to_cq_below,'Color',[1.000 0.400 0.400]);
-        plot(sub_2,ds.DatesNum,to_cq_above,'Color',[1.000 0.400 0.400]);
-    hold off;
-    t2 = title(sub_2,'To');
-    set(t2,'Units','normalized');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
-    
-    set([sub_1 sub_2],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set([sub_1 sub_2],'YLim',y_limits);
-    set([sub_1 sub_2],'XGrid','on','YGrid','on');
-
-    if (ds.MonthlyTicks)
-        date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
-    else
-        date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
-    end
-    
-    y_tick = get(sub_1,'YTick');
-    y_labels = arrayfun(@(x)sprintf('%.2f',x),y_tick,'UniformOutput',false);
-    set([sub_1 sub_2],'YTick',y_tick,'YTickLabel',y_labels);
-
-    figure_title(text);
-    
-    pause(0.01);
-    frame = get(f,'JavaFrame');
-    set(frame,'Maximized',true);
 
 end
