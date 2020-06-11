@@ -36,7 +36,7 @@ This framework calculates and analyses the following systemic risk measures:
   * `3-States Model: High, Medium & Low Volatility`
   * `4-States Model: High & Low Volatility With Corrections`
   * `Indicators: Average Probability of High Volatility, Joint Probability of High Volatility`
-  * Main References: [Billio et al. (2010)](https://www.bis.org/bcbs/events/sfrworkshopprogramme/billio.pdf), [Abdymomunov (2011)](https://doi.org/10.2139/ssrn.1972255)
+  * Main References: [Billio et al. (2010)](https://www.bis.org/bcbs/events/sfrworkshopprogramme/billio.pdf), [Maheu et al. (2010)](https://doi.org/10.1080/07350015.2012.680412), [Abdymomunov (2011)](https://doi.org/10.2139/ssrn.1972255)
 * **SPILLOVER MEASURES**
   * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
   * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
