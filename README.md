@@ -14,8 +14,9 @@ This framework calculates and analyses the following systemic risk measures:
   * `"In & Out - Other" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
   * `Network Centralities: Betweenness, Degree, Closeness, Clustering, Eigenvector & Katz`
 * **CROSS-QUANTILOGRAM MEASURES**
-  * `Full Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
-  * `Partial Cross-Quantilograms` by [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
+  * `Full Cross-Quantilograms`
+  * `Partial Cross-Quantilograms`
+  * *References*: [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
 * **CROSS-SECTIONAL MEASURES**
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
