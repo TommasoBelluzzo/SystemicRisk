@@ -9,10 +9,11 @@ This framework calculates and analyses the following systemic risk measures:
   * `Turbulence Index` by [Kritzman & Li (2010)](https://doi.org/10.2469/faj.v66.n5.3)
   * `Principal Component Analysis`
 * **CONNECTEDNESS MEASURES**
-  * `DCI (Dynamic Causality Index)` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `"In & Out" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
-  * `"In & Out - Other" Connections` by [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
+  * `DCI (Dynamic Causality Index)`
+  * `"In & Out" Connections`
+  * `"In & Out - Other" Connections`
   * `Network Centralities: Betweenness, Degree, Closeness, Clustering, Eigenvector & Katz`
+  * *References*: [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
 * **CROSS-QUANTILOGRAM MEASURES**
   * `Full Cross-Quantilograms`
   * `Partial Cross-Quantilograms`
