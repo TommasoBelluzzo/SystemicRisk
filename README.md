@@ -36,11 +36,12 @@ This framework calculates and analyses the following systemic risk measures:
   * `3-States Model: High, Medium & Low Volatility`
   * `4-States Model: High & Low Volatility With Corrections`
   * `Indicators: Average Probability of High Volatility, Joint Probability of High Volatility`
-  * Main References: [Billio et al. (2010)](https://www.bis.org/bcbs/events/sfrworkshopprogramme/billio.pdf), [Abdymomunov (2011)](https://doi.org/10.2139/ssrn.1972255)
+  * *References*: [Billio et al. (2010)](https://www.bis.org/bcbs/events/sfrworkshopprogramme/billio.pdf), [Abdymomunov (2011)](https://doi.org/10.2139/ssrn.1972255)
 * **SPILLOVER MEASURES**
-  * `SI (Spillover Index)` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
-  * `Spillovers From & To` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
-  * `Net Spillovers` by [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
+  * `SI (Spillover Index)`
+  * `Spillovers From & To`
+  * `Net Spillovers`
+  * *References*: [Diebold & Yilmaz (2008)](https://doi.org/10.1111/j.1468-0297.2008.02208.x), [Diebold & Yilmaz (2012)](https://doi.org/10.1016/j.ijforecast.2011.02.006), [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
 
 Some of the aforementioned models have been improved or extended according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source of systemic risk measurement.
 
