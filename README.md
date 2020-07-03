@@ -183,7 +183,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 * The dataset parsing process is affected by several well-known problems. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of issues:
   * If the parsing process is too slow, the best way to speed it up is to provide an unformatted `Excel` spreadsheet (`.xlsx`), with no filters and no styles, or a binary `Excel` spreadsheet (`.xlsb`).
-  * `Excel 2019` and `Excel 365` may present compatibility issues with old versions of `MATLAB`. On the top of that, the builtin function `readtable`, even in the most recent versions of the software, might not properly handle some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
+  * Both `Excel 2019` and `Excel 365` may present compatibility issues with old versions of `MATLAB`. On the top of that, the built-in function `readtable`, even in the most recent versions of the software, might not properly handle some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
   * Many errors arising during the parsing process are caused by `Excel` language settings. Switching the application locale to `English` is the safest approach.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
