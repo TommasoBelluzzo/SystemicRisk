@@ -14,6 +14,15 @@ This framework calculates and analyses the following systemic risk measures:
   * `"In & Out - Other" Connections`
   * `Network Centralities: Betweenness, Degree, Closeness, Clustering, Eigenvector & Katz`
   * *References*: [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
+* **CROSS-ENTROPY MEASURES**
+  * `JPoD (Joint Probability of Default)`
+  * `FSI (Financial Stability Index)`
+  * `PCE (Probability of Cascade Effects)`
+  * `CoJPoDs (Conditional Joint Probabilities of Default)`
+  * `DiDe (Distress Dependency)`
+  * `SI (Systemic Importance)`
+  * `SV (Systemic Vulnerability)`
+  * *References*: [Segoviano & Espinoza (2017)](http://www.systemicrisk.ac.uk/publications/discussion-papers/consistent-measures-systemic-risk), [Cortes et al. (2018)](http://dx.doi.org/10.5089/9781484338605.001)
 * **CROSS-QUANTILOGRAM MEASURES**
   * `Full Cross-Quantilograms`
   * `Partial Cross-Quantilograms`
