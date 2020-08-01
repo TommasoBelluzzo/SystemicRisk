@@ -22,7 +22,7 @@ This framework calculates and analyses the following systemic risk measures:
   * `DiDe (Distress Dependency)`
   * `SI (Systemic Importance)`
   * `SV (Systemic Vulnerability)`
-  * *References*: [Segoviano & Segoviano (2009)](http://doi.org/10.5089/9781451871517.001), [Segoviano & Espinoza (2017)](http://www.systemicrisk.ac.uk/publications/discussion-papers/consistent-measures-systemic-risk), [Cortes et al. (2018)](http://doi.org/10.5089/9781484338605.001)
+  * *References*: [Segoviano & Goodhart (2009)](http://doi.org/10.5089/9781451871517.001), [Segoviano & Espinoza (2017)](http://www.systemicrisk.ac.uk/publications/discussion-papers/consistent-measures-systemic-risk), [Cortes et al. (2018)](http://doi.org/10.5089/9781484338605.001)
 * **CROSS-QUANTILOGRAM MEASURES**
   * `Full Cross-Quantilograms`
   * `Partial Cross-Quantilograms`
