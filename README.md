@@ -18,10 +18,9 @@ This framework calculates and analyses the following systemic risk measures:
   * `JPoD (Joint Probability of Default)`
   * `FSI (Financial Stability Index)`
   * `PCE (Probability of Cascade Effects)`
-  * `CoJPoDs (Conditional Joint Probabilities of Default)`
   * `DiDe (Distress Dependency)`
-  * `SI (Systemic Importance)`
-  * `SV (Systemic Vulnerability)`
+  * `DiDe Indicators: SI (Systemic Importance), SV (Systemic Vulnerability)`
+  * `CoJPoDs (Conditional Joint Probabilities of Default)`
   * *References*: [Segoviano & Goodhart (2009)](http://doi.org/10.5089/9781451871517.001), [Radev (2012)](https://doi.org/10.2139/ssrn.2048585), [Segoviano & Espinoza (2017)](http://www.systemicrisk.ac.uk/publications/discussion-papers/consistent-measures-systemic-risk), [Cortes et al. (2018)](http://doi.org/10.5089/9781484338605.001)
 * **CROSS-QUANTILOGRAM MEASURES**
   * `Full Cross-Quantilograms`
