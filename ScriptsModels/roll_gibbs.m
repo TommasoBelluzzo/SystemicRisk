@@ -13,10 +13,10 @@ function is = roll_gibbs(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real','finite','vector','nonempty'}));
-        ip.addOptional('sw',1000,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',500}));
-        ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
-        ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
+        ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
+        ip.addOptional('sw',1000,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
+        ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
+        ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
     end
 
     ip.parse(varargin{:});
@@ -29,7 +29,7 @@ function is = roll_gibbs(varargin)
 
     nargoutchk(1,1);
 
-	is = roll_gibbs_internal(p,sw,c,s2);
+    is = roll_gibbs_internal(p,sw,c,s2);
 
 end
 
@@ -46,7 +46,7 @@ function is = roll_gibbs_internal(p,sw,c,s2)
         d = 1 + ((1 / s2) * (dq.' * dq));
         mu = d \ ((1 / s2) * (dq.' * dp));
         rho = inv(d);
-        c = truncated_mvnrnd(mu,rho);
+        c = mvnrnd_truncated(mu,rho);
 
         u = dp - (c .* dq);
         alpha = 1e-12 + (numel(u) / 2);
@@ -106,7 +106,7 @@ function q = perform_draw(p,q,c,s2)
 
 end
 
-function r = truncated_mvnrnd(mu,rho)
+function r = mvnrnd_truncated(mu,rho)
 
     f = sqrt(rho);
     low = -mu / f;

@@ -3,7 +3,7 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
+% rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.45).
 % lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used for the calculation of D2C and D2D default barriers (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
 % c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
@@ -27,7 +27,7 @@ function [result,stopped] = run_default(varargin)
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
+        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
         ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'vector'}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
         ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',50,'<=',1000,'scalar'}));
@@ -75,7 +75,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
     step_2 = 1 - step_1;
 
     rng(double(bitxor(uint16('T'),uint16('B'))));
-	cleanup_1 = onCleanup(@()rng('default'));
+    cleanup_1 = onCleanup(@()rng('default'));
 
     bar = waitbar(0,'Initializing default measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -102,7 +102,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
 
         for i = 1:n
             if (getappdata(bar,'Stop'))
-            	stopped = true;
+                stopped = true;
                 break;
             end
             
@@ -220,7 +220,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
 
     pause(1);
     waitbar(1,bar,'Writing default measures...');
-	pause(1);
+    pause(1);
     
     try
         write_results(ds,temp,out);
@@ -580,13 +580,13 @@ function [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds)
     d2d_avg = sum(ds.D2D .* weights,2,'omitnan');
     d2c_avg = sum(ds.D2C .* weights,2,'omitnan');
 
-	cp = max(1e-6,sum(cp,2,'omitnan'));
+    cp = max(1e-6,sum(cp,2,'omitnan'));
     lbs = lb .* repmat(ds.ST,t,1);
     lbl = repmat(ds.DT,t,1) .* (lb .* (1 - repmat(ds.ST,t,1)));
     db = max(1e-6,sum(lbs + lbl,2,'omitnan'));
 
     [va,va_m] = kmv_model(cp,db,r,1,ds.OP);
-	[d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,ds.LCAR);
+    [d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,ds.LCAR);
     
 end
 
@@ -694,7 +694,7 @@ function [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,t,op)
     dbd = db .* exp(-r.* t);
 
     d1 = (log(va ./ db) + ((r + (0.5 * s^2)) .* t)) ./ st;
-	d2 = d1 - st;
+    d2 = d1 - st;
 
     put_price = (dbd .* normcdf(-d2)) - (va .* normcdf(-d1));
     
@@ -710,7 +710,7 @@ function [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,t,op)
 
     put_price = max(0,put_price);
 
-	rd = dbd - put_price;
+    rd = dbd - put_price;
 
     cds_put_price = dbd .* (1 - exp(-cds .* max(0.5,((db ./ rd) - 1)) .* t));
     cds_put_price = min(cds_put_price,put_price);  
@@ -1051,12 +1051,12 @@ end
 function plot_dip(ds,id)
 
     dip = ds.Indicators(:,5);
-	y = smooth_data(dip);
+    y = smooth_data(dip);
 
     f = figure('Name','Default Measures > Distress Insurance Premium','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,6,1:5);
-    plot(sub_1,ds.DatesNum,y);
+    plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
     
@@ -1072,7 +1072,7 @@ function plot_dip(ds,id)
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
 
-	figure_title('Distress Insurance Premium');
+    figure_title('Distress Insurance Premium');
     
     pause(0.01);
     frame = get(f,'JavaFrame');

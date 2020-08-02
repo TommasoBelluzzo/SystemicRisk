@@ -66,7 +66,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     t = ds.T;
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
-	cleanup_1 = onCleanup(@()rng('default'));
+    cleanup_1 = onCleanup(@()rng('default'));
 
     bar = waitbar(0,'Initializing cross-quantilogram measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
@@ -108,7 +108,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
 
         for i = 1:n
             if (getappdata(bar,'Stop'))
-            	stopped = true;
+                stopped = true;
                 break;
             end
             
@@ -155,7 +155,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
 
     pause(1);
     waitbar(1,bar,'Writing cross-quantilogram measures...');
-	pause(1);
+    pause(1);
     
     try
         write_results(ds,temp,out);
@@ -231,7 +231,7 @@ end
 function [ci_m,ci_s,ci_p,ci_v] = validate_ci_input(ci_m,ci_s,ci_p)
 
     ci_s_allowed = [0.005 0.010 0.025 0.050 0.100];
-	[ci_s_ok,j] = ismember(ci_s,ci_s_allowed);
+    [ci_s_ok,j] = ismember(ci_s,ci_s_allowed);
 
     if (~ci_s_ok)
         ci_s_allowed_text = [sprintf('%.2f',ci_s_allowed(1)) sprintf(', %.2f',ci_s_allowed(2:end))];

@@ -116,7 +116,7 @@ function y = replace_outliers(y,x,w)
     end
     
     b = m_mad .* f;
-	lb = m_med - b;
+    lb = m_med - b;
     ub = m_med + b;
 
     is_outlier = (y > ub) | (y < lb);

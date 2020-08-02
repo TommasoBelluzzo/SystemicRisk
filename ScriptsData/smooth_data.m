@@ -41,7 +41,7 @@ function ys = smoothing_function(y,s,w)
     nan_indices = isnan(y);
     nan_found = any(nan_indices);
 
-	if (~nan_found)
+    if (~nan_found)
         if (w == 1)
             ys = y;
             return;

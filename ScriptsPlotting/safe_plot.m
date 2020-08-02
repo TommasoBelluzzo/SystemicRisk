@@ -15,7 +15,7 @@ function safe_plot(varargin)
     
     nargoutchk(0,0);
 
-	safe_plot_internal(ipr.handle);
+    safe_plot_internal(ipr.handle);
 
 end
 

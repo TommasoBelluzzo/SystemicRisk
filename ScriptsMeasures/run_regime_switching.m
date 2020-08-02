@@ -53,7 +53,7 @@ function [result,stopped] = run_regime_switching_internal(ds,temp,out,rs2,rs3,rs
 
     bar = waitbar(0,'Initializing regime-switching measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
-	cleanup = onCleanup(@()delete(bar));
+    cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating regime-switching measures...');
@@ -476,7 +476,7 @@ function [mu_params,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching_2(r)
     [indep_s_params,~,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching(r,[],[],2,true,@finit,[],[]);
     mu_params = indep_s_params{1};
 
-	function [x0,ai,bi,ae,be,lb,ub] = finit(dep,~,~,~,~,~,~,options)
+    function [x0,ai,bi,ae,be,lb,ub] = finit(dep,~,~,~,~,~,~,options)
 
         tol = 2 * options.TolCon;
 
@@ -740,8 +740,8 @@ function plot_sequence(ds,target,id)
     y_limits_pc = [0 1];
     y_limits_tm = [1 (k + 1)];
     
-    y_tick_pc = 0:0.1:1;
-    y_tick_tm = 1.5:(k+0.5);
+    y_ticks_pc = 0:0.1:1;
+    y_ticks_tm = 1.5:(k+0.5);
     
     y_tick_labels_pc = @(x)sprintf('%.f%%',x .* 100);
     y_tick_labels_tm = fliplr(states);
@@ -772,7 +772,7 @@ function plot_sequence(ds,target,id)
     core.YLabel = {[] [] [] []};
     core.YLimits = {y_limits_cs2 y_limits_tm y_limits_pc y_limits_pc};
     core.YRotation = {[] [] [] []};
-    core.YTick = {[] y_tick_tm y_tick_pc y_tick_pc};
+    core.YTick = {[] y_ticks_tm y_ticks_pc y_ticks_pc};
     core.YTickLabels = {[] y_tick_labels_tm y_tick_labels_pc y_tick_labels_pc};
 
     sequential_plot(core,id);

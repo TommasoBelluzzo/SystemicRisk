@@ -56,7 +56,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
     t = ds.T;
 
     rng(double(bitxor(uint16('T'),uint16('B'))));
-	cleanup_1 = onCleanup(@()rng('default'));
+    cleanup_1 = onCleanup(@()rng('default'));
     
     bar = waitbar(0,'Initializing component measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -81,7 +81,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
 
         for i = 1:t
             if (getappdata(bar,'Stop'))
-            	stopped = true;
+                stopped = true;
                 break;
             end
             
@@ -139,7 +139,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
     end
 
     if (analyze)
-        safe_plot(@(id)plot_indicators_catfin(ds,id));
+        safe_plot(@(id)plot_catfin(ds,id));
         safe_plot(@(id)plot_indicators_other(ds,id));
         safe_plot(@(id)plot_pca(ds,id));
     end
@@ -167,8 +167,10 @@ function ds = initialize(ds,bw,k,f,q)
 
     k_label = sprintf('%.0f%%',(ds.K * 100));
     ds.Labels = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    ds.LabelsCATFINVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
+    ds.LabelsIndicators = {'Absorption Ratio' 'CATFIN' 'Correlation Surprise' 'Turbulence Index'};
+    ds.LabelsPCAExplained = {'PC' 'Explained Variance'};
     ds.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    ds.LabelsVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
 
     ds.CATFINReturns = sum(r .* repmat(rw,1,n),2,'omitnan');
     ds.CATFINVaR = NaN(t,4);
@@ -308,15 +310,15 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    labels = strrep(ds.LabelsVaR,'-','_');
+    labels = strrep(ds.LabelsCATFINVaR,'-','_');
     t1 = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
     writetable(t1,out,'FileType','spreadsheet','Sheet','CATFIN VaR','WriteRowNames',true);
 
-    labels = {'Absorption_Ratio' 'CATFIN' 'Correlation_Surprise' 'Turbulence_Index'};
+    labels = strrep(ds.LabelsIndicators,' ','_');
     t2 = [dates_str array2table([ds.AbsorptionRatio ds.CATFIN ds.CorrelationSurprise ds.TurbulenceIndex],'VariableNames',labels)];
     writetable(t2,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
-    labels = {'PC' 'ExplainedVariance'};
+    labels = strrep(ds.LabelsPCAExplained,' ','_');
     t3 = array2table([(1:ds.N).' ds.PCAExplainedOverall],'VariableNames',labels);
     writetable(t3,out,'FileType','spreadsheet','Sheet','PCA Overall Explained','WriteRowNames',true);
 
@@ -535,12 +537,12 @@ end
 
 %% PLOTTING
 
-function plot_indicators_catfin(ds,id)
+function plot_catfin(ds,id)
 
     r = max(0,-ds.CATFINReturns);
     y_limits = plot_limits([-ds.CATFINVaR r],0.1,0);
 
-    f = figure('Name','Component Measures > CATFIN Indicator','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+    f = figure('Name','Component Measures > CATFIN','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     subs = gobjects(5,1);
     
@@ -561,7 +563,7 @@ function plot_indicators_catfin(ds,id)
             plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaR(:,i),5),'Color',[1 0.4 0.4],'LineWidth',1.5);
         hold off;
         set(sub,'YLim',y_limits);
-        title(sub,[ds.LabelsVaR{i} ' VaR (PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']);
+        title(sub,[ds.LabelsCATFINVaR{i} ' VaR (PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']);
         
         subs(i+1) = sub;
     end
@@ -574,7 +576,7 @@ function plot_indicators_catfin(ds,id)
         date_ticks(subs,'x','yyyy','KeepLimits');
     end
 
-    figure_title('CATFIN Indicator');
+    figure_title('CATFIN');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -596,7 +598,7 @@ function plot_indicators_other(ds,id)
     end
 
     ti_ma = [ds.TurbulenceIndex(1); filter(alpha,[1 (alpha - 1)],ds.TurbulenceIndex(2:end),(1 - alpha) * ds.TurbulenceIndex(1))];
-	cs_ma = [ds.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],ds.CorrelationSurprise(2:end),(1 - alpha) * ds.CorrelationSurprise(1))];
+    cs_ma = [ds.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],ds.CorrelationSurprise(2:end),(1 - alpha) * ds.CorrelationSurprise(1))];
 
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -681,7 +683,7 @@ function plot_pca(ds,id)
     limits_low = -limits_high;
     
     y_ticks = 0:10:100;
-    y_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
+    y_tick_labels = arrayfun(@(x)sprintf('%d%%',x),y_ticks,'UniformOutput',false);
     
     f = figure('Name','Component Measures > Principal Component Analysis','Units','normalized','Tag',id);
 
@@ -709,7 +711,7 @@ function plot_pca(ds,id)
     hold off;
     set([a1 a2 a3 a4],'EdgeColor','none');
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
-    set(sub_2,'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_labels);
+    set(sub_2,'YLim',[y_ticks(1) y_ticks(end)],'YTick',y_ticks,'YTickLabel',y_tick_labels);
     legend(sub_2,sprintf('PC 4-%d',ds.N),'PC 3','PC 2','PC 1','Location','southeast');
     title('Explained Variance');
 

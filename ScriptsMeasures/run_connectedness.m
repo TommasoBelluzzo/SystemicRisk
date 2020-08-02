@@ -171,7 +171,7 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.DegreesOut = NaN(t,n);
     ds.Degrees = NaN(t,n);
 
-    ds.AdjacencyMatrixAverage = NaN(n,n);
+    ds.AverageAdjacencyMatrix = NaN(n);
     ds.BetweennessCentralitiesAverage = NaN(1,n);
     ds.ClosenessCentralitiesAverage = NaN(1,n);
     ds.DegreeCentralitiesAverage = NaN(1,n);
@@ -207,7 +207,7 @@ function ds = finalize(ds,window_results)
     end
 
     am = calculate_average_adjacency_matrix(ds.AdjacencyMatrices);
-    ds.AdjacencyMatrixAverage = am;
+    ds.AverageAdjacencyMatrix = am;
     
     [bc,cc,dc,ec,kc,clc,deg_in,deg_out,deg] = calculate_centralities(am);
     ds.BetweennessCentralitiesAverage = bc;
@@ -307,7 +307,7 @@ function write_results(ds,temp,out)
     t1 = cell2table(vars,'VariableNames',labels);
     writetable(t1,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
 
-    vars = [firm_names num2cell(ds.AdjacencyMatrixAverage)];
+    vars = [firm_names num2cell(ds.AverageAdjacencyMatrix)];
     labels = {'Firms' ds.FirmNames{:,:}};
     t2 = cell2table(vars,'VariableNames',labels);
     writetable(t2,out,'FileType','spreadsheet','Sheet','Average Adjacency Matrix','WriteRowNames',true);
@@ -351,7 +351,6 @@ function am = calculate_average_adjacency_matrix(ams)
     am = sum(cat(3,ams{:}),3) ./ numel(ams);
 
     threshold = mean(mean(am));
-
     am(am < threshold) = 0;
     am(am >= threshold) = 1;
 
@@ -534,7 +533,7 @@ end
 
 function ec = calculate_eigenvector_centrality(am)
 
-	[eigen_vector,eigen_values] = eig(am);
+    [eigen_vector,eigen_values] = eig(am);
     [~,indices] = max(diag(eigen_values));
 
     ec = abs(eigen_vector(:,indices)).';
@@ -625,10 +624,10 @@ function [beta,covariance,residuals] = hac_regression(y,x,ratio)
     
     l = round(ratio * t,0);
     
-	for i = 1:(l - 1)
+    for i = 1:(l - 1)
         o_tmp = (h(1:(t-i),:).' * h((1+i):t,:)) / (t - i);
         o_hat = o_hat + (((l - i) / l) * (o_tmp + o_tmp.'));
-	end
+    end
 
     covariance = (q_hat \ o_hat) / q_hat;
 
@@ -735,15 +734,15 @@ function plot_network(ds,id)
         end
     end
     
-	weights = mean(ds.Degrees,1,'omitnan');
-	weights = weights ./ mean(weights);
-	weights = (weights - min(weights)) ./ (max(weights) - min(weights));
+    weights = mean(ds.Degrees,1,'omitnan');
+    weights = weights ./ mean(weights);
+    weights = (weights - min(weights)) ./ (max(weights) - min(weights));
     weights = (weights .* 3.75) + 0.25;
     
     theta = linspace(0,(2 * pi),(ds.N + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
-    [i,j] = find(ds.AdjacencyMatrixAverage);
+    [i,j] = find(ds.AverageAdjacencyMatrix);
     [~,order] = sort(max(i,j));
     i = i(order);
     j = j(order);
@@ -804,7 +803,7 @@ end
 
 function plot_adjacency_matrix(ds,id)
 
-    am = ds.AdjacencyMatrixAverage;
+    am = ds.AverageAdjacencyMatrix;
     am(logical(eye(ds.N))) = 0.5;
     am = padarray(am,[1 1],'post');
 

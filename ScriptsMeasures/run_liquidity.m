@@ -65,7 +65,7 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
 
     bar = waitbar(0,'Initializing liquidity measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
-	cleanup = onCleanup(@()delete(bar));
+    cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating liquidity measures...');
@@ -402,13 +402,13 @@ end
 
 function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
 
-	tr = v ./ cp;
-	tr(~isfinite(tr)) = 0;
+    tr = v ./ cp;
+    tr(~isfinite(tr)) = 0;
 
     windows_p = extract_rolling_windows(p,bws);
     dp = cellfun(@(x)(max(x) - min(x)) / min(x),windows_p);
     
-	alpha = 2 / (bwl + 1);
+    alpha = 2 / (bwl + 1);
 
     hhlr = dp ./ tr;
     hhlr(~isfinite(hhlr)) = 0;
@@ -434,7 +434,7 @@ function [illiq,illiq_covariates,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
 
     [illiq,~,mem_params] = multiplicative_error(input,mem);
     illiq = [illiq(1); filter(alpha,[1 (alpha - 1)],illiq(2:end),(1 - alpha) * illiq(1))];
-	illiq = (illiq - min(illiq)) ./ (max(illiq) - min(illiq));
+    illiq = (illiq - min(illiq)) ./ (max(illiq) - min(illiq));
     
     if (strcmp(mem,'S'))
         knots(1) = mem_params(1);
@@ -472,8 +472,8 @@ function tr = calculate_tr(v,cp,bwl)
 
     alpha = 2 / (bwl + 1);
 
-	tr = v ./ cp;
-	tr(~isfinite(tr)) = 0;
+    tr = v ./ cp;
+    tr(~isfinite(tr)) = 0;
     tr = [tr(1); filter(alpha,[1 (alpha - 1)],tr(2:end),(1 - alpha) * tr(1))];
     tr = (tr - min(tr)) ./ (max(tr) - min(tr));
 
@@ -490,7 +490,7 @@ function vr = calculate_vr(r,bwl,bwm)
     windows_short = extract_rolling_windows(r,bwm);
     var_short = cellfun(@var,windows_short);
 
-	vr = var_long ./ (t .* var_short);
+    vr = var_long ./ (t .* var_short);
     vr(~isfinite(vr)) = 0;
     vr(1:bwm) = mean(vr(bwm+1:bwm*2+1));
     vr = [vr(1); filter(alpha,[1 (alpha - 1)],vr(2:end),(1 - alpha) * vr(1))];
@@ -589,9 +589,6 @@ function plot_averages(ds,id)
 end
 
 function plot_sequence_illiq(ds,id)
-
-    ds.CI = false;
-    ds.MEM = 'A';
 
     n = ds.N;
     t = ds.T;
@@ -720,9 +717,10 @@ function plot_sequence_other(ds,target,id)
     t = ds.T;
     dn = ds.DatesNum;
     mt = ds.MonthlyTicks;
+
     ts = ds.(strrep(target,' ',''));
 
-	data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
     plots_title = repmat(ds.Labels(find(strcmp(target,ds.LabelsSimple),1,'first')),1,n);
     

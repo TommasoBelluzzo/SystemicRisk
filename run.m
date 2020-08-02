@@ -78,14 +78,14 @@ addpath(paths_base);
 
 %% DATASET
 
-ds_version = 'v2.0';
+ds_version = 'v2.1';
 ds_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 [file_path,file_name,file_extension] = fileparts(file);
 
 if (exist(file,'file') == 0)
-	error(['The dataset file ''' file ''' could not be found.']);
+    error(['The dataset file ''' file ''' could not be found.']);
 end
 
 mat = fullfile(file_path,[file_name '.mat']);
@@ -120,14 +120,15 @@ end
 
 setup = {
     % NAME               ENABLED  ANALYZE  FUNCTION
-    'Component'          true     true     @(ds,temp,file,analysis)run_component(ds,temp,file,252,0.99,0.2,0.75,analysis);
-    'Connectedness'      true     true     @(ds,temp,file,analysis)run_connectedness(ds,temp,file,252,0.05,false,0.06,analysis);
-    'CrossQuantilogram'  true     true     @(ds,temp,file,analysis)run_cross_quantilogram(ds,temp,file,252,0.05,60,'SB',0.05,100,analysis);
-    'CrossSectional'     true     true     @(ds,temp,file,analysis)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analysis);
-    'Default'            true     true     @(ds,temp,file,analysis)run_default(ds,temp,file,252,0.4,3,0.08,100,0.10,3,'BSM',0.95,analysis);
-    'Liquidity'          true     true     @(ds,temp,file,analysis)run_liquidity(ds,temp,file,252,21,5,'B',500,0.01,0.0004,analysis);
-    'RegimeSwitching'    true     true     @(ds,temp,file,analysis)run_regime_switching(ds,temp,file,true,true,true,analysis);
-    'Spillover'          true     true     @(ds,temp,file,analysis)run_spillover(ds,temp,file,252,10,2,4,'G',analysis);
+    'Component'          true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,252,0.99,0.2,0.75,analyze);
+    'Connectedness'      true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,252,0.05,false,0.06,analyze);
+    'CrossEntropy'       true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,'A',252,0.4,'W',analyze);
+    'CrossQuantilogram'  true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,252,0.05,60,'SB',0.05,100,analyze);
+    'CrossSectional'     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
+    'Default'            true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,252,0.45,3,0.08,100,0.10,3,'BSM',0.95,analyze);
+    'Liquidity'          true     true     @(ds,temp,file,analyze)run_liquidity(ds,temp,file,252,21,5,'B',500,0.01,0.0004,analyze);
+    'RegimeSwitching'    true     true     @(ds,temp,file,analyze)run_regime_switching(ds,temp,file,true,true,true,analyze);
+    'Spillover'          true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,252,10,2,4,'G',analyze);
 };
 
 for i = 1:size(setup,1)

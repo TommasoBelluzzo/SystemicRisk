@@ -61,7 +61,7 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
 
     bar = waitbar(0,'Initializing cross-sectional measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
-	cleanup = onCleanup(@()delete(bar));
+    cleanup = onCleanup(@()delete(bar));
     
     pause(1);
     waitbar(0,bar,'Calculating cross-sectional measures...');
@@ -235,7 +235,7 @@ function ds = finalize(ds)
 
     weights = max(0,ds.Capitalizations ./ repmat(sum(ds.Capitalizations,2,'omitnan'),1,n));
     
-	beta_avg = sum(ds.Beta .* weights,2,'omitnan');
+    beta_avg = sum(ds.Beta .* weights,2,'omitnan');
     var_avg = sum(ds.VaR .* weights,2,'omitnan');
     es_avg = sum(ds.ES .* weights,2,'omitnan');
     covar_avg = sum(ds.CoVaR .* weights,2,'omitnan');
@@ -409,17 +409,17 @@ function [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv,a)
         covar = [covar(1); covar];
     end
 
-	dcovar = b(2) .* (var - repmat(median(r0_x),length(r0_m),1));
+    dcovar = b(2) .* (var - repmat(median(r0_x),length(r0_m),1));
 
 end
 
 function [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,a)
 
-	beta = rho .* (s_x ./ s_m);
+    beta = rho .* (s_x ./ s_m);
     
     c = quantile((r0_x ./ s_x),a);
-	var = s_x * c;
-	es = s_x * -(normpdf(c) / a);
+    var = s_x * c;
+    es = s_x * -(normpdf(c) / a);
 
 end
 
@@ -511,8 +511,8 @@ end
 
 function kcc = kendall_concordance_coefficient(rank_1,rank_2)
 
-	m = [rank_1 rank_2];
-	[n,k] = size(m);
+    m = [rank_1 rank_2];
+    [n,k] = size(m);
 
     rm = zeros(n,k);
 
@@ -770,13 +770,13 @@ function plot_systemic_averages(ds,id)
         date_ticks(subs,'x','yyyy','KeepLimits');
     end
     
-    y_tick = get(subs(1),'YTick');
-    y_labels = arrayfun(@(x)sprintf('%.2f',x),y_tick,'UniformOutput',false);
-    set(subs(1:3),'YTick',y_tick,'YTickLabel',y_labels);
+    y_ticks = get(subs(1),'YTick');
+    y_tick_labels = arrayfun(@(x)sprintf('%.2f',x),y_ticks,'UniformOutput',false);
+    set(subs(1:3),'YTick',y_ticks,'YTickLabel',y_tick_labels);
     
-    y_tick = get(subs(4),'YTick');
-    y_labels = arrayfun(@(x)sprintf('%.0f',x),y_tick,'UniformOutput',false);
-    set(subs(4:5),'YTick',y_tick,'YTickLabel',y_labels);
+    y_ticks = get(subs(4),'YTick');
+    y_tick_labels = arrayfun(@(x)sprintf('%.0f',x),y_ticks,'UniformOutput',false);
+    set(subs(4:5),'YTick',y_ticks,'YTickLabel',y_tick_labels);
     
     figure_title('Systemic Averages');
 
@@ -953,6 +953,7 @@ function plot_sequence(ds,target,id)
     t = ds.T;
     dn = ds.DatesNum;
     mt = ds.MonthlyTicks;
+
     ts = smooth_data(ds.(strrep(target,' ','')));
 
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];

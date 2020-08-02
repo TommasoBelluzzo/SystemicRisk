@@ -29,7 +29,7 @@ function analyze_dataset_internal(ds)
     if (~isempty(ds.Volumes))
         safe_plot(@(id)plot_boxes('Volumes',ds.Volumes,ds.FirmNames,id));
     end
-	
+
     if (~isempty(ds.Capitalizations))
         safe_plot(@(id)plot_boxes('Capitalizations',ds.Capitalizations,ds.FirmNames,id));
     end
@@ -132,8 +132,8 @@ function plot_index(data,id)
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
-    annotation_strings = {sprintf('Observations: %d',index_obs) sprintf('Mean: %.4f',index_avg) sprintf('Median: %.4f',index_med) sprintf('Standard Deviation: %.4f',index_std) sprintf('Skewness: %.4f',index_ske) sprintf('Kurtosis: %.4f',index_kur)};
-    annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',annotation_strings,'EdgeColor','none','FitBoxToText','on','FontSize',8);
+    txt = {sprintf('Observations: %d',index_obs) sprintf('Mean: %.4f',index_avg) sprintf('Median: %.4f',index_med) sprintf('Standard Deviation: %.4f',index_std) sprintf('Skewness: %.4f',index_ske) sprintf('Kurtosis: %.4f',index_kur)};
+    annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
     
     pause(0.01);
     frame = get(f,'JavaFrame');

@@ -25,11 +25,11 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','finite','2d','nonempty'}));
-        ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
-        ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
-        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'double'},{'real','finite','vector','nonempty','>=',1}));
-        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'double'},{'real','finite','vector','nonempty','>=',1}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty'}));
+        ip.addOptional('dcc_q',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
+        ip.addOptional('dcc_p',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
+        ip.addOptional('arch_q',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'vector' 'nonempty'}));
+        ip.addOptional('garch_p',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'vector' 'nonempty'}));
     end
 
     ip.parse(varargin{:});
@@ -71,7 +71,7 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,
     end
 
     options_lim = 1000 * max(arch_q + garch_p + 1);
-	options = optimset(gjr_options,'MaxFunEvals',options_lim,'MaxIter',options_lim);
+    options = optimset(gjr_options,'MaxFunEvals',options_lim,'MaxIter',options_lim);
 
     h = zeros(t,n);
     e = zeros(t,n);

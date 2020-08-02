@@ -59,7 +59,7 @@ function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,lags,h,fev
     ds = initialize(ds,bw,bws,indices,lags,h,fevd);
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
-	cleanup_1 = onCleanup(@()rng('default'));
+    cleanup_1 = onCleanup(@()rng('default'));
     
     bar = waitbar(0,'Initializing spillover measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
@@ -130,9 +130,9 @@ function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,lags,h,fev
         rethrow(e);
     end
 
-	pause(1);
+    pause(1);
     waitbar(1,bar,'Writing spillover measures...');
-	pause(1);
+    pause(1);
     
     try
         write_results(ds,temp,out);
@@ -160,7 +160,7 @@ function ds = initialize(ds,bw,bws,indices,lags,h,fevd)
     t = ds.T;
 
     ds.BW = bw;
-	ds.BWS = bws;
+    ds.BWS = bws;
     ds.FEVD = fevd;
     ds.H = h;
     ds.Lags = lags;
@@ -353,7 +353,7 @@ function c_hat = nearest_spd(c)
     c_hat = (a + h) ./ 2;
     c_hat = (c_hat + c_hat.') ./ 2;
 
-	k = 0;
+    k = 0;
     p = 1;
 
     while (p ~= 0)
@@ -550,12 +550,12 @@ end
 function plot_index(ds,id)
 
     si = ds.SI;
-	y = smooth_data(si);
+    y = smooth_data(si);
 
     f = figure('Name','Spillover Measures > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,6,1:5);
-    plot(sub_1,ds.DatesNum,y);
+    plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
     
@@ -667,9 +667,9 @@ function plot_sequence(ds,id)
     y_limits_to(2) = ceil(y_limits_to(2) * 10) / 10;
     y_limits_net = [-1 1];
     
-    y_tick_from = 0:0.2:1;
-    y_tick_to = 0:0.2:y_limits_to(2);
-    y_tick_net = -1:0.2:1;
+    y_ticks_from = 0:0.2:1;
+    y_ticks_to = 0:0.2:y_limits_to(2);
+    y_ticks_net = -1:0.2:1;
     y_tick_labels = @(x)sprintf('%.f%%',x * 100);
 
     core = struct();
@@ -698,7 +698,7 @@ function plot_sequence(ds,id)
     core.YLabel = {[] [] []};
     core.YLimits = {y_limits_from y_limits_to y_limits_net};
     core.YRotation = {[] [] []};
-    core.YTick = {y_tick_from y_tick_to y_tick_net};
+    core.YTick = {y_ticks_from y_ticks_to y_ticks_net};
     core.YTickLabels = {y_tick_labels y_tick_labels y_tick_labels};
     
     sequential_plot(core,id);

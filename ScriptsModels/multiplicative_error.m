@@ -38,7 +38,7 @@ function [mu,e,mem_params,dist_params] = multiplicative_error(varargin)
 
     nargoutchk(1,4);
 
-	[mu,e,mem_params,dist_params] = multiplicative_error_internal(v,d,z,type,q,p);
+    [mu,e,mem_params,dist_params] = multiplicative_error_internal(v,d,z,type,q,p);
 
 end
 

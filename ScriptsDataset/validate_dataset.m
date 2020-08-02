@@ -7,7 +7,7 @@ function ds = validate_dataset(varargin)
     persistent measures_list;
     
     if (isempty(measures_list))
-        measures_list = {'component','connectedness','cross-quantilogram','cross-sectional','default','liquidity','regime-switching','spillover'};
+        measures_list = {'component','connectedness','cross-entropy','cross-quantilogram','cross-sectional','default','liquidity','regime-switching','spillover'};
     end
     
     persistent ip;
@@ -34,8 +34,8 @@ function ds = validate_dataset_internal(ds,measures)
 
     validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty','size',[1 8]});
 
-	validate_field(ds,'File',{'char'},{'nonempty','size',[1 NaN]});
-	validate_field(ds,'Version',{'char'},{'nonempty','size',[1 NaN]});
+    validate_field(ds,'File',{'char'},{'nonempty','size',[1 NaN]});
+    validate_field(ds,'Version',{'char'},{'nonempty','size',[1 NaN]});
 
     n = validate_field(ds,'N',{'double'},{'real','finite','integer','>=',3,'scalar'});
     t = validate_field(ds,'T',{'double'},{'real','finite','integer','>=',252,'scalar'});
@@ -69,14 +69,12 @@ function ds = validate_dataset_internal(ds,measures)
 
     if (groups == 0)
         validate_field(ds,'GroupDelimiters',{'double'},{'size',[0,0]});
+        validate_field(ds,'GroupNames',{'double'},{'size',[0 0]});
+        validate_field(ds,'GroupShortNames',{'double'},{'size',[0 0]});
     else
         validate_field(ds,'GroupDelimiters',{'double'},{'real','finite','integer','positive','increasing','nonempty','size',[(groups - 1) 1]});
-    end
-
-    if (groups == 0)
-        validate_field(ds,'GroupNames',{'double'},{'size',[0 0]});
-    else
         validate_field(ds,'GroupNames',{'cellstr'},{'nonempty','size',[groups 1]});
+        validate_field(ds,'GroupShortNames',{'cellstr'},{'nonempty','size',[groups 1]});
     end
     
     validate_field(ds,'Defaults',{'double'},{'real','nonempty','offset','size',[1 n]});
@@ -84,6 +82,7 @@ function ds = validate_dataset_internal(ds,measures)
 
     validate_field(ds,'SupportsComponent',{'logical'},{'scalar'});
     validate_field(ds,'SupportsConnectedness',{'logical'},{'scalar'});
+	validate_field(ds,'SupportsCrossEntropy',{'logical'},{'scalar'});
     validate_field(ds,'SupportsCrossSectional',{'logical'},{'scalar'});
     validate_field(ds,'SupportsDefault',{'logical'},{'scalar'});
     validate_field(ds,'SupportsLiquidity',{'logical'},{'scalar'});
@@ -102,7 +101,7 @@ function ds = validate_dataset_internal(ds,measures)
         supports = ['Supports' measuresfinal];
 
         if (~ds.(supports))
-            error(['The dataset does not contain all the required data for calculating ''' measures ''' measures.']);
+            error(['The dataset cannot be used for calculating ''' measures ''' measures.']);
         end
     end
     
@@ -115,7 +114,7 @@ function value = validate_field(ds,field_name,field_type,field_validator)
     end
 
     value = ds.(field_name);
-    value_iscell = (numel(field_type) == 1) && strcmp(field_type{1},'cellstr');
+    value_iscellstr = (numel(field_type) == 1) && strcmp(field_type{1},'cellstr');
     value_isfinite = any(strcmp(field_validator,'nanfinite'));
     value_isoffset = any(strcmp(field_validator,'offset'));
     value_isoptional = strcmp(field_validator{1},'optional');
@@ -136,8 +135,8 @@ function value = validate_field(ds,field_name,field_type,field_validator)
         field_validator = field_validator(2:end);
     end
     
-    if (value_iscell)
-        if (~iscellstr(value) || any(cellfun(@length,value) == 0)) %#ok<ISCLSTR>
+    if (value_iscellstr)
+        if (~iscellstr(value) || any(cellfun(@length,value) == 0) || any(cellfun(@(x)size(x,1),value) ~= 1)) %#ok<ISCLSTR>
             error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be a cell array of non-empty character vectors.']);
         end
 

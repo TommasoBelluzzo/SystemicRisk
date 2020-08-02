@@ -14,11 +14,11 @@ function ds = parse_dataset(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('file',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('version',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('date_format_base','dd/mm/yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P','R'})));
+        ip.addRequired('file',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('version',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('date_format_base','dd/mm/yyyy',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P' 'R'})));
     end
 
     ip.parse(varargin{:});
@@ -28,10 +28,11 @@ function ds = parse_dataset(varargin)
     version = validate_version(ipr.version);
     date_format_base = validate_date_format(ipr.date_format_base,true);
     date_format_balance = validate_date_format(ipr.date_format_balance,false);
+    shares_type = ipr.shares_type;
     
     nargoutchk(1,1);
 
-    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,ipr.shares_type);
+    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type);
 
 end
 
@@ -41,34 +42,9 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         error('The first sheet of the dataset file must be the ''Shares'' one.');
     end
     
-    using_prices = strcmp(shares_type,'P');
-
     file_sheets_other = file_sheets(2:end);
-    includes_volumes = ismember({'Volumes'},file_sheets_other);
-    includes_capitalizations = ismember({'Capitalizations'},file_sheets_other);
-    includes_cds = ismember({'CDS'},file_sheets_other);
-    includes_balance_sheet = sum(ismember({'Assets' 'Equity'},file_sheets_other)) == 2;
 
-    if (includes_capitalizations && includes_balance_sheet)
-        supports_cross_sectional = true;
-    else
-        supports_cross_sectional = false;
-        warning('MATLAB:SystemicRisk','The dataset file does not contain all the sheets required for the computation of cross-sectional measures (''Assets'', ''Capitalizations'' and ''Equity'').');
-    end
-    
-    if (using_prices && includes_volumes && includes_capitalizations)
-        supports_liquidity = true;
-    else
-        supports_liquidity = false;
-        warning('MATLAB:SystemicRisk','The dataset file does not meet all the requirements for the computation of liquidity measures (''Shares'' must be expressed as prices, ''Capitalizations'' and ''Volumes'' sheets must be included).');
-    end
-    
-    if (includes_capitalizations && includes_cds && includes_balance_sheet)
-        supports_default = true;
-    else
-        supports_default = false;
-        warning('MATLAB:SystemicRisk','The dataset file does not contain all the sheets required for the computation of default measures (''Assets'', ''Capitalizations'', ''CDS'' and ''Equity'').');
-    end
+    using_prices = strcmp(shares_type,'P');
 
     if (using_prices)
         tab_shares = parse_table_standard(file,1,'Shares',date_format_base,[],[],true);
@@ -143,8 +119,10 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     state_variables = [];
     state_variables_names = [];
 
+    groups = 0;
     group_delimiters = [];    
     group_names = [];
+    group_short_names = [];
 
     for tab = {'Volumes' 'Capitalizations' 'CDS' 'Assets' 'Equity' 'Separate Accounts' 'State Variables' 'Groups'}
 
@@ -191,9 +169,11 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
                 state_variables_names = tab_state_variables.Properties.VariableNames;
 
              case 'Groups'
-                [tab_groups,groups_count] = parse_table_groups(file,tab_index,tab_name,firm_names);
-                group_delimiters = cumsum(groups_count(1:end-1,:));
-                group_names = strtrim(tab_groups{:,1});
+                [tab_groups,group_counts] = parse_table_groups(file,tab_index,tab_name,firm_names);
+                groups = height(tab_groups);
+                group_delimiters = cumsum(group_counts(1:end-1,:));
+                group_names = tab_groups{:,1};
+                group_short_names = tab_groups{:,2};
 
         end
     end
@@ -233,6 +213,39 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
 
     if (sum(isnan(defaults)) < 3)
         error('The dataset contains observations in which less than 3 firms are not insolvent.');
+    end
+    
+    includes_volumes = ismember({'Volumes'},file_sheets_other);
+    includes_capitalizations = ismember({'Capitalizations'},file_sheets_other);
+    includes_cds = ismember({'CDS'},file_sheets_other);
+    includes_balance_sheet = sum(ismember({'Assets' 'Equity'},file_sheets_other)) == 2;
+    
+    if (includes_cds && ((n <= 10) || ((groups > 0) && (groups <= 10))))
+        supports_cross_entropy = true;
+    else
+        supports_cross_entropy = false;
+        warning('MATLAB:SystemicRisk','The dataset file does not meet all the requirements for the computation of cross-entropy measures (the ''CDS'' sheet must be included, the minimum value between the number of firms and the number of groups must be less than or equal to 10).');
+    end
+
+    if (includes_capitalizations && includes_balance_sheet)
+        supports_cross_sectional = true;
+    else
+        supports_cross_sectional = false;
+        warning('MATLAB:SystemicRisk','The dataset file does not meet all the requirements for the computation of cross-sectional measures (''Assets'', ''Capitalizations'' and ''Equity'' sheets must be included).');
+    end
+    
+    if (includes_capitalizations && includes_cds && includes_balance_sheet)
+        supports_default = true;
+    else
+        supports_default = false;
+        warning('MATLAB:SystemicRisk','The dataset file does not meet all the requirements for the computation of default measures (''Assets'', ''Capitalizations'', ''CDS'' and ''Equity'' sheets must be included).');
+    end
+    
+    if (using_prices && includes_volumes && includes_capitalizations)
+        supports_liquidity = true;
+    else
+        supports_liquidity = false;
+        warning('MATLAB:SystemicRisk','The dataset file does not meet all the requirements for the computation of liquidity measures (''Shares'' must be expressed as prices, ''Capitalizations'' and ''Volumes'' sheets must be included).');
     end
     
     returns = distress_data(returns,defaults);
@@ -280,21 +293,23 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.StateVariables = state_variables;
     ds.StateVariablesNames = state_variables_names;
 
-    ds.Groups = numel(group_names);
+    ds.Groups = groups;
     ds.GroupDelimiters = group_delimiters;
     ds.GroupNames = group_names;
+    ds.GroupShortNames = group_short_names;
     
     ds.Defaults = defaults;
     ds.Insolvencies = insolvencies;
     
- 	ds.SupportsComponent = true;
-	ds.SupportsConnectedness = true;
- 	ds.SupportsCrossQuantilogram = true;
-	ds.SupportsCrossSectional = supports_cross_sectional;
-	ds.SupportsDefault = supports_default;
+    ds.SupportsComponent = true;
+    ds.SupportsConnectedness = true;
+    ds.SupportsCrossEntropy = supports_cross_entropy;
+    ds.SupportsCrossQuantilogram = true;
+    ds.SupportsCrossSectional = supports_cross_sectional;
+    ds.SupportsDefault = supports_default;
     ds.SupportsLiquidity = supports_liquidity;
     ds.SupportsRegimeSwitching = true;
-	ds.SupportsSpillover = true;
+    ds.SupportsSpillover = true;
 
 end
 
@@ -321,13 +336,13 @@ end
 function [file,file_sheets] = validate_file(file)
 
     if (exist(file,'file') == 0)
-        error('The dataset file does not exist.');
+        error(['The dataset file ''' file ''' could not be found.']);
     end
 
     [~,~,extension] = fileparts(file);
 
     if (~strcmp(extension,'.xlsx'))
-        error('The dataset file is not a valid Excel spreadsheet.');
+        error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
     end
 
     if (verLessThan('MATLAB','9.7'))
@@ -335,20 +350,20 @@ function [file,file_sheets] = validate_file(file)
             [file_status,file_sheets,file_format] = xlsfinfo(file);
 
             if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-                error('The dataset file is not a valid Excel spreadsheet.');
+                error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
             end
         else
             [file_status,file_sheets] = xlsfinfo(file);
 
             if (isempty(file_status))
-                error('The dataset file is not a valid Excel spreadsheet.');
+                error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
             end
         end
     else
         try
             file_sheets = sheetnames(file);
         catch
-            error('The dataset file is not a valid Excel spreadsheet.');
+            error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
         end
     end
 
@@ -369,7 +384,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
     if (verLessThan('MATLAB','9.1'))
         if (ispc())
             try
-            	tab_partial = readtable(file,'Sheet',index,'Basic',true);
+                tab_partial = readtable(file,'Sheet',index,'Basic',true);
             catch
                 tab_partial = readtable(file,'Sheet',index);
             end
@@ -378,11 +393,11 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         end
 
         if (~all(cellfun(@isempty,regexp(tab_partial.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
         if (~strcmp(tab_partial.Properties.VariableNames(1),'Date'))
-            error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
+            error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
 
         tab_partial.Date = datetime(tab_partial.Date,'InputFormat',strrep(date_format,'m','M'));
@@ -390,7 +405,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         output_vars = varfun(@class,tab_partial,'OutputFormat','cell');
 
         if (~all(strcmp(output_vars(2:end),'double')))
-            error(['The ''' name ''' table contains invalid or missing values.']);
+            error(['The ''' name ''' sheet contains invalid or missing values.']);
         end
     else
         if (ispc())
@@ -400,11 +415,11 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         end
         
         if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
         if (~strcmp(options.VariableNames(1),'Date'))
-            error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
+            error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
 
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
@@ -412,7 +427,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
 
         if (ispc())
             try
-            	tab_partial = readtable(file,options,'Basic',true);
+                tab_partial = readtable(file,options,'Basic',true);
             catch
                 tab_partial = readtable(file,options);
             end
@@ -456,7 +471,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         error(['The ''' name ''' sheet observation dates do not cover all the ''Shares'' sheet observation dates.']);
     end
     
-	t = numel(dates_num);
+    t = numel(dates_num);
     n = numel(firm_names);
     tab = array2table(NaN(t,n),'VariableNames',tab_partial.Properties.VariableNames);
 
@@ -468,12 +483,12 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
 
 end
 
-function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
+function [tab,group_counts] = parse_table_groups(file,index,name,firm_names)
 
     if (verLessThan('MATLAB','9.1'))
         if (ispc())
             try
-            	tab = readtable(file,'Sheet',index,'Basic',true);
+                tab = readtable(file,'Sheet',index,'Basic',true);
             catch
                 tab = readtable(file,'Sheet',index);
             end
@@ -482,13 +497,13 @@ function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
         end
         
         if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
         output_vars = varfun(@class,tab,'OutputFormat','cell');
 
         if (~strcmp(output_vars{1},'cell') || ~strcmp(output_vars{2},'double'))
-            error(['The ''' name ''' table contains invalid or missing values.']);
+            error(['The ''' name ''' sheet contains invalid or missing values.']);
         end
     else
         if (ispc())
@@ -498,14 +513,14 @@ function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
         end
         
         if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
-        options = setvartype(options,{'char' 'double'});
+        options = setvartype(options,{'char' 'char' 'double'});
         
         if (ispc())
             try
-            	tab = readtable(file,options,'Basic',true);
+                tab = readtable(file,options,'Basic',true);
             catch
                 tab = readtable(file,options);
             end
@@ -514,26 +529,33 @@ function [tab,groups_count] = parse_table_groups(file,index,name,firm_names)
         end
     end
     
-    if (any(any(ismissing(tab))) || any(any(~isfinite(tab{:,2:end}))))
-        error(['The ''' name ''' sheet contains invalid or missing values.']);
-    end
-
-    if (~isequal(tab.Properties.VariableNames,{'Name' 'Count'}))
+    if (~isequal(tab.Properties.VariableNames,{'Name' 'ShortName' 'Count'}))
         error(['The ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
+    end
+    
+    if (any(any(ismissing(tab))) || any(~isfinite(tab{:,end})))
+        error(['The ''' name ''' sheet contains invalid or missing values.']);
     end
 
     if (size(tab,1) < 2)
         error(['In the ''' name ''' sheet, the number of rows must be greater than or equal to 2.']);
     end
 
-    groups_count = tab{:,2};
+    group_counts = tab.Count;
 
-    if (any(groups_count <= 0) || any(round(groups_count) ~= groups_count))
+    if (any(group_counts <= 0) || any(round(group_counts) ~= group_counts))
         error(['The ''' name ''' sheet contains one or more groups with an invalid number of firms.']);
     end
 
-    if (sum(groups_count) ~= numel(firm_names))
+    if (sum(group_counts) ~= numel(firm_names))
         error(['In the ''' name ''' sheet, the number of firms must be equal to the one defined in the ''Shares'' sheet.']);
+    end
+    
+    tab.Name = strtrim(tab.Name);
+    tab.ShortName = strtrim(tab.ShortName);
+
+    if (~all(cellfun(@length,tab.ShortName) <= 5))
+        error(['The ''' name ''' sheet contains one or more groups with a short name greater than 5 characters.']);
     end
 
 end
@@ -543,7 +565,7 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
     if (verLessThan('MATLAB','9.1'))
         if (ispc())
             try
-            	tab = readtable(file,'Sheet',index,'Basic',true);
+                tab = readtable(file,'Sheet',index,'Basic',true);
             catch
                 tab = readtable(file,'Sheet',index);
             end
@@ -552,11 +574,11 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         end
         
         if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
         if (~strcmp(tab.Properties.VariableNames(1),'Date'))
-            error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
+            error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
 
         tab.Date = datetime(tab.Date,'InputFormat',strrep(date_format,'m','M'));
@@ -564,7 +586,7 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         output_vars = varfun(@class,tab,'OutputFormat','cell');
 
         if (~all(strcmp(output_vars(2:end),'double')))
-            error(['The ''' name ''' table contains invalid or missing values.']);
+            error(['The ''' name ''' sheet contains invalid or missing values.']);
         end
     else
         if (ispc())
@@ -574,11 +596,11 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         end
         
         if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['The ''' name ''' table contains unnamed columns.']);
+            error(['The ''' name ''' sheet contains unnamed columns.']);
         end
 
         if (~strcmp(options.VariableNames(1),'Date'))
-            error(['The first column of the ''' name ''' table must be called ''Date'' and must contain the observation dates.']);
+            error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
 
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames) - 1)]);
@@ -586,7 +608,7 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
 
         if (ispc())
             try
-            	tab = readtable(file,options,'Basic',true);
+                tab = readtable(file,options,'Basic',true);
             catch
                 tab = readtable(file,options);
             end

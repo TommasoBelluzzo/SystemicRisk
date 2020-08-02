@@ -12,7 +12,7 @@ function ds = distress_data(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'double'},{'real','2d'}));
-        ip.addRequired('offsets',@(x)validateattributes(x,{'double'},{'real','vector','nonempty'}));
+        ip.addRequired('offsets',@(x)validateattributes(x,{'double'},{'real' 'vector' 'nonempty'}));
     end
 
     ip.parse(varargin{:});

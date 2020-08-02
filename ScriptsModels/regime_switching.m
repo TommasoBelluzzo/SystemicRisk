@@ -63,7 +63,7 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
 
     nargoutchk(6,9);
 
-	[indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching_internal(dep,indep_s,indep_ns,k,vs,finit,tmm,p0,fnlcon);
+    [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching_internal(dep,indep_s,indep_ns,k,vs,finit,tmm,p0,fnlcon);
 
 end
 
@@ -234,7 +234,7 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
     
     dur = round(1 ./ (1 - diag(p).'),0);
 
-	cmu = sum(mu .* prob,2);
+    cmu = sum(mu .* prob,2);
     cs2 = sum(repmat(sqrt(s2_params),t,1) .* prob,2);
     
     e = dep - cmu;
@@ -445,10 +445,10 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         end
     end
 
-	if (isempty(tmm))
+    if (isempty(tmm))
         tmm = NaN(k,k);
         p0 = repmat(0.1,k,k) + (eye(k) * (1 - (k * 0.1)));
-	else
+    else
         if (any(size(tmm) ~= k))
             error(['The value of ''tmm'' is invalid. Expected input to be of size ' num2str(k) 'x' num2str(k) '.']);
         end
@@ -517,7 +517,7 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         if (~is_ergodic)
             error('The value of ''tmm'' is invalid. Expected input to produce an ergodic stochastic row-wise transition matrix.');
         end
-	end
+    end
 
     if (~isempty(fnlcon))
         if (~isa(fnlcon,'function_handle') || ~isscalar(fnlcon))
