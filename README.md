@@ -167,6 +167,9 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
   * **Connectedness Measures:**
     * *Required:* shares (any).
     * *Optional:* groups.
+  * **Cross-Entropy Measures:**
+    * *Required:* shares (any), cds, firms <= 10 and/or groups <= 10.
+    * *Optional:* capitalizations.
   * **Cross-Quantilogram Measures:**
     * *Required:* shares (any).
     * *Optional:* state variables.
