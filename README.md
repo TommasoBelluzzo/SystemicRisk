@@ -168,8 +168,9 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Required:* shares (any).
     * *Optional:* groups.
   * **Cross-Entropy Measures:**
-    * *Required:* shares (any), cds, number of firms and/or groups less than or equal to 10.
-    * *Optional:* capitalizations.
+    * *Required:* shares (any), cds.
+    * *Optional:* capitalizations, groups.
+    * *Notes:* number of firms and/or groups must be less than or equal to 10.
   * **Cross-Quantilogram Measures:**
     * *Required:* shares (any).
     * *Optional:* state variables.
