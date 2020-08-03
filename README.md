@@ -92,7 +92,7 @@ Datasets must be built following the structure of default ones included in every
   * **Equity:** the book value of equity.
   * **Separate Accounts:** the separate accounts of insurance firms.
 * **State Variables:** systemic state variables, with daily frequency.
-* **Groups:** group definitions, based on key-value pairs where the `Name` field represents the group names and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms. For example, the following groups definition:
+* **Groups:** group definitions based on three-value tuples where the `Name` field represents the group names, the `Short Name` field represents the group acronyms and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms. For example, the following groups definition:
 
   > Firms in the Shares Sheet: A, B, C, D, E, F, G, H  
   > Insurance Companies: 2  
