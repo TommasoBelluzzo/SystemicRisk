@@ -20,13 +20,13 @@ function [result,stopped] = run_spillover(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('bws',10,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',10,'scalar'}));
-        ip.addOptional('lags',2,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',3,'scalar'}));
-        ip.addOptional('h',4,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'<=',10,'scalar'}));
-        ip.addOptional('fevd','G',@(x)any(validatestring(x,{'G','O'})));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
+        ip.addOptional('bws',10,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 10 'scalar'}));
+        ip.addOptional('lags',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 3 'scalar'}));
+        ip.addOptional('h',4,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 10 'scalar'}));
+        ip.addOptional('fevd','G',@(x)any(validatestring(x,{'G' 'O'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

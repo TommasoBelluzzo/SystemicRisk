@@ -20,13 +20,13 @@ function [result,stopped] = run_cross_sectional(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
-        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
-        ip.addOptional('sf',0.40,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
-        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.1,'<=',0.6,'scalar'}));
-        ip.addOptional('fr',3,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',0,'<=',6,'scalar'}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
+        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
+        ip.addOptional('sf',0.40,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
+        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.1 '<=' 0.6 'scalar'}));
+        ip.addOptional('fr',3,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 6 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

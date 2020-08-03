@@ -26,14 +26,14 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('a',0.05,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.01,'<=',0.10,'scalar'}));
-        ip.addOptional('lags',60,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',10,'<=',60,'scalar'}));
-        ip.addOptional('ci_m','SB',@(x)any(validatestring(x,{'SB','SN'})));
-        ip.addOptional('ci_s',0.050,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'<=',0.1,'scalar'}));
-        ip.addOptional('ci_p',NaN,@(x)validateattributes(x,{'double'},{'real','finite','scalar'}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
+        ip.addOptional('a',0.05,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
+        ip.addOptional('lags',60,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 10 '<=' 60 'scalar'}));
+        ip.addOptional('ci_m','SB',@(x)any(validatestring(x,{'SB' 'SN'})));
+        ip.addOptional('ci_s',0.050,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'}));
+        ip.addOptional('ci_p',NaN,@(x)validateattributes(x,{'double'},{'real' 'finite' 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

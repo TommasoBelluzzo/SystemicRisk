@@ -10,7 +10,7 @@ function t = figure_title(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('s',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1,NaN]}));
+        ip.addRequired('s',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
     end
 
     ip.parse(varargin{:});

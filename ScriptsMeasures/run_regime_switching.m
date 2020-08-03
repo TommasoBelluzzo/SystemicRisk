@@ -18,8 +18,8 @@ function [result,stopped] = run_regime_switching(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('rs2',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
         ip.addOptional('rs3',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
         ip.addOptional('rs4',true,@(x)validateattributes(x,{'logical'},{'scalar'}));

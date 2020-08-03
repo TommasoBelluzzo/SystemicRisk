@@ -22,15 +22,15 @@ function [result,stopped] = run_liquidity(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1,NaN]}));
-        ip.addOptional('bwl',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',90,'<=',252,'scalar'}));
-        ip.addOptional('bwm',21,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<',90,'scalar'}));
-        ip.addOptional('bws',5,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',5,'<',21,'scalar'}));
-        ip.addOptional('mem','B',@(x)any(validatestring(x,{'A','B','P','S'})));
-        ip.addOptional('w',500,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',500}));
-        ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
-        ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real','finite','positive'}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('bwl',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 90 '<=' 252 'scalar'}));
+        ip.addOptional('bwm',21,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<' 90 'scalar'}));
+        ip.addOptional('bws',5,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 5 '<' 21 'scalar'}));
+        ip.addOptional('mem','B',@(x)any(validatestring(x,{'A' 'B' 'P' 'S'})));
+        ip.addOptional('w',500,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
+        ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
+        ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

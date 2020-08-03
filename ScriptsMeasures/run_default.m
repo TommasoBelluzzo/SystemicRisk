@@ -24,17 +24,17 @@ function [result,stopped] = run_default(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real','finite','>=',0,'<=',1,'scalar'}));
-        ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real','finite','>',0,'vector'}));
-        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.03,'<=',0.20,'scalar'}));
-        ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',50,'<=',1000,'scalar'}));
-        ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.05,'<=',0.20,'scalar'}));
-        ip.addOptional('s',2,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',2,'scalar'}));
-        ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM','GC'})));
-        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
+        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
+        ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 'vector'}));
+        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
+        ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
+        ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
+        ip.addOptional('s',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
+        ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM' 'GC'})));
+        ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
