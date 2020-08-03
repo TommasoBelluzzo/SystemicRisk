@@ -1,10 +1,11 @@
 % [INPUT]
 % r = A float t-by-n matrix representing the logarithmic returns.
 % pods = A vector of floats of length n representing the probabilities of default.
+% df = A float (0,Inf) representing the degrees of freedom of the Student's T prior density (if empty, a normal prior density is used).
 %
 % [OUTPUT]
-% g = An n^2-by-n matrix of numeric booleans representing the multivariate posterior density orthants.
-% p = A vector of floats of length n^2 representing the multivariate posterior density probabilities.
+% g = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.
+% p = A vector of floats of length n^2 representing the posterior density probabilities.
 
 function [g,p] = cimdo(varargin)
 
@@ -14,52 +15,69 @@ function [g,p] = cimdo(varargin)
         ip = inputParser();
         ip.addRequired('r',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty'}));
         ip.addRequired('pods',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
+        ip.addOptional('df',[],@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0}));
     end
 
     ip.parse(varargin{:});
     
     ipr = ip.Results;
-    [r,pods] = validate_input(ipr.r,ipr.pods);
+    [r,pods,df] = validate_input(ipr.r,ipr.pods,ipr.df);
 
     nargoutchk(2,2);
 
-    [g,p] = cimdo_internal(r,pods);
+    [g,p] = cimdo_internal(r,pods,df);
 
 end
 
-function [g,p] = cimdo_internal(r,pods)
+function [g,p] = cimdo_internal(r,pods,df)
 
-    persistent options_cimdo;
     persistent options_mvncdf;
-
-    if (isempty(options_cimdo))
-        options_cimdo = optimset(optimset(@fsolve),'Display','none','TolFun',1e-6,'TolX',1e-6);
-    end
+    persistent options_mvtcdf;
+    persistent options_objective;
 
     if (isempty(options_mvncdf))
         options_mvncdf = optimset(optimset(@fsolve),'Algorithm','trust-region-dogleg','Diagnostics','off','Display','off','Jacobian','on');
     end
+    
+    if (isempty(options_mvtcdf))
+        options_mvtcdf = optimset(optimset(@fsolve),'Algorithm','trust-region-dogleg','Diagnostics','off','Display','off','Jacobian','off');
+    end
+    
+    if (isempty(options_objective))
+        options_objective = optimset(optimset(@fsolve),'Display','none','TolFun',1e-6,'TolX',1e-6);
+    end
 
     [t,n] = size(r);
     k = 2^n;
-    
     g = dec2bin(0:(2^n - 1),n) - '0';
     
     rn = (r - repmat(mean(r),t,1)) ./ repmat(std(r),t,1);
-
     c = cov(rn);
-    dts = norminv(1 - pods);
-
-    q = NaN(k,1);
-
-    for i = 1:k
-        g_i = g(i,:).';
-        lb = min([(-Inf * ~g_i) dts],[],2);
-        ub = max([(Inf * g_i) dts],[],2);
-
-        q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
-    end
     
+    q = NaN(k,1);
+    
+    if (isempty(df))
+        dts = norminv(1 - pods);
+        
+        for i = 1:k
+            g_i = g(i,:).';
+            lb = min([(-Inf * ~g_i) dts],[],2);
+            ub = max([(Inf * g_i) dts],[],2);
+
+            q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
+        end
+    else
+        dts = tinv(1 - pods,df);
+        
+        for i = 1:k
+            g_i = g(i,:).';
+            lb = min([(-Inf * ~g_i) dts],[],2);
+            ub = max([(Inf * g_i) dts],[],2);
+
+            q(i) = mvtcdf_fast(c,df,lb,ub,options_mvtcdf);
+        end
+    end
+
     if (any(isnan(q)))
         p = NaN(k,1);
         return;
@@ -68,7 +86,9 @@ function [g,p] = cimdo_internal(r,pods)
     q = q ./ sum(q);
 
     try
-        f = fsolve(@(x)objective(x,n,pods,g,q),zeros(n + 1,1),options_cimdo);
+        x0 = zeros(n + 1,1);
+        f = fsolve(@(x)objective(x,n,pods,g,q),x0,options_objective);
+
         [~,p] = objective(f,n,pods,g,q);
         p = p ./ sum(p);
     catch
@@ -77,46 +97,7 @@ function [g,p] = cimdo_internal(r,pods)
 
 end
 
-function y = mvncdf_fast(c,lb,ub,options)
-
-    n = size(c,1);
-
-    [cp,lb,ub] = mvncdf_fast_cholperm(n,c,lb,ub);
-    d = diag(cp);
-
-    if any(d < eps())
-        y = NaN;
-        return;
-    end
-
-    lb = lb ./ d;
-    ub = ub ./ d;
-    cp = (cp ./ repmat(d,1,n)) - eye(n);
-
-    [sol,~,exitflag] = fsolve(@(x)mvncdf_fast_psi(x,cp,lb,ub),zeros(2 * (n - 1),1),options);
-
-    if (exitflag ~= 1)
-        y = NaN;
-        return;
-    end
-
-	x = sol(1:(n - 1));
-    x(n) = 0;
-    x = x(:);
-    
-    mu = sol(n:((2 * n) - 2));
-    mu(n) = 0;
-    mu = mu(:);
-    
-    c = cp * x;
-    lb = lb - mu - c;
-    ub = ub - mu - c;
-
-    y = exp(sum(mvncdf_fast_logprobs(lb,ub) + (0.5 * mu.^2) - (x .* mu)));
-
-end
-
-function [cp,l,u] = mvncdf_fast_cholperm(n,c,l,u)
+function [cp,l,u] = cholperm(n,c,l,u)
 
     s2p = sqrt(2 * pi());
 
@@ -141,7 +122,7 @@ function [cp,l,u] = mvncdf_fast_cholperm(n,c,l,u)
         ut = (u(in_seq) - cpz) ./ s;
 
         p = Inf(n,1);
-        p(in_seq) = mvncdf_fast_logprobs(lt,ut);
+        p(in_seq) = logprobs(lt,ut);
 
         [~,k] = min(p);
         jk = [i k];
@@ -165,13 +146,13 @@ function [cp,l,u] = mvncdf_fast_cholperm(n,c,l,u)
         lt = (l(i) - cpz) / cp_ii;
         ut = (u(i) - cpz) / cp_ii;
 
-        w = mvncdf_fast_logprobs(lt,ut);
+        w = logprobs(lt,ut);
         z(i) = (exp((-0.5 * lt.^2) - w) - exp((-0.5 * ut.^2) - w)) / s2p;
     end
 
 end
 
-function p = mvncdf_fast_logprobs(a,b)
+function p = logprobs(a,b)
 
     p = zeros(size(a));
     l2 = log(2);
@@ -211,9 +192,48 @@ function p = mvncdf_fast_logprobs(a,b)
 
 end
 
+function y = mvncdf_fast(c,lb,ub,options)
+
+    n = size(c,1);
+
+    [cp,lb,ub] = cholperm(n,c,lb,ub);
+    d = diag(cp);
+
+    if any(d < eps())
+        y = NaN;
+        return;
+    end
+
+    lb = lb ./ d;
+    ub = ub ./ d;
+    cp = (cp ./ repmat(d,1,n)) - eye(n);
+
+    [sol,~,exitflag] = fsolve(@(x)mvncdf_fast_psi(x,cp,lb,ub),zeros(2 * (n - 1),1),options);
+
+    if (exitflag ~= 1)
+        y = NaN;
+        return;
+    end
+
+	x = sol(1:(n - 1));
+    x(n) = 0;
+    
+    mu = sol(n:((2 * n) - 2));
+    mu(n) = 0;
+    
+    c = cp * x;
+    lb = lb - mu - c;
+    ub = ub - mu - c;
+    
+    psi = sum(logprobs(lb,ub) + (0.5 * mu.^2) - (x .* mu));
+
+    y = exp(psi);
+
+end
+
 function [g,j] = mvncdf_fast_psi(y,cp,lb,ub)
 
-    d = length(ub);
+    d = size(cp,1);
     d_seq = 1:(d - 1);
 
     x = zeros(d,1);
@@ -228,7 +248,7 @@ function [g,j] = mvncdf_fast_psi(y,cp,lb,ub)
     lt = lb - mu - c;
     ut = ub - mu - c;
 
-    w = mvncdf_fast_logprobs(lt,ut);
+    w = logprobs(lt,ut);
     pd = sqrt(2 * pi());
     pl = exp((-0.5 * lt.^2) - w) / pd;
     pu = exp((-0.5 * ut.^2) - w) / pd;
@@ -254,6 +274,96 @@ function [g,j] = mvncdf_fast_psi(y,cp,lb,ub)
 
 end
 
+function y = mvtcdf_fast(c,df,lb,ub,options)
+
+	n = size(c,1);
+
+    [cp,lb,ub] = cholperm(n,c,lb,ub);
+    d = diag(cp);
+
+    if any(d < eps())
+        y = NaN;
+        return;
+    end
+    
+    lb = lb ./ d;
+    ub = ub ./ d;
+    cp = (cp ./ repmat(d,1,n)) - eye(n);
+
+    x0 = zeros(2 * n,1);
+    x0(2 * n) = sqrt(df);
+    x0(n) = log(sqrt(df));
+
+    [sol,~,exitflag] = fsolve(@(x)mvtcdf_fast_psi(x,cp,df,lb,ub),x0,options);
+
+    if (exitflag ~= 1)
+        y = NaN;
+        return;
+    end
+
+    sol(n) = exp(sol(n));
+
+    x = sol(1:n);
+    r = x(n);
+    x(n) = 0;
+
+    mu = sol((n + 1):end); 
+    eta = mu(n);
+    mu(n) = 0;
+
+    c = cp * x;
+    lb = (r * (lb ./ sqrt(df))) - mu - c;
+    ub = (r * (ub ./ sqrt(df))) - mu - c;
+
+    psi = sum(logprobs(lb,ub) + (0.5 .* mu.^2) - (x .* mu)) + (log(2 * pi()) / 2) - gammaln(df / 2) - (log(2) * ((0.5 * df) - 1));
+    psi = min(psi + (0.5 * eta^2) - (r * eta) + ((df - 1) * reallog(r)) + logprobs(-Inf,eta),0);
+
+    y = exp(psi);
+
+end
+
+function g = mvtcdf_fast_psi(y,cp,df,lb,ub)
+
+    d = size(cp,1);
+    d_seq = 1:(d - 1);
+
+    x = zeros(d,1);
+    x(d_seq) = y(d_seq);
+ 
+    mu = zeros(d,1);
+    mu(d_seq) = y(d+1:2*d-1);
+    
+    r = exp(y(d));
+    eta = y(2 * d);
+
+    lb = lb ./ sqrt(df);
+    ub = ub ./ sqrt(df);
+
+    c = zeros(d,1);
+    c(2:d) = cp(2:d,:) * x;
+
+    lt = (r * lb) - mu - c;
+    ut = (r * ub) - mu - c;
+
+    w = logprobs(lt,ut);
+    pd = sqrt(2 * pi());
+    pl = exp((-0.5 * lt.^2) - w) / pd;
+    pu = exp((-0.5 * ut.^2) - w) / pd;
+    p = pl - pu;
+
+    dfdx = -mu(d_seq) + (p.' * cp(:,d_seq)).';
+    dfdm = mu - x + p;
+    
+    lb(isinf(lb)) = 0;
+    ub(isinf(ub)) = 0;
+
+    dfdr = ((df - 1) / r) - eta + sum((ub .* pu) - (lb .* pl));
+    dfde = eta - r + exp((-0.5 * eta^2) - logprobs(-Inf,eta)) / pd;
+    
+    g = [dfdx; dfdm(d_seq); dfdr; dfde];
+
+end
+
 function [f,p] = objective(x,n,pods,g,q)
 
     mu = x(1);
@@ -272,7 +382,7 @@ function [f,p] = objective(x,n,pods,g,q)
 
 end
 
-function [r,pods] = validate_input(r,pods)
+function [r,pods,df] = validate_input(r,pods,df)
 
     [t,n] = size(r);
 
@@ -284,6 +394,10 @@ function [r,pods] = validate_input(r,pods)
     
     if (numel(pods) ~= n)
         error(['The value of ''pods'' is invalid. Expected input to be an array of ' num2str(n) ' elements.']);
+    end
+    
+    if (~isempty(df) && ~isscalar(df))
+        error('The value of ''df'' is invalid. Expected input to be a scalar.');
     end
 
 end

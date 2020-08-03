@@ -23,10 +23,10 @@ function [mu,e,mem_params,dist_params] = multiplicative_error(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','finite','2d','nonempty'}));
-        ip.addRequired('type',@(x)any(validatestring(x,{'A','B','P','S'})));
-        ip.addOptional('q',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
-        ip.addOptional('p',1,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty'}));
+        ip.addRequired('type',@(x)any(validatestring(x,{'A' 'B' 'P' 'S'})));
+        ip.addOptional('q',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
+        ip.addOptional('p',1,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
     end
 
     ip.parse(varargin{:});

@@ -6,6 +6,7 @@
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
 % pw = A string (either 'A' for plain average or 'W' for progressive average) representing the probabilities of default averaging method (optional, default='W').
+% md = A string (either 'N' for normal or 'T' for Student's T) representing the multivariate distribution used by the CIMDO model (optional, default='N').
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -25,6 +26,7 @@ function [result,stopped] = run_cross_entropy(varargin)
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addOptional('rr',0.4,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
         ip.addOptional('pw','W',@(x)any(validatestring(x,{'A' 'W'})));
+        ip.addOptional('md','N',@(x)any(validatestring(x,{'N' 'T'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -35,24 +37,25 @@ function [result,stopped] = run_cross_entropy(varargin)
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     sel = validate_selection(ipr.sel,ds.N,ds.Groups);
-    pw = ipr.pw;
     bw = ipr.bw;
     rr = ipr.rr;
+    pw = ipr.pw;
+    md = ipr.md;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_cross_entropy_internal(ds,temp,out,sel,bw,rr,pw,analyze);
+    [result,stopped] = run_cross_entropy_internal(ds,temp,out,sel,bw,rr,pw,md,analyze);
 
 end
 
-function [result,stopped] = run_cross_entropy_internal(ds,temp,out,sel,bw,rr,pw,analyze)
+function [result,stopped] = run_cross_entropy_internal(ds,temp,out,sel,bw,rr,pw,md,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    ds = initialize(ds,sel,bw,rr,pw);
+    ds = initialize(ds,sel,bw,rr,pw,md);
     t = ds.T;
     
     bar = waitbar(0,'Initializing cross-entropy measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
@@ -73,7 +76,7 @@ function [result,stopped] = run_cross_entropy_internal(ds,temp,out,sel,bw,rr,pw,
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop,1,windows_r{i},windows_pods{i},ds.PW);
+            futures(i) = parfeval(@main_loop,1,windows_r{i},windows_pods{i},ds.PW,ds.MD);
         end
 
         for i = 1:t
@@ -148,7 +151,7 @@ end
 
 %% DATA
 
-function ds = initialize(ds,sel,bw,rr,pw)
+function ds = initialize(ds,sel,bw,rr,pw,md)
 
     n = ds.N;
     t = ds.T;
@@ -209,13 +212,14 @@ function ds = initialize(ds,sel,bw,rr,pw)
 
         n = g;
     else
-        pods = ds.CDS ./ rr;
         r = ds.Returns;
+        pods = ds.CDS ./ rr;
     end
 
     ds.BW = bw;
     ds.ByGroups = by_groups;
     ds.LGD = 1 - rr;
+    ds.MD = md;
     ds.PW = pw;
     ds.RR = rr;
     ds.TargetPoDs = pods;
@@ -392,7 +396,7 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(r,pods,pw)
+function window_results = main_loop(r,pods,pw,md)
 
     window_results = struct();
 
@@ -407,13 +411,16 @@ function window_results = main_loop(r,pods,pw)
     else
         [t,n] = size(pods);
         w = repmat(fliplr(((1 - 0.98) / (1 - 0.98^t)) .* (0.98 .^ (0:1:t-1))).',1,n);
-
         pods = sum(pods .* w,1).';
     end
-
-    [g,p] = cimdo(r,pods);
-    window_results.G = g;
-    window_results.P = p;
+    
+    if (strcmp(md,'N'))
+        [g,p] = cimdo(r,pods);
+    else
+        pd = fitdist(r(:),'tlocationscale');
+        df = pd.nu;
+        [g,p] = cimdo(r,pods,df);
+    end
 
     if (any(isnan(p)))
         window_results.JPoD = NaN;
@@ -555,6 +562,23 @@ function plot_dide(ds,id)
     end
 
     dide = ds.AverageDiDe;
+    didev = dide(:);
+    
+    [dide_x,dide_y] = meshgrid(1:n,1:n);
+    dide_x = dide_x(:) + 0.5;
+    dide_y = dide_y(:) + 0.5;
+    
+    dide_txt = cellstr(num2str(didev,'~%.4f'));
+
+    for i = 1:n^2
+        didev_i = didev(i);
+
+        if (didev_i == 0)
+            dide_txt{i} = '0';
+        elseif (didev_i == 1)
+            dide_txt{i} = '';
+        end
+    end
     
     lt_indices = (dide < 0.2) & (dide ~= 1);
     ge_indices = (dide >= 0.2) & (dide ~= 1);
@@ -563,19 +587,32 @@ function plot_dide(ds,id)
     dide(ge_indices) =  1;
     dide = dide - (eye(n) .* 0.5);
     dide = padarray(dide,[1 1],'post');
-
-    off = n + 0.5;
+    
+    didev = dide(:);
+    didev_ones = any(didev == 1);
+    didev_zeros = any(didev == 0);
 
     f = figure('Name','Cross-Entropy Measures > Average Distress Dependency','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     pcolor(dide);
-    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
+    
+    if (didev_ones && didev_zeros)
+        colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
+    else
+        if (didev_ones)
+            colormap([0.65 0.65 0.65; 0.749 0.862 0.933]);
+        else
+            colormap([1 1 1; 0.65 0.65 0.65]);
+        end
+    end
+        
+    text(dide_x,dide_y,dide_txt,'HorizontalAlignment','center');
     axis image;
 
     ax = gca();
     set(ax,'TickLength',[0 0]);
-    set(ax,'XAxisLocation','top','XTick',1.5:off,'XTickLabels',labels,'XTickLabelRotation',45);
-    set(ax,'YDir','reverse','YTick',1.5:off,'YTickLabels',labels,'YTickLabelRotation',45);
+    set(ax,'XAxisLocation','top','XTick',1.5:(n + 0.5),'XTickLabels',labels,'XTickLabelRotation',45);
+    set(ax,'YDir','reverse','YTick',1.5:(n + 0.5),'YTickLabels',labels,'YTickLabelRotation',45);
     
     figure_title('Average Distress Dependency');
 

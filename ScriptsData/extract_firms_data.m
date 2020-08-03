@@ -12,7 +12,7 @@ function firms_data = extract_firms_data(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('time_series',@(x)validateattributes(x,{'cell','char'},{'nonempty','size',[1 NaN]}));
+        ip.addRequired('time_series',@(x)validateattributes(x,{'cell' 'char'},{'nonempty' 'size' [1 NaN]}));
     end
 
     ip.parse(varargin{:});

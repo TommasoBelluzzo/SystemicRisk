@@ -13,7 +13,7 @@ function data = sanitize_data(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','2d','nonempty'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' '2d' 'nonempty'}));
         ip.addRequired('x',@(x)validateattributes(x,{'double'},{'real'}));
         ip.addRequired('w',@(x)validateattributes(x,{'double'},{'real'}));
         ip.addRequired('m',@(x)validateattributes(x,{'double'},{'real'}));

@@ -11,8 +11,8 @@ function data = smooth_data(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real','2d','nonempty'}));
-        ip.addOptional('s',21,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',1,'scalar'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' '2d' 'nonempty'}));
+        ip.addOptional('s',21,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
     end
 
     ip.parse(varargin{:});

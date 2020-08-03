@@ -8,7 +8,7 @@ function date_ticks(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('axes',@(x)validateattributes(x,{'matlab.graphics.axis.Axes'},{'vector','nonempty'}));
+        ip.addRequired('axes',@(x)validateattributes(x,{'matlab.graphics.axis.Axes'},{'vector' 'nonempty'}));
     end
 
     ip.parse(varargin{1});

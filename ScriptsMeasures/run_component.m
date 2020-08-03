@@ -19,12 +19,12 @@ function [result,stopped] = run_component(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty','size',[1 NaN]}));
-        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real','finite','integer','>=',21,'<=',252,'scalar'}));
-        ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.90,'<=',0.99,'scalar'}));
-        ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real','finite','>=',0.2,'<=',0.8,'scalar'}));
-        ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'real','finite','>',0.5,'<',1,'scalar'}));
+        ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
+        ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
+        ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.2 '<=' 0.8 'scalar'}));
+        ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0.5 '<' 1 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

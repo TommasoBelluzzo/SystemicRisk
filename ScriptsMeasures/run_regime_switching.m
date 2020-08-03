@@ -803,14 +803,26 @@ function plot_sequence(ds,target,id)
         [tm_x,tm_y] = meshgrid(1:k,1:k);
         tm_x = tm_x(:) + 0.5;
         tm_y = tm_y(:) + 0.5;
-        tm_text = cellstr(num2str(round(tmv .* 100,2),'~%.2f%%'));
+        tm_txt = cellstr(num2str(round(tmv .* 100,2),'~%.2f%%'));
         
         for j = 1:k^2
-            tmfv_j = tmv(j);
+            tmv_j = tmv(j);
             
-            if ((tmfv_j == 0) || (tmfv_j == 1))
-                tm_text{j} = strrep(tm_text{j},'~','');
+            if ((tmv_j == 0) || (tmv_j == 1))
+                tm_txt{j} = strrep(tm_txt{j},'~','');
             end
+        end
+        
+        tmnv = tmn(:);
+        
+        if (all(tmnv == 0))
+            tm_cmap = [0.65 0.65 0.65];
+        elseif (all(tmnv == 0.5))
+            tm_cmap = [1 1 1];
+        elseif (all(tmnv == 1))
+            tm_cmap = [0.749 0.862 0.933];
+        else
+            tm_cmap = [0.65 0.65 0.65; 1 1 1; 0.749 0.862 0.933];
         end
 
         plot(subs(1),x,cs2,'Color',[0.000 0.447 0.741]);
@@ -822,8 +834,8 @@ function plot_sequence(ds,target,id)
         end
 
         pcolor(subs(2),padarray(tmn,[1 1],'post'));
-        colormap(subs(2),[0.65 0.65 0.65; 1 1 1; 0.749 0.862 0.933]);
-        text(subs(2),tm_x,tm_y,tm_text,'FontSize',9 + 4 - k,'HorizontalAlignment','center');
+        colormap(subs(2),tm_cmap);
+        text(subs(2),tm_x,tm_y,tm_txt,'FontSize',9 + 4 - k,'HorizontalAlignment','center');
 
         plot(subs(3),x,r,'Color',[0.65 0.65 0.65])
         hold(subs(3),'on');

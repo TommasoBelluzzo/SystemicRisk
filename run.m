@@ -122,7 +122,7 @@ setup = {
     % NAME               ENABLED  ANALYZE  FUNCTION
     'Component'          true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,252,0.99,0.2,0.75,analyze);
     'Connectedness'      true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,252,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,'A',252,0.4,'W',analyze);
+    'CrossEntropy'       true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,'A',252,0.4,'W','N',analyze);
     'CrossQuantilogram'  true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,252,0.05,60,'SB',0.05,100,analyze);
     'CrossSectional'     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
     'Default'            true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,252,0.45,3,0.08,100,0.10,3,'BSM',0.95,analyze);

@@ -7,7 +7,10 @@ function ds = validate_dataset(varargin)
     persistent measures_list;
     
     if (isempty(measures_list))
-        measures_list = {'component','connectedness','cross-entropy','cross-quantilogram','cross-sectional','default','liquidity','regime-switching','spillover'};
+        measures_list = {
+            'component' 'connectedness' 'cross-entropy' 'cross-quantilogram' ...
+            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover'
+        };
     end
     
     persistent ip;
@@ -32,53 +35,53 @@ end
 
 function ds = validate_dataset_internal(ds,measures)
 
-    validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty','size',[1 8]});
+    validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty' 'size' [1 8]});
 
-    validate_field(ds,'File',{'char'},{'nonempty','size',[1 NaN]});
-    validate_field(ds,'Version',{'char'},{'nonempty','size',[1 NaN]});
+    validate_field(ds,'File',{'char'},{'nonempty' 'size' [1 NaN]});
+    validate_field(ds,'Version',{'char'},{'nonempty' 'size' [1 NaN]});
 
-    n = validate_field(ds,'N',{'double'},{'real','finite','integer','>=',3,'scalar'});
-    t = validate_field(ds,'T',{'double'},{'real','finite','integer','>=',252,'scalar'});
+    n = validate_field(ds,'N',{'double'},{'real' 'finite' 'integer' '>=' 3 'scalar'});
+    t = validate_field(ds,'T',{'double'},{'real' 'finite' 'integer' '>=' 252 'scalar'});
 
-    validate_field(ds,'DatesNum',{'double'},{'real','finite','integer','>',0,'nonempty','size',[t 1]});
-    validate_field(ds,'DatesStr',{'cellstr'},{'nonempty','size',[t 1]});
+    validate_field(ds,'DatesNum',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [t 1]});
+    validate_field(ds,'DatesStr',{'cellstr'},{'nonempty' 'size' [t 1]});
     validate_field(ds,'MonthlyTicks',{'logical'},{'scalar'});
 
-    validate_field(ds,'IndexName',{'char'},{'nonempty','size',[1 NaN]});
-    validate_field(ds,'FirmNames',{'cellstr'},{'nonempty','size',[1 n]});
+    validate_field(ds,'IndexName',{'char'},{'nonempty' 'size' [1 NaN]});
+    validate_field(ds,'FirmNames',{'cellstr'},{'nonempty' 'size' [1 n]});
     
-    validate_field(ds,'Index',{'double'},{'real','finite','nonempty','size',[t 1]});
-    validate_field(ds,'Returns',{'double'},{'real','nanfinite','nonempty','size',[t n]});
+    validate_field(ds,'Index',{'double'},{'real' 'finite' 'nonempty' 'size' [t 1]});
+    validate_field(ds,'Returns',{'double'},{'real' 'nanfinite' 'nonempty' 'size' [t n]});
 
-    validate_field(ds,'Prices',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(ds,'Volumes',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(ds,'Capitalizations',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
+    validate_field(ds,'Prices',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
+    validate_field(ds,'Volumes',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
+    validate_field(ds,'Capitalizations',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
 
-    validate_field(ds,'RiskFreeRate',{'double'},{'optional','real','finite','nonempty','size',[t 1]});
-    validate_field(ds,'CDS',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
+    validate_field(ds,'RiskFreeRate',{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [t 1]});
+    validate_field(ds,'CDS',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
 
-    validate_field(ds,'Assets',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(ds,'Equity',{'double'},{'optional','real','nanfinite','nonempty','size',[t n]});
-    validate_field(ds,'Liabilities',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
-    validate_field(ds,'SeparateAccounts',{'double'},{'optional','real','nanfinite','nonnegative','nonempty','size',[t n]});
+    validate_field(ds,'Assets',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
+    validate_field(ds,'Equity',{'double'},{'optional' 'real' 'nanfinite' 'nonempty' 'size' [t n]});
+    validate_field(ds,'Liabilities',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
+    validate_field(ds,'SeparateAccounts',{'double'},{'optional' 'real' 'nanfinite' 'nonnegative' 'nonempty' 'size' [t n]});
 
-    state_variables = validate_field(ds,'StateVariables',{'double'},{'optional','real','finite','nonempty','size',[t NaN]});
-    validate_field(ds,'StateVariablesNames',{'cellstr'},{'optional','nonempty','size',[1 size(state_variables,2)]});
+    state_variables = validate_field(ds,'StateVariables',{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [t NaN]});
+    validate_field(ds,'StateVariablesNames',{'cellstr'},{'optional' 'nonempty' 'size' [1 size(state_variables,2)]});
 
-    groups = validate_field(ds,'Groups',{'double'},{'real','finite','integer','>=',0,'scalar'});
+    groups = validate_field(ds,'Groups',{'double'},{'real' 'finite' 'integer' '>=' 0 'scalar'});
 
     if (groups == 0)
-        validate_field(ds,'GroupDelimiters',{'double'},{'size',[0,0]});
-        validate_field(ds,'GroupNames',{'double'},{'size',[0 0]});
-        validate_field(ds,'GroupShortNames',{'double'},{'size',[0 0]});
+        validate_field(ds,'GroupDelimiters',{'double'},{'size' [0 0]});
+        validate_field(ds,'GroupNames',{'double'},{'size' [0 0]});
+        validate_field(ds,'GroupShortNames',{'double'},{'size' [0 0]});
     else
-        validate_field(ds,'GroupDelimiters',{'double'},{'real','finite','integer','positive','increasing','nonempty','size',[(groups - 1) 1]});
-        validate_field(ds,'GroupNames',{'cellstr'},{'nonempty','size',[groups 1]});
-        validate_field(ds,'GroupShortNames',{'cellstr'},{'nonempty','size',[groups 1]});
+        validate_field(ds,'GroupDelimiters',{'double'},{'real' 'finite' 'integer' 'positive' 'increasing' 'nonempty' 'size' [(groups - 1) 1]});
+        validate_field(ds,'GroupNames',{'cellstr'},{'nonempty' 'size' [groups 1]});
+        validate_field(ds,'GroupShortNames',{'cellstr'},{'nonempty' 'size' [groups 1]});
     end
     
-    validate_field(ds,'Defaults',{'double'},{'real','nonempty','offset','size',[1 n]});
-    validate_field(ds,'Insolvencies',{'double'},{'real','nonempty','offset','size',[1 n]});
+    validate_field(ds,'Defaults',{'double'},{'real' 'nonempty' 'offset' 'size' [1 n]});
+    validate_field(ds,'Insolvencies',{'double'},{'real' 'nonempty' 'offset' 'size' [1 n]});
 
     validate_field(ds,'SupportsComponent',{'logical'},{'scalar'});
     validate_field(ds,'SupportsConnectedness',{'logical'},{'scalar'});
@@ -123,7 +126,7 @@ function value = validate_field(ds,field_name,field_type,field_validator)
         empty = false;
 
         try
-            validateattributes(value,{'double'},{'size',[0 0]});
+            validateattributes(value,{'double'},{'size' [0 0]});
             empty = true;
         catch
         end
