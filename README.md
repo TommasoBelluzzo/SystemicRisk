@@ -188,7 +188,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
     * *Required:* shares (any).
     * *Optional:* none.
   
-* Firms whose `Shares` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly null in the tail of the time series, for a span that includes at least `5%` of the total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain time point onward; defaulted firms are excluded by all the measures, while insolvent firms are excluded only by SCCA default measures.
+* Firms whose time series value is constantly null in the tail, for a span that includes at least `5%` of total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly null in the tail, for a span that includes at least `5%` of total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain time point onward; defaulted firms are excluded by all the measures, while insolvent firms are excluded only by SCCA default measures.
 
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script checks and the dataset is parsed once again the `Excel` spreadsheet is modified.
 
