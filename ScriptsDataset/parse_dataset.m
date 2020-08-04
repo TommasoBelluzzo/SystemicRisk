@@ -197,7 +197,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         liabilities = [];
     end
     
-    [defaults,insolvencies] = detect_distress(returns,equity);
+    [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity);
     
     if (any(defaults == 1))
         error('The dataset contains firms defaulted since the beginning of the observation period that must be removed.');
@@ -660,27 +660,37 @@ end
 
 %% COMPUTATIONS
 
-function [defaults,insolvencies] = detect_distress(returns,equity)
+function [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity)
 
-    n = size(returns,2);
-    t = size(returns,1);
+    [t,n] = size(returns);
     threshold = round(t * 0.05,0);
     
+    data = [returns volumes capitalizations cds];
     defaults = NaN(1,n);
 
     for i = 1:n
-        r = returns(:,i);
+        data_i = data(:,i:n:(n * 4));
+        defaults_i = NaN(1,4);
+        
+        for j = 1:4
+            data_ij = data_i(:,j);
+            
+            f = find(diff([1; data_ij; 1] == 0));
+            
+            if (~isempty(f))
+                indices = f(1:2:end-1);
+                counts = f(2:2:end) - indices;
 
-        f = find(diff([1; r; 1] == 0));
-        indices = f(1:2:end-1);
-        counts = f(2:2:end) - indices;
+                index_last = indices(end);
+                count_last = counts(end);
 
-        index_last = indices(end);
-        count_last = counts(end);
-
-        if (((index_last + count_last - 1) == t) && (count_last >= threshold))
-            defaults(i) = index_last;
+                if (((index_last + count_last - 1) == t) && (count_last >= threshold))
+                    defaults_i(j) = index_last;
+                end
+            end
         end
+
+        defaults(i) = min(defaults_i,[],'omitnan');
     end
     
     insolvencies = NaN(1,n);
@@ -690,9 +700,9 @@ function [defaults,insolvencies] = detect_distress(returns,equity)
             eq = equity(:,i);
 
             f = find(diff([false; eq < 0; false] ~= 0));
-            indices = f(1:2:end-1);
 
-            if (~isempty(indices))
+            if (~isempty(f))
+                indices = f(1:2:end-1);
                 counts = f(2:2:end) - indices;
 
                 index_last = indices(end);
