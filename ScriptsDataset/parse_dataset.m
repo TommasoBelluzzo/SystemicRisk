@@ -105,6 +105,10 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         index = tab_shares{:,1};
         returns = tab_shares{:,2:end};
     end
+    
+    if (any(cellfun(@isempty,regexpi(firm_names,'^[A-Z][A-Z0-9]{0,4}$'))))
+        error('The ''Shares'' sheet contains one or more invalid firm names (not starting with a letter, greater than 5 characters and/or containing invalid characters).');
+    end
 
     volumes = [];
     capitalizations = [];
@@ -553,9 +557,9 @@ function [tab,group_counts] = parse_table_groups(file,index,name,firm_names)
     
     tab.Name = strtrim(tab.Name);
     tab.ShortName = strtrim(tab.ShortName);
-
-    if (~all(cellfun(@length,tab.ShortName) <= 5))
-        error(['The ''' name ''' sheet contains one or more groups with a short name greater than 5 characters.']);
+    
+    if (any(cellfun(@isempty,regexpi(tab.ShortName,'^[A-Z][A-Z0-9]{0,4}$'))))
+        error(['The ''' name ''' sheet contains one or more groups with an invalid short name (not starting with a letter, greater than 5 characters and/or containing invalid characters).']);
     end
 
 end
