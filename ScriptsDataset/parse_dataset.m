@@ -107,7 +107,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     end
     
     if (any(cellfun(@isempty,regexpi(firm_names,'^[A-Z][A-Z0-9]{0,4}$'))))
-        error('The ''Shares'' sheet contains one or more invalid firm names (not starting with a letter, greater than 5 characters and/or containing invalid characters).');
+        error('The ''Shares'' sheet contains invalid firm names (containing invalid characters, not starting with a letter and/or greater than 5 characters).');
     end
 
     volumes = [];
@@ -195,6 +195,8 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         state_variables = remove_first_observation(state_variables);
     end
 
+    [dates_year,~,~,~,~,~] = datevec(dates_num);
+
     if (~isempty(assets) && ~isempty(equity))
         liabilities = assets - equity;
     else
@@ -264,17 +266,16 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
 
     ds = struct();
 
-    ds.TimeSeries = {'Assets' 'Capitalizations' 'CDS' 'Equity' 'Liabilities' 'Returns' 'SeparateAccounts' 'Volumes'};
- 
     ds.File = file;
     ds.Version = version;
+    ds.TimeSeries = {'Assets' 'Capitalizations' 'CDS' 'Equity' 'Liabilities' 'Returns' 'SeparateAccounts' 'Volumes'};
     
     ds.N = n;
     ds.T = t;
 
     ds.DatesNum = dates_num;
     ds.DatesStr = cellstr(datetime(dates_num,'ConvertFrom','datenum'));
-    ds.MonthlyTicks = length(unique(year(dates_num))) <= 3;
+    ds.MonthlyTicks = numel(unique(dates_year)) <= 3;
 
     ds.IndexName = index_name;
     ds.FirmNames = firm_names;
@@ -327,14 +328,18 @@ function date_format = validate_date_format(date_format,base)
         error(['The date format ''' date_format ''' is invalid.' newline() strtrim(regexprep(e.message,'Format.+$',''))]);
     end
     
-    if (base && ~any(regexp(date_format,'d{1,4}')))
-        error('The base date format must define a daily frequency.');
+    if (~any(regexp(date_format,'(?<!y)(y{2}|y{4})(?!y)')))
+        error('The date format must always include year information.');
     end
     
     if (any(regexp(date_format,'(?:HH|MM|SS|FFF|AM|PM)')))
         error('The date format must not include time information.');
     end
     
+    if (base && ~any(regexp(date_format,'(?<!d)(d{2}|d{4})(?!d)')))
+        error('The base date format must be tied to a daily frequency.');
+    end
+
 end
 
 function [file,file_sheets] = validate_file(file)
@@ -385,6 +390,10 @@ end
 
 function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_names,check_negatives)
 
+    date_format_dt = date_format;
+    date_format_dt = strrep(date_format_dt,'m','M');
+    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
+
     if (verLessThan('MATLAB','9.1'))
         if (ispc())
             try
@@ -404,12 +413,24 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
             error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
 
-        tab_partial.Date = datetime(tab_partial.Date,'InputFormat',strrep(date_format,'m','M'));
-
         output_vars = varfun(@class,tab_partial,'OutputFormat','cell');
+        
+        if (strcmp(output_vars{1},'cell'))
+            if (ischar(tab_partial.Date{1}))
+                tab_partial.Date = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),tab_partial.Date);
+            elseif (isdatetime(tab_partial.Date{1}))
+                tab_partial.Date = [tab_partial.Date{:}].';
+            else
+                error(['The ''' name ''' sheet contains invalid column types.']);
+            end
+        elseif (strcmp(output_vars{1},'char'))
+            tab_partial.Date = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),cellstr(tab_partial.Date));
+        elseif (~strcmp(output_vars{1},'datetime'))
+            error(['The ''' name ''' sheet contains invalid column types.']);
+        end
 
         if (~all(strcmp(output_vars(2:end),'double')))
-            error(['The ''' name ''' sheet contains invalid or missing values.']);
+            error(['The ''' name ''' sheet contains invalid column types.']);
         end
     else
         if (ispc())
@@ -427,7 +448,7 @@ function tab = parse_table_balance(file,index,name,date_format,dates_num,firm_na
         end
 
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
-        options = setvaropts(options,'Date','InputFormat',strrep(date_format,'m','M'));
+        options = setvaropts(options,'Date','InputFormat',date_format_dt);
 
         if (ispc())
             try
@@ -506,8 +527,8 @@ function [tab,group_counts] = parse_table_groups(file,index,name,firm_names)
 
         output_vars = varfun(@class,tab,'OutputFormat','cell');
 
-        if (~strcmp(output_vars{1},'cell') || ~strcmp(output_vars{2},'double'))
-            error(['The ''' name ''' sheet contains invalid or missing values.']);
+        if (~all(strcmp(output_vars(1:2),'cell')) || ~strcmp(output_vars{3},'double'))
+            error(['The ''' name ''' sheet contains invalid column types.']);
         end
     else
         if (ispc())
@@ -533,16 +554,20 @@ function [tab,group_counts] = parse_table_groups(file,index,name,firm_names)
         end
     end
     
+    if (width(tab) ~= 3)
+        error(['The ''' name ''' sheet must contain exactly 3 columns.']);
+    end
+    
+    if (height(tab) < 2)
+        error(['The ''' name ''' sheet must contain at least 2 rows.']);
+    end
+    
     if (~isequal(tab.Properties.VariableNames,{'Name' 'ShortName' 'Count'}))
         error(['The ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
     end
     
     if (any(any(ismissing(tab))) || any(~isfinite(tab{:,end})))
         error(['The ''' name ''' sheet contains invalid or missing values.']);
-    end
-
-    if (size(tab,1) < 2)
-        error(['In the ''' name ''' sheet, the number of rows must be greater than or equal to 2.']);
     end
 
     group_counts = tab.Count;
@@ -559,12 +584,16 @@ function [tab,group_counts] = parse_table_groups(file,index,name,firm_names)
     tab.ShortName = strtrim(tab.ShortName);
     
     if (any(cellfun(@isempty,regexpi(tab.ShortName,'^[A-Z][A-Z0-9]{0,4}$'))))
-        error(['The ''' name ''' sheet contains one or more groups with an invalid short name (not starting with a letter, greater than 5 characters and/or containing invalid characters).']);
+        error(['The ''' name ''' sheet contains groups with an invalid short name (containing invalid characters, not starting with a letter and/or greater than 5 characters).']);
     end
 
 end
 
 function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_names,check_negatives)
+
+    date_format_dt = date_format;
+    date_format_dt = strrep(date_format_dt,'m','M');
+    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
 
     if (verLessThan('MATLAB','9.1'))
         if (ispc())
@@ -584,13 +613,25 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         if (~strcmp(tab.Properties.VariableNames(1),'Date'))
             error(['The first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
         end
-
-        tab.Date = datetime(tab.Date,'InputFormat',strrep(date_format,'m','M'));
-
+        
         output_vars = varfun(@class,tab,'OutputFormat','cell');
+        
+        if (strcmp(output_vars{1},'cell'))
+            if (ischar(tab.Date{1}))
+                tab.Date = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),tab.Date);
+            elseif (isdatetime(tab.Date{1}))
+                tab.Date = [tab.Date{:}].';
+            else
+                error(['The ''' name ''' sheet contains invalid column types.']);
+            end
+        elseif (strcmp(output_vars{1},'char'))
+            tab.Date = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),cellstr(tab.Date));
+        elseif (~strcmp(output_vars{1},'datetime'))
+            error(['The ''' name ''' sheet contains invalid column types.']);
+        end
 
         if (~all(strcmp(output_vars(2:end),'double')))
-            error(['The ''' name ''' sheet contains invalid or missing values.']);
+            error(['The ''' name ''' sheet contains invalid column types.']);
         end
     else
         if (ispc())
@@ -608,7 +649,7 @@ function tab = parse_table_standard(file,index,name,date_format,dates_num,firm_n
         end
 
         options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames) - 1)]);
-        options = setvaropts(options,'Date','InputFormat',strrep(date_format,'m','M'));
+        options = setvaropts(options,'Date','InputFormat',date_format_dt);
 
         if (ispc())
             try
@@ -728,4 +769,3 @@ function data = remove_first_observation(data)
     end
 
 end
-

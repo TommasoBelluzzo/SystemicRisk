@@ -12,10 +12,10 @@
 % p = An integer [1,Inf) representing the second order of the model (optional, default=1).
 %
 % [OUTPUT]
-% m = A vector of floats of length t representing the conditional means.
-% e = A vector of floats of length t representing the Cox-Snell residuals.
-% mem_params = A vector of floats representing the MEM parameters.
-% dist_params = A vector of floats representing the distribution parameters.
+% m = A column vector of floats (-Inf,Inf) of length t representing the conditional means.
+% e = A column vector of floats (-Inf,Inf) of length t representing the Cox-Snell residuals.
+% mem_params = A vector of floats (-Inf,Inf) representing the MEM parameters.
+% dist_params = A vector of floats (-Inf,Inf) representing the distribution parameters.
 
 function [mu,e,mem_params,dist_params] = multiplicative_error(varargin)
 

@@ -1,5 +1,5 @@
 % [INPUT]
-% dep = A column vector of floats of length t representing the dependent variable.
+% dep = A vector of floats of length t representing the dependent variable.
 % indep_s = A float t-by-cs matrix representing the switching independent variables, without intercept because it is internally handled by the model (optional, default=[]).
 % indep_ns = A float t-by-cns matrix representing the non-switching independent variables (optional, default=[]).
 % k = An integer [2,4] representing the number of states of the model (optional, default=2).
@@ -403,6 +403,7 @@ end
 
 function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep_s,indep_ns,k,finit,tmm,fnlcon)
     
+	dep = dep(:);
     t = numel(dep);
 
     if (~isempty(indep_s))

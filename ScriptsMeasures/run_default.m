@@ -8,7 +8,7 @@
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
 % c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
 % l = A float [0.05,0.20] representing the importance sampling threshold used to calculate the DIP (optional, default=0.10).
-% s = An integer [2,n], where n is the number of firms, representing the amount of systematic risk factors used to calculate the DIP (optional, default=2).
+% s = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors used to calculate the DIP (optional, default=2).
 % op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model used by the Systemic CCA framework (optional, default='BSM').
 % k = A float [0.90,0.99] representing the confidence level used by the Systemic CCA framework (optional, default=0.95).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
@@ -168,7 +168,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.C,ds.L,ds.S,windows_cl{i},ds.Q,ds.QDiff);
+            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.C,ds.L,ds.S,windows_cl{i},ds.K);
         end
 
         for i = 1:t
@@ -248,10 +248,11 @@ end
 
 function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
 
+    q = [(0.900:0.025:0.975) 0.99];
+    q = q(q >= k);
+
     n = ds.N;
     t = ds.T;
-
-    q = [(0.900:0.025:0.975) 0.99];
 
     ds.A = 1 - k;
     ds.BW = bw;
@@ -264,8 +265,6 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     ds.LGD = 1 - rr;
     ds.LST = lst;
     ds.OP = op;
-    ds.Q = q(q >= k);
-    ds.QDiff = diff([ds.Q 1]);
     ds.RR = rr;
     ds.S = s;
     ds.ST =  1 ./ (1 + lst);
@@ -281,7 +280,7 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     ds.SCCAAlphas = NaN(t,n);
     ds.SCCAExpectedLosses = NaN(t,n);
     ds.SCCAContingentLiabilities = NaN(t,n);
-    ds.SCCAJointVaRs = NaN(t,numel(ds.Q));
+    ds.SCCAJointVaRs = NaN(t,numel(q));
 
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
 
@@ -481,8 +480,8 @@ function window_results = main_loop_1(firm_data,offsets,r,st,dt,lcar,op)
     db_o = (lb_o .* st) + (dt .* (lb_o .* (1 - st)));
     r_o = r(1:offset1);
 
-    [va,va_m] = kmv_model(cp_o,db_o,r_o,1,op);
-    [d2d,d2c] = calculate_distances(va,va_m,db_o,r_o,1,lcar);
+    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
+    [d2d,d2c] = calculate_distances(va,vap,db_o,r_o,1,lcar);
     
     offset2 = min(min(offsets),t);
     cp_o = max(1e-6,firm_data(1:offset2,1));
@@ -491,8 +490,8 @@ function window_results = main_loop_1(firm_data,offsets,r,st,dt,lcar,op)
     r_o = r(1:offset2);
     cds_o = firm_data(1:offset2,2);
 
-    [va,va_m] = kmv_model(cp_o,db_o,r_o,1,op);
-    [el,cl,a] = calculate_scca_values(va,va_m,db_o,r_o,cds_o,1,op);
+    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
+    [el,cl,a] = contingent_claims_analysis(va,vap,cds_o,db_o,r_o,1);
 
     window_results = struct();
     window_results.Offset1 = offset1;
@@ -505,57 +504,22 @@ function window_results = main_loop_1(firm_data,offsets,r,st,dt,lcar,op)
 
 end
 
-function window_results = main_loop_2(r,cds,lb,lgd,c,l,s,window_cl,q,q_diff)
+function window_results = main_loop_2(r,cds,lb,lgd,c,l,s,cl,k)
 
     window_results = struct();
 
-    dip = calculate_dip(r,cds,lb,lgd,c,l,s);
+    dip = distress_insurance_premium(r,cds,lb,lgd,c,l,s);
     window_results.DIP = dip;
 
-    [scca_joint_vars,scca_joint_es] = calculate_scca_indicators(window_cl,q,q_diff);
-    window_results.SCCAJointVaRs = scca_joint_vars;
-    window_results.SCCAJointES = scca_joint_es;
+    [joint_vars,joint_es] = mgev_joint_risks(cl,k);
+    window_results.SCCAJointVaRs = joint_vars;
+    window_results.SCCAJointES = joint_es;
 
 end
 
-function dip = calculate_dip(r,cds,lb,lgd,c,l,s)
+function [d2d,d2c] = calculate_distances(va,vap,db,r,t,lcar)
 
-    indices = sum(isnan(r),1) == 0;
-    n = sum(indices);
-
-    [dt,dw,ead,ead_volume,lgd] = estimate_default_parameters(cds(indices),lb(indices),n,lgd);
-    b = estimate_factor_loadings(r(:,indices),s);
-
-    bi = floor(c * 0.2);
-    c2 = c^2;
-
-    a = zeros(5,1);
-    
-    for iter = 1:5 
-        mcmc_p = slicesample(rand(1,s),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
-        [mu,sigma,weights] = gmm_fit(mcmc_p,2);  
-        [z,g] = gmm_evaluate(mu,sigma,weights,c);
-
-        phi = normcdf((repmat(dt.',c,1) - (z * b.')) ./ (1 - repmat(sum(b.^2,2).',c,1)).^0.5);
-        [theta,theta_p] = exponential_twist(phi,dw,l);
-
-        losses = sum(repelem(dw.',c2,1) .* ((repelem(theta_p,c,1) >= rand(c2,n)) == 1),2);
-        psi = sum(log((phi .* exp(repmat(theta,1,n) .* repmat(dw.',c,1))) + (1 - phi)),2);
-
-        lr_z = repelem(mvnpdf(z) ./ g,c,1);
-        lr_e = exp(-(repelem(theta,c,1) .* losses) + repelem(psi,c,1));
-        lr = lr_z .* lr_e;
-
-        a(iter) = mean((losses > l) .* lr);
-    end
-    
-    dip = mean(a) * ead_volume;
-
-end
-
-function [d2d,d2c] = calculate_distances(va,va_m,db,r,t,lcar)
-
-    s = va_m(1);
+    s = vap(1);
     rst = (r + (0.5 * s^2)) * t;
     st = s * sqrt(t);
 
@@ -585,401 +549,9 @@ function [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds)
     lbl = repmat(ds.DT,t,1) .* (lb .* (1 - repmat(ds.ST,t,1)));
     db = max(1e-6,sum(lbs + lbl,2,'omitnan'));
 
-    [va,va_m] = kmv_model(cp,db,r,1,ds.OP);
-    [d2d_por,d2c_por] = calculate_distances(va,va_m,db,r,1,ds.LCAR);
+    [va,vap] = kmv_structural(cp,db,r,1,ds.OP);
+    [d2d_por,d2c_por] = calculate_distances(va,vap,db,r,1,ds.LCAR);
     
-end
-
-function [joint_vars,joint_es] = calculate_scca_indicators(data,q,q_diff)
-
-    persistent options;
-
-    if (isempty(options))
-        options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off');
-    end
-
-    [t,n] = size(data);
-    data_sorted = sort(data,1);
-    
-    xi_s = (1:floor(t / 4)).';
-    xi_a = sqrt(log((t - xi_s) ./ t) ./ log(xi_s ./ t));
-    xi_q0 = xi_s;
-    xi_q1 = floor(t .* (xi_s ./ t).^xi_a);
-    xi_q2 = t - xi_s;
-    xi_r = (data_sorted(xi_q2,:) - data_sorted(xi_q1,:)) ./ max(1e-8,(data_sorted(xi_q1,:) - data_sorted(xi_q0,:)));
-        
-    xi = sum([zeros(1,n); -(log(xi_r) ./ (ones(1,n) .* log(xi_a)))]).' ./ xi_s(end);
-    xi_positive = xi > 0;
-    xi(xi_positive) = max(0.01,min(2,xi(xi_positive)));
-    xi(~xi_positive) = max(-1,min(-0.01,xi(~xi_positive)));
-
-    ms_d = floor(t / 10);
-    ms_s = ((ms_d+1):(t-ms_d)).';
-    ms_q = -log((1:t).' ./ (t + 1));
-    
-    mu = zeros(n,1);
-    sigma = zeros(n,1);
-    
-    for j = 1:n
-        y = (ms_q.^-xi(j) - 1) ./ xi(j);
-        b = regress(data_sorted(ms_s,j),[ones(numel(ms_s),1) y(ms_s)]);
-        
-        mu(j) = b(1);
-        sigma(j) = b(2);
-    end
-    
-    d_p = tiedrank(data) ./ (t + 1);
-    d_y = -log(d_p);
-    d_v = (d_y ./ repmat(mean(d_y,1),t,1)) ./ (ones(size(data)) .* (1 / n));
-    d = min(1,max(1 / mean(min(d_v,[],2)),1 / n));
-
-    x0_mu = n * mean(mu);
-    x0_sigma = sqrt(n) * mean(sigma);
-    x0_xi = mean(xi);
-    
-    joint_vars = zeros(1,numel(q));
-
-    for j = 1:numel(q)
-        lhs = -log(q(j)) / d;
-
-        x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
-        v0 = (1 + (x0_xi .* ((x0 - x0_mu) ./ x0_sigma))) .^ -(1 ./ x0_xi);
-
-        e = [];
-
-        try
-            [joint_var,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],0,Inf,[],options);
-        catch e
-        end
-
-        if (~isempty(e) || (ef <= 0))
-            joint_vars(j) = 0;
-        else
-            joint_vars(j) = joint_var;
-        end
-    end
-
-    indices = joint_vars > 0;
-
-    if (any(indices))
-        joint_es = sum(joint_vars(indices) .* q_diff(indices)) / sum(q_diff(indices));
-    else
-        joint_es = 0;
-    end
-
-    function y = objective(x,v,lhs,n,mu,sigma,xi)
-
-        um = repelem(v,n,1);
-
-        um_check = (xi .* (repelem(x,20,1) - mu)) ./ sigma;
-        um_valid = isfinite(um_check) & (um_check > -1);
-        
-        x = repelem(x,sum(um_valid),1);
-        mu = mu(um_valid);
-        sigma = sigma(um_valid);
-        xi = xi(um_valid);
-        um(um_valid) = (1 + (xi .* ((x - mu) ./ sigma))) .^ -(1 ./ xi);
-
-        y = (sum(um) - lhs)^2;
-
-    end
-
-end
-
-function [el,cl,a] = calculate_scca_values(va,va_m,db,r,cds,t,op)
-
-    s = va_m(1);
-    st = s * sqrt(t);
-
-    dbd = db .* exp(-r.* t);
-
-    d1 = (log(va ./ db) + ((r + (0.5 * s^2)) .* t)) ./ st;
-    d2 = d1 - st;
-
-    put_price = (dbd .* normcdf(-d2)) - (va .* normcdf(-d1));
-    
-    if (strcmp(op,'GC'))
-        g = va_m(2);
-        k = va_m(3);
-
-        t1 = (g / 6) .* ((2 * s) - d1);
-        t2 = (k / 24) .* (1 - d1.^2 + (3 .* d1 .* s) - (3 * s^2));
-        
-        put_price = put_price - (va .* normcdf(d1) .* s .* (t1 - t2));
-    end
-
-    put_price = max(0,put_price);
-
-    rd = dbd - put_price;
-
-    cds_put_price = dbd .* (1 - exp(-cds .* max(0.5,((db ./ rd) - 1)) .* t));
-    cds_put_price = min(cds_put_price,put_price);  
-    
-    a = max(0,min(1 - (cds_put_price ./ put_price),1));
-    a(~isreal(a)) = 0;
-    
-    el = put_price;
-    cl = el .* a;
-
-end
-
-function b = estimate_factor_loadings(r,f)
-
-    rho = corr(r);
-    f0 = eye(size(rho,1)) * 0.2;
-
-    count = 0;
-    error = 0.8;
-
-    while ((count < 100) && (error > 0.01))
-        [v,d] = eig(rho - f0,'vector');
-
-        [~,sort_indices] = sort(d,'descend');
-        sort_indices = sort_indices(1:f);
-
-        d = diag(d(sort_indices));
-        v = v(:,sort_indices);
-        b = v * sqrt(d);
-
-        f1 = diag(1 - diag(b * b.'));
-        delta = f1 - f0;
-
-        f0 = f1;
-
-        count = count + 1;
-        error = trace(delta * delta.');
-    end
-
-end
-
-function [dt,dw,ead,ead_volume,lgd] = estimate_default_parameters(cds,liabilities,n,lgd)
-
-    dt = norminv(1 - exp(-cds ./ lgd)).';
-
-    liabilities_sum = sum(liabilities);
-    ead = (liabilities / sum(liabilities_sum)).';
-    ead_volume = liabilities_sum;
-
-    if (lgd > 0.5)
-        lgd = mean(cumsum(randtri((2 * lgd) - 1,lgd,1,[n 1000])),2);
-    else
-        lgd = mean(cumsum(randtri(0,lgd,1,[n 1000])),2);
-    end
-
-    dw = ead .* lgd;
-
-end
-
-function [theta,theta_p] = exponential_twist(phi,dw,l)
-
-    persistent options;
-
-    if (isempty(options))
-        options = optimset(optimset(@fminunc),'Diagnostics','off','Display','off','LargeScale','off');
-    end
-    
-    [c,n] = size(phi);
-
-    theta = zeros(c,1);
-    theta_p = phi;
-
-    dw = [dw zeros(n,1)];
-
-    for i = 1:c
-        phi_i = phi(i,:).';
-        p = [phi_i (1 - phi_i)];
-
-        threshold = sum(sum(dw .* p,2),1);
-
-        if (l > threshold)
-            if (i == 1)
-                x0 = 0;
-            else
-                x0 = theta(i-1);
-            end
-
-            e = [];
-
-            try
-                [t,~,ef] = fminunc(@(x)objective(x,p,w,l),x0,options);
-            catch e
-            end
-
-            if (isempty(e) && (ef > 0))
-                theta(i) = t;
-
-                twist = p .* exp(dw .* t(end));
-                theta_p(i,:) = twist(:,1) ./ sum(twist,2);
-            end
-        end
-    end
-    
-    function y = objective(x,p,w,l)
-
-        y = sum(log(sum(p .* exp(w .* x),2)),1) - (x * l);
-
-    end
-
-end
-
-function [z,g] = gmm_evaluate(mu,sigma,weights,c)
-
-    indices = datasample(1:numel(weights),c,'Replace',true,'Weights',weights);
-    z = mvnrnd(mu(indices,:),sigma(:,:,indices),c);
-
-    g = zeros(c,1);
-
-    for i = 1:c
-        g(i) = sum(mvnpdf(z(i,:),mu,sigma) .* weights);
-    end
-
-end
-
-function [mu,sigma,weights] = gmm_fit(x,gm)
-
-    [c,s] = size(x);
-
-    m = x(randsample(c,gm),:);
-    [~,indices] = max((x * m.') - repmat(dot(m,m,2).' / 2,c,1),[],2);
-    [u,~,indices] = unique(indices);
-
-    while (numel(u) ~= gm)
-        m = x(randsample(c,gm),:);
-        [~,indices] = max((x * m.') - repmat(dot(m,m,2).' / 2,c,1),[],2);
-        [u,~,indices] = unique(indices);
-    end
-    
-    r = zeros(c,gm);
-    r(sub2ind([c gm],1:c,indices.')) = 1;
-
-    [~,indices] = max(r,[],2);
-    r = r(:,unique(indices));
-
-    llh_old = -Inf;
-    count = 1;
-    converged = false;
-
-    while ((count < 10000) && ~converged)
-        count = count + 1;
-
-        rk = size(r,2);
-        rs = sum(r,1).';
-        rq = sqrt(r);
-
-        mu = (r.' * x) .* repmat(1 ./ rs,1,s);
-        sigma = zeros(s,s,rk);
-        rho = zeros(c,rk);
-        weights = rs ./ c;
-
-        for j = 1:rk
-            x0 = x - repmat(mu(j,:),c,1);
-
-            o = x0 .* repmat(rq(:,j),1,s);
-            h = ((o.' * o) ./ rs(j)) + (eye(s) .* 1e-6);
-            sigma(:,:,j) = h;
-
-            v = chol(h,'upper');
-            q0 = v.' \ x0.';
-            q1 = dot(q0,q0,1);
-            nc = (s * log(2 * pi())) + (2 * sum(log(diag(v))));
-            rho(:,j) = (-(nc + q1) / 2) + log(weights(j));
-        end
-
-        rho_max = max(rho,[],2);
-        t = rho_max + log(sum(exp(rho - repmat(rho_max,1,rk)),2));
-        fi = ~isfinite(rho_max);
-        t(fi) = rho_max(fi);
-        llh = sum(t) / c;
-
-        r = exp(rho - repmat(t,1,rk));
-
-        [~,indices] = max(r,[],2);
-        u = unique(indices);
-
-        if (size(r,2) ~= numel(u))
-            r = r(:,u);
-        else
-            converged = (llh - llh_old) < (1e-8 * abs(llh));
-        end
-
-        llh_old = llh;
-    end
-
-end
-
-function [va,va_m] = kmv_model(eq,db,r,t,op)
-
-    df = exp(-r.* t);
-
-    k = numel(r);
-    sk = sqrt(k);
-
-    va = eq + (db .* df);
-    va_r = diff(log(va));
-    va_s = sqrt(252) * std(va_r);
-
-    sst = va_s * sqrt(t);
-    d1 = (log(va ./ db) + ((r + (0.5 * va_s^2)) .* t)) ./ sst;
-    d2 = d1 - sst;
-    n1 = normcdf(d1);
-    n2 = normcdf(d2);
-
-    va_old = va;
-    va = eq + ((va .* (1 - n1)) + (db .* df .* n2));
-    
-    count = 0;
-    error = norm(va - va_old) / sk;
-
-    while ((count < 10000) && (error > 1e-8))
-        sst = va_s * sqrt(t);
-        d1 = (log(va ./ db) + ((r + (0.5 * va_s^2)) .* t)) ./ sst;
-        d2 = d1 - sst;
-        n1 = normcdf(d1);
-        n2 = normcdf(d2);
-
-        va_old = va;
-        va = eq + ((va .* (1 - n1)) + (db .* df .* n2));
-        va_r = diff(log(va));
-        va_s = sqrt(252) * std(va_r);
-
-        count = count + 1;
-        error = norm(va - va_old) / sk;
-    end
-    
-    if (strcmp(op,'BSM'))
-        va_m = [va_s NaN(1,2)];
-    else
-        va_g = skewness(va_r,0) / sqrt(252);
-        va_k = (kurtosis(va_r,0) - 3) / 252;
-        
-        va_m = [va_s va_g va_k];
-    end
-
-end
-
-function r = randtri(a,b,c,size)
-
-    d = (b - a) / (c - a);
-
-    p = rand(size);
-    r = p;
-
-    t = ((p >= 0) & (p <= d));
-    r(t) = a + sqrt(p(t) * (b - a) * (c - a));
-
-    t = ((p <= 1) & (p > d));
-    r(t) = c - sqrt((1 - p(t)) * (c - b) * (c - a));
-
-end
-
-function p = zpdf(z,dt,ead,lgd,b,l) 
-
-    p0 = normcdf((dt - (b * z.')) ./ (1 - sum(b.^2,2)).^0.5);
-    mu = sum(ead .* lgd .* p0);
-    sigma = sqrt((ead.' .^ 2) * sum((-1 .* lgd).^2 .* p0 .* (1 - p0),2));
-
-    p = max(1e-16,(1 - normcdf((l - mu) / sigma)) * mvnpdf(z));
-
 end
 
 %% PLOTTING

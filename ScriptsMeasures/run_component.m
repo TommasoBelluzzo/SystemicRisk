@@ -157,6 +157,7 @@ function ds = initialize(ds,bw,k,f,q)
 
     r = ds.Returns;
     rw = 1 ./ (repmat(n,t,1) - sum(isnan(r),2));
+    rc = sum(r .* repmat(rw,1,n),2,'omitnan');
 
     ds.A = 1 - k;
     ds.BW = bw;
@@ -172,7 +173,8 @@ function ds = initialize(ds,bw,k,f,q)
     ds.LabelsPCAExplained = {'PC' 'Explained Variance'};
     ds.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
 
-    ds.CATFINReturns = sum(r .* repmat(rw,1,n),2,'omitnan');
+    ds.CATFINReturns = rc;
+
     ds.CATFINVaR = NaN(t,4);
     ds.CATFINFirstCoefficients = NaN(1,3);
     ds.CATFINFirstExplained = NaN;
@@ -222,7 +224,7 @@ function ds = finalize(ds,results)
 
     ds.AbsorptionRatio = sanitize_data(ds.AbsorptionRatio,ds.DatesNum,[],[0 1]);
 
-    [coefficients,scores,explained] = calculate_overall_pca(ds.Returns);
+    [coefficients,scores,explained] = calculate_pca_overall(ds.Returns);
     ds.PCACoefficientsOverall = coefficients;
     ds.PCAExplainedOverall = explained;
     ds.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
@@ -364,11 +366,11 @@ function window_results = main_loop(rf,rc,components,a)
 
     window_results = struct();
 
-    nan_indices = sum(isnan(rf),1) > 0;
+    nan_indices = any(isnan(rf),1);
     rf(:,nan_indices) = [];
 
-    [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(rc,a,0.98,0.05);
-    window_results.CATFINVaR = -1 .* min(0,[var_np var_gpd var_gev var_sged]);
+    [var_np,var_gpd,var_gev,var_sged] = catfin(rc,a,0.98,0.05);
+    window_results.CATFINVaR = -1 .* [var_np var_gpd var_gev var_sged];
     
     [ar,cs,ti] = calculate_component_indicators(rf,components);
     window_results.AbsorptionRatio = ar;
@@ -379,48 +381,6 @@ function window_results = main_loop(rf,rc,components,a)
     window_results.PCACoefficients = coefficients;
     window_results.PCAExplained = explained;
     window_results.PCAScores = scores;
-
-end
-
-function [var_np,var_gpd,var_gev,var_sged] = calculate_catfin_var(x,a,g,u)
-
-    persistent options;
-
-    if (isempty(options))
-        options = optimset(optimset(@fsolve),'Diagnostics','off','Display','off');
-    end
-
-    t = size(x,1);
-
-    w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
-    h = sortrows([x w],1,'ascend');
-    csw = cumsum(h(:,2));
-    cswa = find(csw >= a);
-    var_np = h(cswa(1),1);  
-
-    k = round(t / (t * u),0);
-    x_neg = -x; 
-    x_neg_sorted = sort(x_neg);
-    threshold = x_neg_sorted(t - k);
-    excess = x_neg(x_neg > threshold) - threshold;
-    gpd_params = gpfit(excess);
-    [xi,beta,zeta] = deal(gpd_params(1),gpd_params(2),k / t);
-    var_gpd = -(threshold + (beta / xi) * ((((1 / zeta) * a) ^ -xi) - 1));
-
-    k = round(nthroot(t,1.81),0);
-    block_maxima = find_block_maxima(x,t,k);
-    theta = find_extremal_index(x,t,k);
-    gev_params = gevfit(block_maxima);
-    [xi,sigma,mu] = deal(gev_params(1),gev_params(2),gev_params(3));
-    var_gev = -(mu - (sigma / xi) * (1 - (-(t / k) * theta * log(1 - a))^-xi));
-
-    try
-        sged_params = mle(x,'PDF',@sgedpdf,'Start',[mean(x) std(x) 0 1],'LowerBound',[-Inf 0 -1 0],'UpperBound',[Inf Inf 1 Inf]);
-        [mu,sigma,lambda,kappa] = deal(sged_params(1),sged_params(2),sged_params(3),sged_params(4));
-        var_sged = fsolve(@(x)sgedcdf(x,mu,sigma,lambda,kappa)-a,0,options);
-    catch
-        var_sged = NaN;
-    end
 
 end
 
@@ -445,7 +405,7 @@ function [ar,cs,ti] = calculate_component_indicators(x,components)
 
 end
 
-function [coefficients,scores,explained] = calculate_overall_pca(r)
+function [coefficients,scores,explained] = calculate_pca_overall(r)
 
     nan_indices = isnan(r);
     rm = repmat(mean(r,1,'omitnan'),size(r,1),1);
@@ -471,67 +431,6 @@ function [coefficients,scores,explained] = calculate_pca(x,normalize)
     end
 
     [coefficients,scores,~,~,explained] = pca(x,'Economy',false);
-
-end
-
-function block_maxima = find_block_maxima(x,t,k)
-
-    c = floor(t / k);
-
-    block_maxima = zeros(k,1);
-    i = 1;
-
-    for j = 1:k-1
-        block_maxima(j) = max(x(i:i+c-1));
-        i = i + c;
-    end
-
-    block_maxima(k) = max(x(i:end));
-
-end
-
-function theta = find_extremal_index(x,t,k)
-
-    c = t - k + 1;
-    y = zeros(c,1);
-
-    for i = 1:c
-        y(i,1) = (1 / t) * sum(x <= max(x(i:i+k-1)));
-    end
-
-    theta = ((1 / c) * sum(-k * log(y)))^-1;
-
-end
-
-function p = sgedcdf(x,mu,sigma,lambda,kappa)
-
-    [t,n] = size(x);
-    p = NaN(t,n);
-
-    for i = 1:t
-        for j = 1:n
-            p(i) = integral(@(x)sgedpdf(x,mu,sigma,lambda,kappa),-Inf,x(i,j));
-        end
-    end
-
-end
-
-function y = sgedpdf(x,mu,sigma,lambda,kappa)
-
-    g1 = gammaln(1 / kappa);
-    g2 = gammaln(2 / kappa);
-    g3 = gammaln(3 / kappa);
-
-    a = exp(g2 - (0.5 * g1) - (0.5 * g3));
-    s = sqrt(1 + (3 * lambda^2) - (4 * a^2 * lambda^2));
-
-    theta = exp((0.5 * g1) - (0.5 * g3)) / s;
-    delta = (2 * lambda * a) / s;
-
-    c = exp(log(kappa) - (log(2 * sigma * theta) + g1));
-    u = x - mu + (delta * sigma);
-
-    y = c .* exp((-abs(u) .^ kappa) ./ ((1 + (sign(u) .* lambda)) .^ kappa) ./ theta^kappa ./ sigma^kappa); 
 
 end
 

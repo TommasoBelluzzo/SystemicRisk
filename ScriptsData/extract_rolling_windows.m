@@ -4,7 +4,7 @@
 % truncate = A boolean that indicates whether to exclude all the rolling windows with a dimension less than the bandwidth (optional, default=true).
 %
 % [OUTPUT]
-% windows = A vector of bw-by-n float matrices representing the rolling windows.
+% windows = A column cell array of bw-by-n float matrices representing the rolling windows.
 %
 % [NOTES]
 % If the number of observations is less than or equal to the specified bandwidth, a single rolling window containing all the observations is returned.

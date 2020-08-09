@@ -1,11 +1,11 @@
 % [INPUT]
 % r = A float t-by-n matrix representing the logarithmic returns.
-% pods = A vector of floats of length n representing the probabilities of default.
-% df = A float (0,Inf) representing the degrees of freedom of the Student's T prior density (if empty, a normal prior density is used).
+% pods = A vector of floats [0,1] of length n representing the probabilities of default.
+% md = A string (either 'N' for normal or 'T' for Student's T) representing the multivariate distribution used by the model.
 %
 % [OUTPUT]
 % g = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.
-% p = A vector of floats of length n^2 representing the posterior density probabilities.
+% p = A column vector of floats [0,1] of length n^2 representing the posterior density probabilities.
 
 function [g,p] = cimdo(varargin)
 
@@ -15,21 +15,22 @@ function [g,p] = cimdo(varargin)
         ip = inputParser();
         ip.addRequired('r',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty'}));
         ip.addRequired('pods',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
-        ip.addOptional('df',[],@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0}));
+        ip.addRequired('md',@(x)any(validatestring(x,{'N' 'T'})));
     end
 
     ip.parse(varargin{:});
     
     ipr = ip.Results;
-    [r,pods,df] = validate_input(ipr.r,ipr.pods,ipr.df);
+    [r,pods] = validate_input(ipr.r,ipr.pods);
+    md = ipr.md;
 
     nargoutchk(2,2);
 
-    [g,p] = cimdo_internal(r,pods,df);
+    [g,p] = cimdo_internal(r,pods,md);
 
 end
 
-function [g,p] = cimdo_internal(r,pods,df)
+function [g,p] = cimdo_internal(r,pods,md)
 
     persistent options_mvncdf;
     persistent options_mvtcdf;
@@ -56,7 +57,7 @@ function [g,p] = cimdo_internal(r,pods,df)
     
     q = NaN(k,1);
     
-    if (isempty(df))
+    if (strcmp(md,'N'))
         dts = norminv(1 - pods);
         
         for i = 1:k
@@ -67,6 +68,9 @@ function [g,p] = cimdo_internal(r,pods,df)
             q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
         end
     else
+        params = mle(rn(:),'Distribution','tLocationScale');
+        df = max(1,min(params(3),6));
+        
         dts = tinv(1 - pods,df);
         
         for i = 1:k
@@ -84,16 +88,17 @@ function [g,p] = cimdo_internal(r,pods,df)
     end
     
     q = q ./ sum(q);
-
-    try
-        x0 = zeros(n + 1,1);
-        f = fsolve(@(x)objective(x,n,pods,g,q),x0,options_objective);
-
-        [~,p] = objective(f,n,pods,g,q);
-        p = p ./ sum(p);
-    catch
+    
+    x0 = zeros(n + 1,1);
+    [sol,~,ef] = fsolve(@(x)objective(x,n,pods,g,q),x0,options_objective);
+    
+    if (ef ~= 1)
         p = NaN(k,1);
+        return;
     end
+
+    [~,p] = objective(sol,n,pods,g,q);
+    p = p ./ sum(p);
 
 end
 
@@ -208,9 +213,9 @@ function y = mvncdf_fast(c,lb,ub,options)
     ub = ub ./ d;
     cp = (cp ./ repmat(d,1,n)) - eye(n);
 
-    [sol,~,exitflag] = fsolve(@(x)mvncdf_fast_psi(x,cp,lb,ub),zeros(2 * (n - 1),1),options);
+    [sol,~,ef] = fsolve(@(x)mvncdf_fast_psi(x,cp,lb,ub),zeros(2 * (n - 1),1),options);
 
-    if (exitflag ~= 1)
+    if (ef ~= 1)
         y = NaN;
         return;
     end
@@ -294,9 +299,9 @@ function y = mvtcdf_fast(c,df,lb,ub,options)
     x0(2 * n) = sqrt(df);
     x0(n) = log(sqrt(df));
 
-    [sol,~,exitflag] = fsolve(@(x)mvtcdf_fast_psi(x,cp,df,lb,ub),x0,options);
+    [sol,~,ef] = fsolve(@(x)mvtcdf_fast_psi(x,cp,df,lb,ub),x0,options);
 
-    if (exitflag ~= 1)
+    if (ef ~= 1)
         y = NaN;
         return;
     end
@@ -382,7 +387,7 @@ function [f,p] = objective(x,n,pods,g,q)
 
 end
 
-function [r,pods,df] = validate_input(r,pods,df)
+function [r,pods] = validate_input(r,pods)
 
     [t,n] = size(r);
 
@@ -394,10 +399,6 @@ function [r,pods,df] = validate_input(r,pods,df)
     
     if (numel(pods) ~= n)
         error(['The value of ''pods'' is invalid. Expected input to be an array of ' num2str(n) ' elements.']);
-    end
-    
-    if (~isempty(df) && ~isscalar(df))
-        error('The value of ''df'' is invalid. Expected input to be a scalar.');
     end
 
 end

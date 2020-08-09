@@ -173,40 +173,40 @@ function ds = initialize(ds,sel,bw,rr,pw,md)
         if (isempty(cp))
             for i = 1:g
                 if (i == 1)
-                    sequence = 1:gd(1);
+                    seq = 1:gd(1);
                 elseif (i == g)
-                    sequence = (gd(i - 1) + 1):n;
+                    seq = (gd(i - 1) + 1):n;
                 else
-                    sequence = (gd(i - 1) + 1):gd(i);
+                    seq = (gd(i - 1) + 1):gd(i);
                 end
 
-                sequence_len = numel(sequence);
+                sequence_len = numel(seq);
 
-                r_i = r_ref(:,sequence);
+                r_i = r_ref(:,seq);
                 w_i = 1 ./ (repmat(sequence_len,t,1) - sum(isnan(r_i),2));
                 r(:,i) = sum(r_i .* repmat(w_i,1,sequence_len),2,'omitnan');
 
-                pods_i = pods_ref(:,sequence);
+                pods_i = pods_ref(:,seq);
                 w_i = 1 ./ (repmat(sequence_len,t,1) - sum(isnan(pods_i),2));
                 pods(:,i) = sum(pods_i .* repmat(w_i,1,sequence_len),2,'omitnan');
             end
         else
             for i = 1:g
                 if (i == 1)
-                    sequence = 1:gd(1);
+                    seq = 1:gd(1);
                 elseif (i == g)
-                    sequence = (gd(i - 1) + 1):n;
+                    seq = (gd(i - 1) + 1):n;
                 else
-                    sequence = (gd(i - 1) + 1):gd(i);
+                    seq = (gd(i - 1) + 1):gd(i);
                 end
 
-                sequence_len = numel(sequence);
+                sequence_len = numel(seq);
                 
-                cp_i = cp(:,sequence);
+                cp_i = cp(:,seq);
                 w_i = max(0,cp_i ./ repmat(sum(cp_i,2,'omitnan'),1,sequence_len));
 
-                r(:,i) = sum(r_ref(:,sequence) .* w_i,2,'omitnan');
-                pods(:,i) = sum(pods_ref(:,sequence) .* w_i,2,'omitnan');
+                r(:,i) = sum(r_ref(:,seq) .* w_i,2,'omitnan');
+                pods(:,i) = sum(pods_ref(:,seq) .* w_i,2,'omitnan');
             end
         end
 
@@ -400,7 +400,7 @@ function window_results = main_loop(r,pods,pw,md)
 
     window_results = struct();
 
-    nan_indices = sum(isnan(r),1) > 0;
+    nan_indices = any(isnan(r),1);
     n = numel(nan_indices);
     
     r(:,nan_indices) = [];
@@ -413,14 +413,8 @@ function window_results = main_loop(r,pods,pw,md)
         w = repmat(fliplr(((1 - 0.98) / (1 - 0.98^t)) .* (0.98 .^ (0:1:t-1))).',1,n);
         pods = sum(pods .* w,1).';
     end
-    
-    if (strcmp(md,'N'))
-        [g,p] = cimdo(r,pods);
-    else
-        pd = fitdist(r(:),'tlocationscale');
-        df = pd.nu;
-        [g,p] = cimdo(r,pods,df);
-    end
+
+	[g,p] = cimdo(r,pods,md);
 
     if (any(isnan(p)))
         window_results.JPoD = NaN;
@@ -434,39 +428,35 @@ function window_results = main_loop(r,pods,pw,md)
         window_results.CoJPoDs = NaN(1,n);
     else
         opods = pods;
-        
-        pods = zeros(n,1);
+        pods = NaN(n,1);
         pods(~nan_indices) = opods;
         
-        [jpod,fsi,pce] = calculate_indicators(pods,g,p);
+        g_refs = sum(g,2);
+        
+        [jpod,fsi,pce] = calculate_indicators(n,pods,g_refs,p);
         window_results.JPoD = jpod;
         window_results.FSI = fsi;
         window_results.PCE = pce;
 
-        [dide,si,sv] = calculate_dide(pods,g,p);
+        [dide,si,sv] = calculate_dide(n,pods,g,g_refs,p);
         window_results.DiDe = dide;
         window_results.SI = si;
         window_results.SV = sv;
         
-        cojpods = calculate_cojpods(pods,jpod);
+        cojpods = calculate_cojpods(n,pods,jpod);
         window_results.CoJPoDs = cojpods;
     end
 
 end
 
-function cojpods = calculate_cojpods(pods,jpod)
-
-    n = numel(pods);
+function cojpods = calculate_cojpods(n,pods,jpod)
 
     jpods = ones(n,1) .* jpod;
     cojpods = (jpods ./ pods).';
     
 end
 
-function [dide,si,sv] = calculate_dide(pods,g,p)
-
-    g_refs = sum(g,2);
-    n = numel(pods);
+function [dide,si,sv] = calculate_dide(n,pods,g,g_refs,p)
 
     dide = eye(n);
     
@@ -486,10 +476,7 @@ function [dide,si,sv] = calculate_dide(pods,g,p)
     
 end
 
-function [jpod,fsi,pce] = calculate_indicators(pods,g,p)
-
-    g_refs = sum(g,2);
-    n = size(g,2);
+function [jpod,fsi,pce] = calculate_indicators(n,pods,g_refs,p)
 
     jpod = p(g_refs == n,:);
     fsi = min(max(sum(pods,'omitnan') / (1 - p(g_refs == 0,:)),1),n);
@@ -529,6 +516,7 @@ function plot_indicators(ds,id)
     sub_3 = subplot(2,2,4);
     plot(sub_3,ds.DatesNum,pce);
     set(sub_3,'YLim',plot_limits(pce,0.1,0));
+    set(sub_3,'YTickLabels',arrayfun(@(x)sprintf('%.2f%%',x),get(sub_3,'YTick') .* 100,'UniformOutput',false));
     title(sub_3,'Probability of Cascade Effects');
     
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
@@ -539,10 +527,7 @@ function plot_indicators(ds,id)
     else
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
-    
-    set(sub_1,'YTickLabels',arrayfun(@(x)sprintf('%.2f%%',x),get(sub_1,'YTick') .* 100,'UniformOutput',false));
-    set(sub_3,'YTickLabels',arrayfun(@(x)sprintf('%.2f%%',x),get(sub_3,'YTick') .* 100,'UniformOutput',false));
-    
+
     figure_title('Indicators');
 
     pause(0.01);

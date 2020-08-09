@@ -1,5 +1,5 @@
 % [INPUT]
-% p = A vector of floats (Inf,Inf) of length t representing the log prices.
+% p = A vector of floats (-Inf,Inf) of length t representing the log prices.
 % sw = An integer [500,Inf) representing the number of sweeps (optional, default=1000).
 % c = A float (0,Inf) representing the starting coefficient value (optional, default=0.01).
 % s2 = A float (0,Inf) representing the starting variance of innovations (optional, default=0.0004).

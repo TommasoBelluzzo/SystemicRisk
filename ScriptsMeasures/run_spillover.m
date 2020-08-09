@@ -4,9 +4,9 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % bws = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
-% lags = An integer [1,3] representing the number of lags of the VAR model in the variance decomposition (optional, default=2).
-% h = An integer [1,10] representing the prediction horizon of the variance decomposition (optional, default=4).
-% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type of the variance decomposition (optional, default='G').
+% lags = An integer [1,3] representing the number of lags of the VAR model used by the variance decomposition (optional, default=2).
+% h = An integer [1,10] representing the prediction horizon used by the variance decomposition (optional, default=4).
+% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type used by the variance decomposition (optional, default='G').
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -344,30 +344,6 @@ function [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover
 
 end
 
-function c_hat = nearest_spd(c)
-
-    a = (c + c.') ./ 2;
-    [~,s,v] = svd(a);
-    h = v * s * v.';
-
-    c_hat = (a + h) ./ 2;
-    c_hat = (c_hat + c_hat.') ./ 2;
-
-    k = 0;
-    p = 1;
-
-    while (p ~= 0)
-        [~,p] = chol(c_hat,'upper');
-        k = k + 1;
-
-        if (p ~= 0)
-            d = min(eig(c_hat));
-            c_hat = c_hat + (((-d * k^2) + eps(d)) * eye(size(c)));
-        end
-    end
-
-end
-
 function [step_indices,step_results] = steps_interpolation(data)
 
     n = data.N;
@@ -413,135 +389,6 @@ function [step_indices,step_results] = steps_interpolation(data)
         
         step_results{i} = step_result;
     end
-
-end
-
-function vd = variance_decomposition(r,lags,h,fevd) 
-
-    [t,n] = size(r);
-    d = max(n * 5,t) - t;
-    k = t + d - lags;
-
-    if (d > 0)
-        mu = ones(d,1) .* mean(r,1);
-        sigma = ones(d,1) .* std(r,1);
-
-        rho = corr(r);
-        rho(isnan(rho)) = 0;
-        rho = nearest_spd(rho);
-
-        z = (normrnd(mu,sigma,[d n]) * chol(rho,'upper')) + (0.01 .* randn(d,n));
-
-        r = [r; z];
-    end
-
-    nan_indices = isnan(r);
-    r(nan_indices) = 0;
-
-    zero_indices = find(~r);
-    r(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
-
-    novar_indices = find(var(r,1) == 0);
-    r(:,novar_indices) = r(:,novar_indices) + ((-9e-9 .* rand(size(r(:,novar_indices)))) + 1e-8);
-
-    e = [r(1:lags,:); r(lags+1:end,:)];
-
-    ar_first = n + 1;
-    ar_start = (lags * n^2) + ar_first;
-    trend = ar_start:(ar_start+n-1);
-
-    params = (lags * n^2) + (2 * n);
-    f = NaN(params,1);
-    f(trend) = zeros(n,1);
-    fs = true(params,1);
-    fs(trend) = false;
-
-    z = zeros(n,params);
-    z(:,1:n) = eye(n);
-
-    x = cell(k,1);
-    y = e(lags+1:end,:);
-
-    for t = (lags + 1):(lags + k)
-        ar_start = ar_first;
-        ar_x = t - lags;
-
-        for i = 1:lags
-            indices = ar_start:(ar_start + n^2 - 1);
-            z(:,indices) = kron(e(t-i,:),eye(n));
-            ar_start = indices(end) + 1;
-        end
-
-        z(:,trend) = ar_x * eye(n);
-        x{ar_x} = z(:,fs);
-        y(ar_x,:) = y(ar_x,:) - (z(:,~fs) * f(~fs)).';
-    end
-
-    [f(fs),covariance] = mvregress(x,y,'CovType','full','VarFormat','beta','VarType','fisher','MaxIter',1000);
-
-    coefficients = cell(1,lags);
-    ar_start = ar_first;
-
-    for i = 1:lags
-        indices = ar_start:(ar_start + n^2 - 1);
-        coefficients{i} = reshape(f(indices),n,n);
-        ar_start = indices(end) + 1;
-    end
-    
-    g = zeros(n * lags,n * lags);
-    g(1:n,:) = cell2mat(coefficients);
-
-    if (lags > 2)
-        g(n+1:end,1:(end-n)) = eye((lags - 1) * n);
-    end
-
-    ma = cell(h,1);
-    ma{1} = eye(n);
-    ma{2} = g(1:n,1:n);
-
-    if (h >= 3)
-        for i = 3:h
-            temp = g^i;
-            ma{i} = temp(1:n,1:n);
-        end
-    end
-    
-    irf = zeros(h,n,n);
-    vds = zeros(h,n,n);
-    
-    if (strcmp(fevd,'G'))
-        sigma = diag(covariance);
-
-        for i = 1:n
-            indices = zeros(n,1);
-            indices(i,1) = 1;
-
-            for j = 1:h
-                irf(j,:,i) = (sigma(i,1) .^ -0.5) .* (ma{j} * covariance * indices);
-            end
-        end
-    else
-        covariance = nearest_spd(covariance);
-        covariance_dec = chol(covariance,'lower');
-
-        for i = 1:n
-            indices = zeros(n,1);
-            indices(i,1) = 1;
-
-            for j = 1:h
-                irf(j,:,i) = ma{j} * covariance_dec * indices; 
-            end
-        end
-    end
-
-    irf_cs = cumsum(irf.^2);
-    irf_cs_sum = sum(irf_cs,3);
-
-    for i = 1:n
-        vds(:,:,i) = irf_cs(:,:,i) ./ irf_cs_sum;     
-    end
-
-    vd = squeeze(vds(h,:,:));
 
 end
 
