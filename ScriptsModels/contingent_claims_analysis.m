@@ -11,7 +11,7 @@
 % [OUTPUT]
 % el = A column vector of floats [0,Inf) of length n representing the expected losses.
 % cl = A column vector of floats [0,Inf) of length n representing the contingent liabilities.
-% a = A column vector of floats [0,Inf) of length n representing the contingent alphas.
+% a = A column vector of floats [0,1] of length n representing the contingent alphas.
 
 function [el,cl,a] = contingent_claims_analysis(varargin)
 
