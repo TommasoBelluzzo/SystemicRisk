@@ -203,7 +203,11 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         liabilities = [];
     end
     
-    [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity);
+    if (isempty(prices))
+        [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity);
+    else
+        [defaults,insolvencies] = detect_distress(prices,volumes,capitalizations,cds,equity);
+    end
     
     if (any(defaults == 1))
         error('The dataset contains firms defaulted since the beginning of the observation period that must be removed.');
@@ -705,19 +709,22 @@ end
 
 %% COMPUTATIONS
 
-function [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity)
+function [defaults,insolvencies] = detect_distress(shares,volumes,capitalizations,cds,equity)
 
-    [t,n] = size(returns);
+    [t,n] = size(shares);
     threshold = round(t * 0.05,0);
     
-    data = [returns volumes capitalizations cds];
+    data = {shares volumes capitalizations cds};
+    k = sum(~cellfun(@isempty,data,'UniformOutput',true));
+    
+    data = [shares volumes capitalizations cds];
     defaults = NaN(1,n);
 
     for i = 1:n
-        data_i = data(:,i:n:(n * 4));
-        defaults_i = NaN(1,4);
+        data_i = data(:,i:n:(n * k));
+        defaults_i = NaN(1,k);
         
-        for j = 1:4
+        for j = 1:k
             data_ij = data_i(:,j);
             
             f = find(diff([1; data_ij; 1] == 0));

@@ -604,39 +604,32 @@ function plot_indicators(ds,target,id)
         ap = ds.AverageProbabilities(:,offset);
         jp = ds.JointProbabilities(:,offset);
     end
-
-    color_min = [1 1 1];
-    color_max = [0.749 0.862 0.933];
-    gradient = [linspace(color_min(1),color_max(1),100).', linspace(color_min(2),color_max(2),100).', linspace(color_min(3),color_max(3),100).'];
+    
+    ap = smooth_data(ap);
+    jp = smooth_data(jp);
 
     f = figure('Name',['Regime-Switching Measures > Indicators ' model],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
-    sub_1 = subplot(2,15,1:14);
-    imagesc(sub_1,[ds.DatesNum(1) ds.DatesNum(end)],[],ap.');
-    colormap(sub_1,gradient);
+    sub_1 = subplot(2,1,1);
+    plot(ds.DatesNum,ap);
+    set(sub_1,'YLim',[0 1]);
+    set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
     t1 = title(sub_1,'Average Probability of High Variance');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
-    set(t1,'Position',[0.5125 t1_position(2) t1_position(3)]);
+    set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
     
-    sub_2 = subplot(2,15,16:29);
-    imagesc(sub_2,[ds.DatesNum(1) ds.DatesNum(end)],[],jp.');
-    colormap(sub_2,gradient);
+    sub_2 = subplot(2,1,2);
+    plot(ds.DatesNum,jp);
+    set(sub_2,'YLim',plot_limits(jp,0,0));
+    set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick') .* 100,'UniformOutput',false));
     t2 = title(sub_2,'Joint Probability of High Variance');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
-    set(t2,'Position',[0.5125 t2_position(2) t2_position(3)]);
-    
-    sub_3 = subplot(2,15,[15 30]);
-    set(sub_3,'Units','normalized');
-    pos = get(subplot(2,15,[15 30]),'Position');
-    delete(sub_3);
+    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    c = colorbar('Units','normalized','Position',[pos(1) pos(2) pos(3) (pos(4) - 0.012)]);
-    set(c,'Ticks',[0.001 0.1:0.1:0.9 0.999],'TickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
-
-    set([sub_1 sub_2],'XTickLabelRotation',45);
-    set([sub_1 sub_2],'YTick',[]);
+    set([sub_1 sub_2],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set([sub_1 sub_2],'XGrid','on','YGrid','on');
 
     if (ds.MonthlyTicks)
         date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');

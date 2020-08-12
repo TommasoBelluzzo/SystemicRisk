@@ -515,8 +515,7 @@ function plot_indicators(ds,id)
     
     sub_3 = subplot(2,2,4);
     plot(sub_3,ds.DatesNum,pce);
-    set(sub_3,'YLim',plot_limits(pce,0.1,0));
-    set(sub_3,'YTickLabels',arrayfun(@(x)sprintf('%.2f%%',x),get(sub_3,'YTick') .* 100,'UniformOutput',false));
+    set(sub_3,'YLim',plot_limits(pce,0,0));
     title(sub_3,'Probability of Cascade Effects');
     
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);

@@ -2,7 +2,7 @@
 % va = A vector of floats [0,Inf) of length n representing the market values of assets.
 % vap = Input argument representing the distributional parameters of assets whose type depends on the chosen option pricing model:
 %   - for Black-Scholes-Merton, a float [0,Inf) representing the annualized volatility of assets;
-%   - for Gram-Charlier, a row vector of floats (-Inf,Inf) of length 3 whose values represent respectively the annualized volatility, skewness and kurtosis of assets.
+%   - for Gram-Charlier, a row vector of floats (-Inf,Inf) of length 3 whose values represent respectively the annualized volatility, skewness and excess kurtosis of assets.
 % cds = A vector of floats [0,Inf) of length n representing the credit default swap spreads.
 % db = A float or a vector of floats [0,Inf) of length n representing the default barrier.
 % r = A float or a vector of floats (-Inf,Inf) of length n representing the annualized risk-free interest rate.

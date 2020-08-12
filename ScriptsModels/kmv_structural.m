@@ -9,7 +9,7 @@
 % va = A column vector of floats of length n representing the value of assets.
 % vap = Output argument representing the distributional parameters of assets whose type depends on the chosen option pricing model:
 %   - for Black-Scholes-Merton, a float [0,Inf) representing the annualized volatility of assets;
-%   - for Gram-Charlier, a row vector of floats (-Inf,Inf) of length 3 whose values represent respectively the annualized volatility, skewness and kurtosis of assets.
+%   - for Gram-Charlier, a row vector of floats (-Inf,Inf) of length 3 whose values represent respectively the annualized volatility, skewness and excess kurtosis of assets.
 
 function [va,vap] = kmv_structural(varargin)
 

@@ -32,7 +32,7 @@ function dip = distress_insurance_premium(varargin)
     lgd = ipr.lgd;
     c = ipr.c;
     l = ipr.l;
-	s = min(ipr.s,n);
+    s = min(ipr.s,n);
 
     nargoutchk(1,1);
 
@@ -294,7 +294,7 @@ function [n,indices,r,cds,lb] = validate_input(r,cds,lb)
         error(['The value of ''lb'' is invalid. Expected input to be an array of ' num2str(n_tot) ' elements.']);
     end
     
-	indices = (sum(isnan(r),1) == 0) & ~isnan(cds) & ~isnan(lb);
+    indices = (sum(isnan(r),1) == 0) & ~isnan(cds) & ~isnan(lb);
     n = sum(indices);
     
     if (n < 2)
