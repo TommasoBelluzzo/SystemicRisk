@@ -202,5 +202,5 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 
 ## Screenshots
 
-![Screenshots](https://i.imgur.com/Ss8wWPc.gif)
+![Screenshots](https://i.imgur.com/yvze07B.gif)
  
