@@ -140,7 +140,7 @@ The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sect
 #### Risk-Free Rate: 3M Treasury Bill Rate
 
 #### State Variables (8):
-* **FFR:** the effective federal funds rate rate.
+* **FFR:** the effective federal funds rate.
 * **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
 * **CREDIT_SPREAD:** the difference between the BAA corporate bond rate and the 10Y treasury bond rate.
 * **LIQUIDITY_SPREAD:** the difference between the 3M GC repo rate and the 3M treasury bill rate.
