@@ -10,8 +10,8 @@ This framework calculates and analyses the following systemic risk measures:
   * `Principal Component Analysis`
 * **CONNECTEDNESS MEASURES**
   * `DCI (Dynamic Causality Index)`
-  * `"In & Out" Connections`
-  * `"In & Out - Other" Connections`
+  * `CIO ("In & Out" Connections)`
+  * `CIOO ("In & Out - Other" Connections)`
   * `Network Centralities: Betweenness, Degree, Closeness, Clustering, Eigenvector & Katz`
   * *References*: [Billio et al. (2011)](https://doi.org/10.2139/ssrn.1963216)
 * **CROSS-ENTROPY MEASURES**
