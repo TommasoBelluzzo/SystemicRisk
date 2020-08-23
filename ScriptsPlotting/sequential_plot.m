@@ -182,7 +182,7 @@ function core = validate_core(core)
     x_dates = validate_field(core,'XDates',{'cell'},{'nonempty' 'size' [1 plots]},{'logical'},{'optional' 'scalar'});
     validate_field(core,'XGrid',{'cell'},{'nonempty' 'size' [1 plots]},{'logical'},{'scalar'});
     validate_field(core,'XLabel',{'cell'},{'nonempty' 'size' [1 plots]},{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
-    validate_field(core,'XLimits',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'real' 'finite' 'nonempty' 'size' [NaN 2]});
+    validate_field(core,'XLimits',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [NaN 2]});
     validate_field(core,'XRotation',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' '>=' 0 '<=' 360 'scalar'});
     validate_field(core,'XTick',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [1 NaN]});
     x_ticklabels = validate_field(core,'XTickLabels',{'cell'},{'nonempty' 'size' [1 plots]},{'cellfun'},{'optional' 'nonempty' 'size' [1 NaN]});
@@ -198,7 +198,7 @@ function core = validate_core(core)
     
     validate_field(core,'YGrid',{'cell'},{'nonempty' 'size' [1 plots]},{'logical'},{'scalar'});
     validate_field(core,'YLabel',{'cell'},{'nonempty' 'size' [1 plots]},{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
-    validate_field(core,'YLimits',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'real' 'finite' 'nonempty' 'size' [NaN 2]});
+    validate_field(core,'YLimits',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [NaN 2]});
     validate_field(core,'YRotation',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' '>=' 0 '<=' 360 'scalar'});
     validate_field(core,'YTick',{'cell'},{'nonempty' 'size' [1 plots]},{'double'},{'optional' 'real' 'finite' 'nonempty' 'size' [1 NaN]});
     validate_field(core,'YTickLabels',{'cell'},{'nonempty' 'size' [1 plots]},{'cellfun'},{'optional' 'nonempty' 'size' [1 NaN]});

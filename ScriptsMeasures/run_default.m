@@ -3,13 +3,13 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.45).
-% lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used for the calculation of D2C and D2D default barriers (optional, default=3).
+% op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model (optional, default='BSM').
+% lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used to calculate D2C and D2D (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
-% c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
+% rr = A float [0,1] representing the recovery rate in case of default used to calculate the DIP (optional, default=0.45).
+% f = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors used to calculate the DIP (optional, default=2).
 % l = A float [0.05,0.20] representing the importance sampling threshold used to calculate the DIP (optional, default=0.10).
-% s = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors used to calculate the DIP (optional, default=2).
-% op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model used by the Systemic CCA framework (optional, default='BSM').
+% c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
 % k = A float [0.90,0.99] representing the confidence level used by the Systemic CCA framework (optional, default=0.95).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -27,13 +27,13 @@ function [result,stopped] = run_default(varargin)
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
-        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
+        ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM' 'GC'})));
         ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 'vector'}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
-        ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
+        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
+        ip.addOptional('f',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
         ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
-        ip.addOptional('s',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
-        ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM' 'GC'})));
+        ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -44,30 +44,30 @@ function [result,stopped] = run_default(varargin)
     ds = validate_dataset(ipr.ds,'default');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
-    s = validate_s(ipr.s,ds.N);
     bw = ipr.bw;
-    rr = ipr.rr;
+    op = ipr.op;
     lst = validate_lst(ipr.lst,ds.N);
     car = ipr.car;
-    c = ipr.c;
+    rr = ipr.rr;
+    f = validate_f(ipr.f,ds.N);
     l = ipr.l;
-    op = ipr.op;
+    c = ipr.c;
     k = ipr.k;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s,op,k,analyze);
+    [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,k,analyze);
 
 end
 
-function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s,op,k,analyze)
+function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k);
+    ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k);
     n = ds.N;
     t = ds.T;
     
@@ -159,7 +159,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
         cds = distress_data(ds.CDS,ds.Insolvencies);
         lb = distress_data(ds.Liabilities,ds.Insolvencies);
 
-        cl = ds.SCCAContingentLiabilities;
+        cl = ds.SCCACL;
         cl(isnan(cl)) = 0;
         windows_cl = extract_rolling_windows(cl,ds.BW);
 
@@ -168,7 +168,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.C,ds.L,ds.S,windows_cl{i},ds.K);
+            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.F,ds.L,ds.C,windows_cl{i},ds.K);
         end
 
         for i = 1:t
@@ -236,8 +236,9 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,rr,lst,car,c,l,s
         safe_plot(@(id)plot_sequence(ds,'D2C',true,id));
         safe_plot(@(id)plot_dip(ds,id));
         safe_plot(@(id)plot_scca(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA Expected Losses',false,id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA Contingent Liabilities',false,id));
+        safe_plot(@(id)plot_sequence(ds,'SCCA EL',false,id));
+        safe_plot(@(id)plot_sequence(ds,'SCCA CL',false,id));
+        safe_plot(@(id)plot_rankings(ds,id));
     end
     
     result = ds;
@@ -246,7 +247,7 @@ end
 
 %% DATA
 
-function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
+function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
 
     q = [(0.900:0.025:0.975) 0.99];
     q = q(q >= k);
@@ -259,6 +260,7 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     ds.C = c;
     ds.CAR = car;
     ds.DT = max(0.5,0.7 - (0.3 .* (1 ./ lst)));
+    ds.F = f;
     ds.K = k;
     ds.L = l;
     ds.LCAR = 1 / (1 - car);
@@ -266,39 +268,56 @@ function ds = initialize(ds,bw,rr,lst,car,c,l,s,op,k)
     ds.LST = lst;
     ds.OP = op;
     ds.RR = rr;
-    ds.S = s;
     ds.ST =  1 ./ (1 + lst);
 
-    car_label = sprintf('%.0f%%',(ds.CAR * 100));
-    ds.LabelsIndicators = {'Average D2D' 'Average D2C' 'Portfolio D2D' 'Portfolio D2C' 'DIP' 'SCCA Joint ES'};
-    ds.LabelsSheet = {'D2D' ['D2C (CAR=' car_label ')'] 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
-    ds.LabelsSheetSimple = {'D2D' 'D2C' 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
+    car_label = sprintf('%.1f%%',(ds.CAR * 100));
+    f_label = sprintf('%d',ds.F);
+    k_label = sprintf('%.1f%%',(ds.K * 100));
+    l_label = sprintf('%.1f%%',(ds.L * 100));
+    rr_label = sprintf('%.1f%%',(ds.RR * 100));
+    
+    op_label =  [' (' ds.OP ')'];
+    d2c_label =  [' (' ds.OP ', CAR=' car_label ')'];
+    dip_label =  [' (RR=' rr_label ', F=' f_label ', L=' l_label ')'];
+    scca_label = [' (' ds.OP ', K=' k_label ')'];
+
+    ds.LabelsMeasuresSimple = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL'};
+    ds.LabelsMeasures = {['D2D' op_label] ['D2C' d2c_label] ['SCCA EL' op_label] ['SCCA CL' op_label]};
+    
+    ds.LabelsIndicatorsSimple = {'Average D2D' 'Average D2C' 'Portfolio D2D' 'Portfolio D2C' 'DIP' 'SCCA JES'};
+	ds.LabelsIndicatorsShort = {'AD2D' 'AD2C' 'PD2D' 'PD2C' 'DIP' 'SCCAJES'};
+    ds.LabelsIndicators = {['Average D2D' op_label] ['Average D2C' d2c_label] ['Portfolio D2D' op_label] ['Portfolio D2C' d2c_label] ['DIP' dip_label] ['SCCA JES' scca_label]};
+
+    ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Indicators'}];
+    ds.LabelsSheets = [ds.LabelsMeasures {'Indicators'}];
 
     ds.D2D = NaN(t,n);
     ds.D2C = NaN(t,n);
 
     ds.SCCAAlphas = NaN(t,n);
-    ds.SCCAExpectedLosses = NaN(t,n);
-    ds.SCCAContingentLiabilities = NaN(t,n);
+    ds.SCCAEL = NaN(t,n);
+    ds.SCCACL = NaN(t,n);
     ds.SCCAJointVaRs = NaN(t,numel(q));
 
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
+    
+    ds.ComparisonReferences = {'Indicators' [] strcat({'DE-'},ds.LabelsIndicatorsShort)};
 
 end
 
-function ds = finalize_1(ds,window_results)
+function ds = finalize_1(ds,results)
   
     n = ds.N;
 
     for i = 1:n
-        window_result = window_results{i};
+        result = results{i};
 
-        ds.D2D(1:window_result.Offset1,i) = window_result.D2D;
-        ds.D2C(1:window_result.Offset1,i) = window_result.D2C;
+        ds.D2D(1:result.Offset1,i) = result.D2D;
+        ds.D2C(1:result.Offset1,i) = result.D2C;
 
-        ds.SCCAAlphas(1:window_result.Offset2,i) = window_result.SCCAAlphas;
-        ds.SCCAExpectedLosses(1:window_result.Offset2,i) = window_result.SCCAExpectedLosses;
-        ds.SCCAContingentLiabilities(1:window_result.Offset2,i) = window_result.SCCAContingentLiabilities;
+        ds.SCCAAlphas(1:result.Offset2,i) = result.SCCAAlphas;
+        ds.SCCAEL(1:result.Offset2,i) = result.SCCAEL;
+        ds.SCCACL(1:result.Offset2,i) = result.SCCACL;
     end
 
     [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds);
@@ -306,23 +325,27 @@ function ds = finalize_1(ds,window_results)
     ds.Indicators(:,2) = d2c_avg;
     ds.Indicators(:,3) = d2d_por;
     ds.Indicators(:,4) = d2c_por;
+    
+    [rc,rs] = kendall_rankings(ds,ds.LabelsMeasuresSimple);
+    ds.RankingConcordance = rc;
+    ds.RankingStability = rs;
 
 end
 
-function ds = finalize_2(ds,window_results)
+function ds = finalize_2(ds,results)
 
     t = ds.T;
 
     for i = 1:t
-        window_result = window_results{i};
+        result = results{i};
         
-        ds.SCCAJointVaRs(i,:) = window_result.SCCAJointVaRs;
+        ds.SCCAJointVaRs(i,:) = result.SCCAJointVaRs;
 
-        ds.Indicators(i,5) = window_result.DIP;
-        ds.Indicators(i,6) = window_result.SCCAJointES;
+        ds.Indicators(i,5) = result.DIP;
+        ds.Indicators(i,6) = result.SCCAJointES;
     end
     
-    w = round(nthroot(ds.BW,1.81),0); 
+    w = max(round(nthroot(ds.BW,1.81),0),5); 
     ds.Indicators(:,5) = sanitize_data(ds.Indicators(:,5),ds.DatesNum,w,[]);
 
 end
@@ -351,10 +374,10 @@ function out_file = validate_output(out_file)
     
 end
 
-function s = validate_s(s,n)
+function f = validate_f(f,n)
 
-    if (s > n)
-        error(['The amount of systematic risk factors used to calculate the DIP must be less than or equal to the number of firms (' num2str(n) ').']);
+    if (f > n)
+        error(['The value of ''f'' is invalid. Expected input to be less than or equal to (' num2str(n) ').']);
     end
     
 end
@@ -378,8 +401,8 @@ function out_temp = validate_template(out_temp)
             error('The dataset file is not a valid Excel spreadsheet.');
         end
     end
-    
-    sheets = {'D2D' 'D2C' 'SCCA Expected Losses' 'SCCA Contingent Liabilities' 'Indicators'};
+
+    sheets = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL' 'Indicators'};
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
@@ -429,16 +452,16 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    for i = 1:(numel(ds.LabelsSheetSimple) - 1)
-        sheet = ds.LabelsSheetSimple{i};
+    for i = 1:(numel(ds.LabelsSheetsSimple) - 1)
+        sheet = ds.LabelsSheetsSimple{i};
         measure = strrep(sheet,' ','');
 
         tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
         writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
     end
 
-    tab = [dates_str array2table(ds.Indicators,'VariableNames',strrep(ds.LabelsIndicators,' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);    
+    tab = [dates_str array2table(ds.Indicators,'VariableNames',strrep(ds.LabelsIndicatorsSimple,' ','_'))];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
 
     if (ispc())
         try
@@ -453,7 +476,7 @@ function write_results(ds,temp,out)
             for i = 1:numel(ds.LabelsSheet)
                 exc_wb.Sheets.Item(ds.LabelsSheetSimple{i}).Name = ds.LabelsSheet{i};
             end
-            
+
             exc_wb.Save();
             exc_wb.Close();
             excel.Quit();
@@ -499,16 +522,16 @@ function window_results = main_loop_1(firm_data,offsets,r,st,dt,lcar,op)
     window_results.D2D = d2d;
     window_results.D2C = d2c;
     window_results.SCCAAlphas = a;
-    window_results.SCCAContingentLiabilities = cl;
-    window_results.SCCAExpectedLosses = el;
+    window_results.SCCAEL = el;
+    window_results.SCCACL = cl;
 
 end
 
-function window_results = main_loop_2(r,cds,lb,lgd,c,l,s,cl,k)
+function window_results = main_loop_2(r,cds,lb,lgd,f,l,c,cl,k)
 
     window_results = struct();
 
-    dip = distress_insurance_premium(r,cds,lb,lgd,c,l,s);
+    dip = distress_insurance_premium(r,cds,lb,lgd,f,l,c);
     window_results.DIP = dip;
 
     [joint_vars,joint_es] = mgev_joint_risks(cl,k);
@@ -631,6 +654,7 @@ function plot_dip(ds,id)
     plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
+    title(sub_1,ds.LabelsIndicators{5});
     
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -652,12 +676,109 @@ function plot_dip(ds,id)
 
 end
 
+function plot_rankings(ds,id)
+
+    labels = ds.LabelsMeasuresSimple;
+    n = numel(labels);
+    seq = 1:n;
+    off = seq + 0.5;
+
+    [rs,order] = sort(ds.RankingStability);
+    rs_names = labels(order);
+    
+    rc = ds.RankingConcordance;
+    rc(rc <= 0.5) = 0;
+    rc(rc > 0.5) = 1;
+    rc(logical(eye(n))) = 0.5;
+    
+    [rc_x,rc_y] = meshgrid(seq,seq);
+    rc_x = rc_x(:) + 0.5;
+    rc_y = rc_y(:) + 0.5;
+    rc_text = cellstr(num2str(ds.RankingConcordance(:),'%.2f'));
+
+    f = figure('Name','Default Measures > Rankings','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+
+    sub_1 = subplot(1,2,1);
+    bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);
+    set(sub_1,'XTickLabel',rs_names);
+    set(sub_1,'YLim',[0 1]);
+    title(sub_1,'Ranking Stability');
+
+    if (~verLessThan('MATLAB','8.4'))
+        tl = get(sub_1,'XTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
+            else
+                tl_new{i} = ['\bf{' tl_i '}'];
+            end
+        end
+
+        set(sub_1,'XTickLabel',tl_new);
+    end
+    
+    sub_2 = subplot(1,2,2);
+    pcolor(padarray(rc,[1 1],'post'));
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
+    axis('image');
+    text(rc_x,rc_y,rc_text,'FontSize',9,'HorizontalAlignment','center');
+    set(sub_2,'FontWeight','bold','TickLength',[0 0]);
+    set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
+    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
+    t2 = title(sub_2,'Ranking Concordance');
+    t2_position = get(t2,'Position');
+    set(t2,'Position',[t2_position(1) 0.2897 t2_position(3)]);
+
+    if (~verLessThan('MATLAB','8.4'))
+        tl = get(sub_2,'XTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
+            else
+                tl_new{i} = ['\bf{' tl_i '}'];
+            end
+        end
+
+        set(sub_2,'XTickLabel',tl_new);
+        
+        tl = get(sub_2,'YTickLabel');
+        tl_new = cell(size(tl));
+
+        for i = 1:length(tl)
+            tl_i = tl{i};
+
+            if (ismember(tl_i,labels(1:3)))
+                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '} '];
+            else
+                tl_new{i} = ['\bf{' tl_i '} '];
+            end
+        end
+
+        set(sub_2,'YTickLabel',tl_new);
+    end
+    
+    figure_title('Rankings (Kendall''s W)');
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
+
+end
+
 function plot_scca(ds,id)
 
-    el = sum(ds.SCCAExpectedLosses,2,'omitnan');
-    cl = sum(ds.SCCAContingentLiabilities,2,'omitnan');
+    el = sum(ds.SCCAEL,2,'omitnan');
+    cl = sum(ds.SCCACL,2,'omitnan');
     alpha = cl ./ el;
-    joint_es = ds.Indicators(:,6);
+    jes = ds.Indicators(:,6);
 
     f = figure('Name','Default Measures > Systemic CCA','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -674,17 +795,11 @@ function plot_scca(ds,id)
     
     sub_2 = subplot(2,2,3);
     plot(sub_2,ds.DatesNum,smooth_data(alpha),'Color',[0.000 0.447 0.741]);
-    t2 = title(sub_2,'Average Alpha');
-    set(t2,'Units','normalized');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
+    title(sub_2,'Average Alpha');
     
     sub_3 = subplot(2,2,4);
-    plot(sub_3,ds.DatesNum,smooth_data(joint_es),'Color',[0.000 0.447 0.741]);
-    t3 = title(sub_3,['Joint ES (K=' sprintf('%.0f%%',(ds.K * 100)) ')']);
-    set(t3,'Units','normalized');
-    t3_position = get(t3,'Position');
-    set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
+    plot(sub_3,ds.DatesNum,smooth_data(jes),'Color',[0.000 0.447 0.741]);
+    title(sub_3,['Joint ES (K=' sprintf('%.0f%%',(ds.K * 100)) ')']);
     
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_2 sub_3],'XGrid','on','YGrid','on');
@@ -718,8 +833,8 @@ function plot_sequence(ds,target,distance,id)
     
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
-    [~,index] = ismember(target,ds.LabelsSheetSimple);
-    plots_title = repmat(ds.LabelsSheet(index),1,n);
+    [~,index] = ismember(target,ds.LabelsMeasuresSimple);
+    plots_title = repmat(ds.LabelsMeasures(index),1,n);
     
     x_limits = [dn(1) dn(end)];
 

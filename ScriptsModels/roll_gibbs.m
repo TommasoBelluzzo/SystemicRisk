@@ -1,6 +1,6 @@
 % [INPUT]
 % p = A vector of floats (-Inf,Inf) of length t representing the log prices.
-% sw = An integer [500,Inf) representing the number of sweeps (optional, default=1000).
+% w = An integer [500,Inf) representing the number of sweeps (optional, default=1000).
 % c = A float (0,Inf) representing the starting coefficient value (optional, default=0.01).
 % s2 = A float (0,Inf) representing the starting variance of innovations (optional, default=0.0004).
 %
@@ -14,7 +14,7 @@ function is = roll_gibbs(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
-        ip.addOptional('sw',1000,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
+        ip.addOptional('w',1000,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
         ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
         ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
     end
@@ -23,24 +23,24 @@ function is = roll_gibbs(varargin)
     
     ipr = ip.Results;
     p = ipr.p;
-    sw = ipr.sw;
+    w = ipr.w;
     c = ipr.c;
     s2 = ipr.s2;
 
     nargoutchk(1,1);
 
-    is = roll_gibbs_internal(p,sw,c,s2);
+    is = roll_gibbs_internal(p,w,c,s2);
 
 end
 
-function is = roll_gibbs_internal(p,sw,c,s2)
+function is = roll_gibbs_internal(p,w,c,s2)
 
     p = p(:);
     dp = diff(p);
 
     q = [1; sign(dp)];
 
-    for i = 1:sw
+    for i = 1:w
         dq = diff(q);
 
         d = 1 + ((1 / s2) * (dq.' * dq));

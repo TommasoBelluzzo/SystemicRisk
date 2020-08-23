@@ -192,11 +192,18 @@ function ds = initialize(ds,rs2,rs3,rs4)
     n = ds.N;
     t = ds.T;
 
-    m = sum([rs2 rs3 rs4]);
+    rs = [rs2 rs3 rs4];
+    rs_seq = 2:4;
+    rs_seq = arrayfun(@(x)sprintf('RS%d-',x),rs_seq(rs),'UniformOutput',false);
+    
+    m = sum(rs);
     
     ds.RS2 = rs2;
     ds.RS3 = rs3;
     ds.RS4 = rs4;
+    
+    ds.LabelsSheetsSimple = {'Indicators' 'RS2 CM' 'RS2 CV' 'RS2 SP' 'RS3 CM' 'RS3 CV' 'RS3 SP' 'RS4 CM' 'RS4 CV' 'RS4 SP'};
+    ds.LabelsSheets = ds.LabelsSheetsSimple;
     
     ds.MeanParams = cell(m,n);
     ds.ConditionalMeans = cell(m,n);
@@ -210,6 +217,11 @@ function ds = initialize(ds,rs2,rs3,rs4)
 
     ds.AverageProbabilities = NaN(t,m);
     ds.JointProbabilities = NaN(t,m);
+    
+    ds.ComparisonReferences = {
+        'AverageProbabilities' [] strcat(rs_seq,{'AP'});
+        'JointProbabilities' [] strcat(rs_seq,{'JP'})
+    };
 
 end
 
@@ -286,7 +298,7 @@ function temp = validate_template(temp)
         end
     end
 
-    sheets = {'Indicators' 'RS2 Conditional Means' 'RS2 Conditional Variances' 'RS2 Smoothed Probabilities' 'RS3 Conditional Means' 'RS3 Conditional Variances' 'RS3 Smoothed Probabilities' 'RS4 Conditional Means' 'RS4 Conditional Variances' 'RS4 Smoothed Probabilities'};
+    sheets = {'Indicators' 'RS2 CM' 'RS2 CV' 'RS2 SP' 'RS3 CM' 'RS3 CV' 'RS3 SP' 'RS4 CM' 'RS4 CV' 'RS4 SP'};
     
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
@@ -337,7 +349,7 @@ function write_results(ds,temp,out)
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
     labels_regimes = repmat({'RS2' 'RS3' 'RS4'},1,2);
-    labels_types = repelem({' Average Probability' ' Joint Probability'},1,3);
+    labels_types = repelem({' AP' ' JP'},1,3);
     labels_indicators = strcat(labels_regimes,labels_types);
     
     if (~ds.RS2)
@@ -366,17 +378,17 @@ function write_results(ds,temp,out)
         data_cmu = cell2mat(ds.ConditionalVariances(offset,:));
         
         tab = [dates_str array2table(data_cmu,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS2 Conditional Means','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{2},'WriteRowNames',true);
         
         data_cs2 = cell2mat(ds.ConditionalVariances(offset,:));
         
         tab = [dates_str array2table(data_cs2,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS2 Conditional Variances','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
 
         data_sprob = cell2mat(ds.SmoothedProbabilities(offset,:));
         
         tab = [dates_str array2table(data_sprob,'VariableNames',strcat(repelem(ds.FirmNames,1,2),repmat({'_HV' '_LV'},1,ds.N)))];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS2 Smoothed Probabilities','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{4},'WriteRowNames',true);
     end
 
     if (ds.RS3)
@@ -390,17 +402,17 @@ function write_results(ds,temp,out)
         data_cmu = cell2mat(ds.ConditionalVariances(offset,:));
 
         tab = [dates_str array2table(data_cmu,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS3 Conditional Means','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{5},'WriteRowNames',true);
 
         data_cs2 = cell2mat(ds.ConditionalVariances(offset,:));
 
         tab = [dates_str array2table(data_cs2,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS3 Conditional Variances','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{6},'WriteRowNames',true);
 
         data_sprob = cell2mat(ds.SmoothedProbabilities(offset,:));
         
         tab = [dates_str array2table(data_sprob,'VariableNames',strcat(repelem(ds.FirmNames,1,3),repmat({'_HV' '_MV' '_LV'},1,ds.N)))];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS3 Smoothed Probabilities','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{7},'WriteRowNames',true);
     end
 
     if (ds.RS4)
@@ -414,17 +426,17 @@ function write_results(ds,temp,out)
         data_cmu = cell2mat(ds.ConditionalVariances(offset,:));
 
         tab = [dates_str array2table(data_cmu,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS4 Conditional Means','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{8},'WriteRowNames',true);
 
         data_cs2 = cell2mat(ds.ConditionalVariances(offset,:));
 
         tab = [dates_str array2table(data_cs2,'VariableNames',ds.FirmNames)];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS4 Conditional Variances','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{9},'WriteRowNames',true);
 
         data_sprob = cell2mat(ds.SmoothedProbabilities(offset,:));
         
         tab = [dates_str array2table(data_sprob,'VariableNames',strcat(repelem(ds.FirmNames,1,4),repmat({'_HV' '_HVC' '_LVC' '_LV'},1,ds.N)))];
-        writetable(tab,out,'FileType','spreadsheet','Sheet','RS4 Smoothed Probabilities','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{10},'WriteRowNames',true);
     end
     
     if (ispc())
@@ -438,21 +450,21 @@ function write_results(ds,temp,out)
             exc_wb = excel.Workbooks.Open(out,0,false);
 
             if (~ds.RS2)
-                exc_wb.Sheets.Item('RS2 Conditional Means').Delete();
-                exc_wb.Sheets.Item('RS2 Conditional Variances').Delete();
-                exc_wb.Sheets.Item('RS2 Smoothed Probabilities').Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{2}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{3}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{4}).Delete();
             end
 
             if (~ds.RS3)
-                exc_wb.Sheets.Item('RS3 Conditional Means').Delete();
-                exc_wb.Sheets.Item('RS3 Conditional Variances').Delete();
-                exc_wb.Sheets.Item('RS3 Smoothed Probabilities').Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{5}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{6}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{7}).Delete();
             end
 
             if (~ds.RS4)
-                exc_wb.Sheets.Item('RS4 Conditional Means').Delete();
-                exc_wb.Sheets.Item('RS4 Conditional Variances').Delete();
-                exc_wb.Sheets.Item('RS4 Smoothed Probabilities').Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{8}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{9}).Delete();
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{10}).Delete();
             end
 
             exc_wb.Save();
@@ -610,32 +622,56 @@ function plot_indicators(ds,target,id)
 
     f = figure('Name',['Regime-Switching Measures > Indicators ' model],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
-    sub_1 = subplot(2,1,1);
-    plot(ds.DatesNum,ap);
-    set(sub_1,'YLim',[0 1]);
-    set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
+    if (all(ap == 0))
+        sub_1 = subplot(2,1,1);
+        area(ds.DatesNum,ones(ds.T,1),'EdgeColor','none','FaceColor',[0.8 0.8 0.8]);
+        hold on;
+            plot([ds.DatesNum(1) ds.DatesNum(end)],[0 1],'Color',[0 0 0],'LineWidth',1.5);
+            plot([ds.DatesNum(1) ds.DatesNum(end)],[1 0],'Color',[0 0 0],'LineWidth',1.5);
+        hold off;
+        set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
+        set(sub_1,'YLim',[0 1],'YTick',[]);
+    else
+        sub_1 = subplot(2,1,1);
+        plot(ds.DatesNum,ap);
+        set(sub_1,'YLim',[0 1]);
+        set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
+        set(sub_1,'XGrid','on','YGrid','on');
+    end
+    
     t1 = title(sub_1,'Average Probability of High Variance');
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
     
-    sub_2 = subplot(2,1,2);
-    plot(ds.DatesNum,jp);
-    set(sub_2,'YLim',plot_limits(jp,0,0));
-    set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick') .* 100,'UniformOutput',false));
+    if (all(jp == 0))
+        sub_2 = subplot(2,1,2);
+        area(ds.DatesNum,ones(ds.T,1),'EdgeColor','none','FaceColor',[0.8 0.8 0.8]);
+        hold on;
+            plot([ds.DatesNum(1) ds.DatesNum(end)],[0 1],'Color',[0 0 0],'LineWidth',1.5);
+            plot([ds.DatesNum(1) ds.DatesNum(end)],[1 0],'Color',[0 0 0],'LineWidth',1.5);
+        hold off;
+        set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
+        set(sub_2,'YLim',[0 1],'YTick',[]);
+    else
+        sub_2 = subplot(2,1,2);
+        plot(ds.DatesNum,jp);
+        set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+        set(sub_2,'YLim',plot_limits(jp,0,0));
+        set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick') .* 100,'UniformOutput',false));
+        set(sub_2,'XGrid','on','YGrid','on');
+        
+        if (ds.MonthlyTicks)
+            date_ticks(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+        else
+            date_ticks(sub_2,'x','yyyy','KeepLimits');
+        end
+    end
+    
     t2 = title(sub_2,'Joint Probability of High Variance');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
-
-    set([sub_1 sub_2],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set([sub_1 sub_2],'XGrid','on','YGrid','on');
-
-    if (ds.MonthlyTicks)
-        date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
-    else
-        date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
-    end
 
     figure_title(['Indicators ' model]);
 

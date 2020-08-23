@@ -178,14 +178,17 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
     
     if (analyze)
         safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
+        safe_plot(@(id)plot_sequence(ds,'Beta',id));
+        safe_plot(@(id)plot_sequence(ds,'VaR',id));
+        safe_plot(@(id)plot_sequence(ds,'ES',id));
         safe_plot(@(id)plot_systemic_averages(ds,id));
-        safe_plot(@(id)plot_correlations(ds,id));
-        safe_plot(@(id)plot_rankings(ds,id));
         safe_plot(@(id)plot_sequence(ds,'CoVaR',id));
         safe_plot(@(id)plot_sequence(ds,'Delta CoVaR',id));
         safe_plot(@(id)plot_sequence(ds,'MES',id));
         safe_plot(@(id)plot_sequence(ds,'SES',id));
         safe_plot(@(id)plot_sequence(ds,'SRISK',id));
+        safe_plot(@(id)plot_correlations(ds,id));
+        safe_plot(@(id)plot_rankings(ds,id));
     end
     
     result = ds;
@@ -206,14 +209,20 @@ function ds = initialize(ds,k,car,sf,d,fr)
     ds.K = k;
     ds.SF = sf;
 
-    car_label = sprintf('%.0f%%',(ds.CAR * 100));
-    d_label = sprintf('%.0f%%',(ds.D * 100));
-    k_label = sprintf('%.0f%%',(ds.K * 100));
-    ds.LabelsSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
-    ds.Labels = {'Beta' ['VaR (K=' k_label ')'] ['ES (K=' k_label ')'] ['CoVaR (K=' k_label ')'] ['Delta CoVaR (K=' k_label ')'] ['MES (K=' k_label ')'] ['SES (CAR=' car_label ')'] ['SRISK (D=' d_label ', CAR=' car_label ')'] 'Averages'};
-
-    m = numel(ds.LabelsSimple) - 1;
+    car_label = sprintf('%.1f%%',(ds.CAR * 100));
+    d_label = sprintf('%.1f%%',(ds.D * 100));
+    k_label = sprintf('%.1f%%',(ds.K * 100));
     
+    k_all_label = [' (K=' k_label ')'];
+    ses_label =  [' (CAR=' car_label ')'];
+    srisk_label = [' (D=' d_label ', CAR=' car_label ')'];
+
+    ds.LabelsMeasuresSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK'};
+    ds.LabelsMeasures = {'Beta' ['VaR' k_all_label] ['ES' k_all_label] ['CoVaR' k_all_label] ['Delta CoVaR' k_all_label] ['MES' k_all_label] ['SES' ses_label] ['SRISK' srisk_label]};
+
+    ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Averages'}];
+    ds.LabelsSheets = [ds.LabelsMeasures {'Averages'}];
+
     ds.Beta = NaN(t,n);
     ds.VaR = NaN(t,n);
     ds.ES = NaN(t,n);
@@ -222,10 +231,12 @@ function ds = initialize(ds,k,car,sf,d,fr)
     ds.MES = NaN(t,n);
     ds.SES = NaN(t,n);
     ds.SRISK = NaN(t,n);
-    ds.Averages = NaN(t,m);
+    ds.Averages = NaN(t,8);
 
-    ds.RankingConcordance = NaN(m,m);
-    ds.RankingStability = NaN(1,m);
+    ds.RankingConcordance = NaN(8,8);
+    ds.RankingStability = NaN(1,8);
+    
+    ds.ComparisonReferences = {'Averages' 4:8 strcat({'CS-'},strrep(ds.LabelsMeasuresSimple(4:end),'Delta ','D'))};
 
 end
 
@@ -245,7 +256,7 @@ function ds = finalize(ds)
     srisk_avg = sum(ds.SRISK .* weights,2,'omitnan');
     ds.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
 
-    [rc,rs] = evaluate_rankings(ds);
+    [rc,rs] = kendall_rankings(ds,ds.LabelsMeasuresSimple);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
 
@@ -331,16 +342,16 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    for i = 1:(numel(ds.LabelsSimple) - 1)
-        sheet = ds.LabelsSimple{i};
+    for i = 1:(numel(ds.LabelsSheetsSimple) - 1)
+        sheet = ds.LabelsSheetsSimple{i};
         measure = strrep(sheet,' ','');
 
         tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
         writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
     end
 
-    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSimple(1:end-1),' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
+    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSheetsSimple(1:end-1),' ','_'))];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
 
     if (ispc())
         try
@@ -352,10 +363,10 @@ function write_results(ds,temp,out)
         try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
-            for i = 1:numel(ds.LabelsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
+            for i = 1:numel(ds.LabelsSheetsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
             end
-            
+
             exc_wb.Save();
             exc_wb.Close();
             excel.Quit();
@@ -460,72 +471,6 @@ function srisk = calculate_srisk(lb,eq,lrmes,car)
 
     srisk = (car .* lb) - ((1 - car) .* (1 - lrmes) .* eq);
     srisk(srisk < 0) = 0;
-
-end
-
-function [rc,rs] = evaluate_rankings(ds)
-
-    t = ds.T;
-
-    measures = numel(ds.LabelsSimple) - 1;
-    measures_pairs = nchoosek(1:measures,2);
-    
-    rc = zeros(measures,measures);
-    rs = zeros(1,measures);
-
-    for i = 1:size(measures_pairs,1)
-        pair = measures_pairs(i,:);
-
-        index_1 = pair(1);
-        field_1 = strrep(ds.LabelsSimple{index_1},' ','');
-        measure_1 = ds.(field_1);
-        
-        index_2 = pair(2);
-        field_2 = strrep(ds.LabelsSimple{index_2},' ','');
-        measure_2 = ds.(field_2);
-        
-        for j = 1:t
-            [~,rank_1] = sort(measure_1(j,:),'ascend');
-            [~,rank_2] = sort(measure_2(j,:),'ascend');
-
-            rc(index_1,index_2) = rc(index_1,index_2) + kendall_concordance_coefficient(rank_1.',rank_2.');
-        end
-    end
-    
-    for i = 1:measures
-        field = strrep(ds.LabelsSimple{i},' ','');
-        measure = ds.(field);
-        
-        for j = t:-1:2
-            [~,rank_previous] = sort(measure(j-1,:),'ascend');
-            [~,rank_current] = sort(measure(j,:),'ascend');
-
-            rs(i) = rs(i) + kendall_concordance_coefficient(rank_current.',rank_previous.');
-        end
-    end
-    
-    rc = ((rc + rc.') / t) + eye(measures);
-    rs = rs ./ (t - 1);
-
-end
-
-function kcc = kendall_concordance_coefficient(rank_1,rank_2)
-
-    m = [rank_1 rank_2];
-    [n,k] = size(m);
-
-    rm = zeros(n,k);
-
-    for i = 1:k
-        x_i = m(:,i);
-        [~,b] = sortrows(x_i,'ascend');
-        rm(b,i) = 1:n;
-    end
-
-    rm_sum = sum(rm,2);
-    s = sum(rm_sum.^2,1) - ((sum(rm_sum) ^ 2) / n);
-
-    kcc = (12 * s) / ((k ^ 2) * (( n^ 3) - n));
 
 end
 
@@ -689,17 +634,17 @@ function plot_idiosyncratic_averages(ds,id)
     sub_1 = subplot(2,2,[1 3]);
     plot(sub_1,ds.DatesNum,smooth_data(beta),'Color',[0.000 0.447 0.741]);
     set(sub_1,'YLim',y_limits_beta);
-    title(sub_1,ds.Labels{1});
+    title(sub_1,ds.LabelsMeasures{1});
     
     sub_2 = subplot(2,2,2);
     plot(sub_2,ds.DatesNum,smooth_data(averages(:,2)),'Color',[0.000 0.447 0.741]);
     set(sub_2,'YLim',y_limits_others);
-    title(sub_2,ds.Labels{2});
+    title(sub_2,ds.LabelsMeasures{2});
     
     sub_3 = subplot(2,2,4);
     plot(sub_3,ds.DatesNum,smooth_data(averages(:,3)),'Color',[0.000 0.447 0.741]);
     set(sub_3,'YLim',y_limits_others,'YTick',get(sub_2,'YTick'),'YTickLabel',get(sub_2,'YTickLabel'),'YTickLabelMode',get(sub_2,'YTickLabelMode'),'YTickMode',get(sub_2,'YTickMode'));
-    title(sub_3,ds.Labels{3});
+    title(sub_3,ds.LabelsMeasures{3});
     
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_1 sub_2 sub_3],'XGrid','on','YGrid','on');
@@ -744,7 +689,7 @@ function plot_systemic_averages(ds,id)
         sub = subplot(9,2,subplot_offsets{i});
         plot(sub,ds.DatesNum,smooth_data(ds.Averages(:,i+3)),'Color',[0.000 0.447 0.741]);
         set(sub,'YLim',y_limits(i,:));
-        title(sub,ds.Labels{i+3});
+        title(sub,ds.LabelsMeasures{i+3});
 
         if (i == 1)
             sub_position = get(sub,'Position');
@@ -798,20 +743,20 @@ function plot_correlations(ds,id)
     z = bsxfun(@rdivide,z,sigma);
     z_limits = [nanmin(z(:)) nanmax(z(:))];
     
-    n = numel(ds.LabelsSimple) - 1;
+    n = numel(ds.LabelsMeasures);
 
     f = figure('Name','Cross-Sectional Measures > Correlation Matrix','Units','normalized','Tag',id);
     
-    [ax,big_ax] = gplotmatrix_stable(f,ds.Averages,ds.LabelsSimple(1:end-1));
+    [ax,big_ax] = gplotmatrix_stable(f,ds.Averages,ds.LabelsMeasuresSimple);
 
     x_labels = get(ax,'XLabel');
     y_labels = get(ax,'YLabel');
     set([x_labels{:}; y_labels{:}],'FontWeight','bold');
     
     x_labels_grey = arrayfun(@(l)l{1},x_labels);
-    x_labels_grey_indices = ismember({x_labels_grey.String},ds.LabelsSimple(1:3));
+    x_labels_grey_indices = ismember({x_labels_grey.String},ds.LabelsMeasuresSimple(1:3));
     y_labels_grey = arrayfun(@(l)l{1},y_labels);
-    y_labels_grey_indices = ismember({y_labels_grey.String},ds.LabelsSimple(1:3));
+    y_labels_grey_indices = ismember({y_labels_grey.String},ds.LabelsMeasuresSimple(1:3));
     set([x_labels{x_labels_grey_indices}; y_labels{y_labels_grey_indices}],'Color',[0.5 0.5 0.5]);
 
     for i = 1:n
@@ -852,7 +797,7 @@ end
 
 function plot_rankings(ds,id)
 
-    labels = ds.LabelsSimple(1:end-1);
+    labels = ds.LabelsMeasuresSimple;
     n = numel(labels);
     seq = 1:n;
     off = seq + 0.5;
@@ -958,8 +903,8 @@ function plot_sequence(ds,target,id)
 
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
     
-    [~,index] = ismember(target,ds.LabelsSimple);
-    plots_title = repmat(ds.Labels(index),1,n);
+    [~,index] = ismember(target,ds.LabelsMeasuresSimple);
+    plots_title = repmat(ds.LabelsMeasures(index),1,n);
     
     x_limits = [dn(1) dn(end)];
     y_limits = plot_limits(ts,0.1);

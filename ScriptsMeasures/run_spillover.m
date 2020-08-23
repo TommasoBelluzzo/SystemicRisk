@@ -1,12 +1,12 @@
-% [INPUT]
+ % [INPUT]
 % ds = A structure representing the dataset.
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % bws = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
+% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type used by the variance decomposition (optional, default='G').
 % lags = An integer [1,3] representing the number of lags of the VAR model used by the variance decomposition (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon used by the variance decomposition (optional, default=4).
-% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type used by the variance decomposition (optional, default='G').
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -24,9 +24,9 @@ function [result,stopped] = run_spillover(varargin)
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addOptional('bws',10,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 10 'scalar'}));
+        ip.addOptional('fevd','G',@(x)any(validatestring(x,{'G' 'O'})));
         ip.addOptional('lags',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 3 'scalar'}));
         ip.addOptional('h',4,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 10 'scalar'}));
-        ip.addOptional('fevd','G',@(x)any(validatestring(x,{'G' 'O'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
@@ -38,25 +38,25 @@ function [result,stopped] = run_spillover(varargin)
     out = validate_output(ipr.out);
     bw = ipr.bw;
     bws = ipr.bws;
+    fevd = ipr.fevd;
     lags = ipr.lags;
     h = ipr.h;
-    fevd = ipr.fevd;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,lags,h,fevd,analyze);
+    [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,h,analyze);
 
 end
 
-function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,lags,h,fevd,analyze)
+function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,h,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
     indices = unique([1:bws:ds.T ds.T]);
-    ds = initialize(ds,bw,bws,indices,lags,h,fevd);
+    ds = initialize(ds,bw,bws,indices,fevd,lags,h);
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
     cleanup_1 = onCleanup(@()rng('default'));
@@ -154,7 +154,7 @@ end
 
 %% DATA
 
-function ds = initialize(ds,bw,bws,indices,lags,h,fevd)
+function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
 
     n = ds.N;
     t = ds.T;
@@ -166,28 +166,45 @@ function ds = initialize(ds,bw,bws,indices,lags,h,fevd)
     ds.Lags = lags;
     ds.Windows = numel(indices);
     ds.WindowsIndices = indices;
+    
+    h_label = sprintf('%d',ds.H);
+    lags_label = sprintf('%d',ds.Lags);
+    all_label = [' (' fevd ', H=' h_label ', LAGS=' lags_label ')'];
 
+    ds.LabelsIndicatorsSimple = {'SI'};
+	ds.LabelsIndicatorsShort = {'SI'};
+    ds.LabelsIndicators = {['SI' all_label]};
+
+    ds.LabelsSheetsSimple = {'From' 'To' 'Net' 'Indicators'};
+    ds.LabelsSheets = {['From' all_label] ['To' all_label] ['Net' all_label] 'Indicators'};
+    
     ds.VarianceDecompositions = cell(t,1);
-    ds.SI = NaN(t,1);
+
     ds.SpilloversFrom = NaN(t,n);
     ds.SpilloversTo = NaN(t,n);
     ds.SpilloversNet = NaN(t,n);
+    
+    ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
+    
+    ds.ComparisonReferences = {'Indicators' [] strcat({'SP-'},ds.LabelsIndicatorsShort)};
 
 end
 
-function ds = finalize(ds,window_results)
+function ds = finalize(ds,results)
 
     window_indices = ds.WindowsIndices;
 
-    for i = 1:numel(window_results)
-        window_result = window_results{i};
-        window_index = window_indices(i);
+    for i = 1:numel(results)
+        result = results{i};
+        index = window_indices(i);
 
-        ds.VarianceDecompositions{window_index} = window_result.VarianceDecomposition;
-        ds.SI(window_index) = window_result.SI;
-        ds.SpilloversFrom(window_index,:) = window_result.SpilloversFrom;
-        ds.SpilloversTo(window_index,:) = window_result.SpilloversTo;
-        ds.SpilloversNet(window_index,:) = window_result.SpilloversNet;
+        ds.VarianceDecompositions{index} = result.VarianceDecomposition;
+        
+        ds.SpilloversFrom(index,:) = result.SpilloversFrom;
+        ds.SpilloversTo(index,:) = result.SpilloversTo;
+        ds.SpilloversNet(index,:) = result.SpilloversNet;
+        
+        ds.Indicators(index) = result.SI;
     end
     
     if (ds.BWS > 1)
@@ -198,10 +215,12 @@ function ds = finalize(ds,window_results)
             step_index = step_indices(i);
 
             ds.VarianceDecompositions{step_index} = step_result.VarianceDecomposition;
-            ds.SI(step_index) = step_result.SI;
+            
             ds.SpilloversFrom(step_index,:) = step_result.SpilloversFrom;
             ds.SpilloversTo(step_index,:) = step_result.SpilloversTo;
             ds.SpilloversNet(step_index,:) = step_result.SpilloversNet;
+            
+            ds.Indicators(step_index,1) = step_result.SI;
         end
     end
 
@@ -241,7 +260,7 @@ function temp = validate_template(temp)
         end
     end
     
-    sheets = {'Index' 'Spillovers From' 'Spillovers To' 'Spillovers Net'};
+    sheets = {'From' 'To' 'Net' 'Indicators'};
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
@@ -288,26 +307,45 @@ function write_results(ds,temp,out)
     if (copy_result == 0)
         error('The output file could not be created from the template file.');
     end
-
-    vars = [ds.DatesStr num2cell(ds.SI)];
-    labels = {'Date' 'SI'};
-    t1 = cell2table(vars,'VariableNames',labels);
-    writetable(t1,out,'FileType','spreadsheet','Sheet','Index','WriteRowNames',true);
-
-    vars = [ds.DatesStr num2cell(ds.SpilloversFrom)];
-    labels = {'Date' ds.FirmNames{:,:}};
-    t2 = cell2table(vars,'VariableNames',labels);
-    writetable(t2,out,'FileType','spreadsheet','Sheet','Spillovers From','WriteRowNames',true);
-
-    vars = [ds.DatesStr num2cell(ds.SpilloversTo)];
-    labels = {'Date' ds.FirmNames{:,:}};
-    t3 = cell2table(vars,'VariableNames',labels);
-    writetable(t3,out,'FileType','spreadsheet','Sheet','Spillovers To','WriteRowNames',true);
     
-    vars = [ds.DatesStr num2cell(ds.SpilloversNet)];
-    labels = {'Date' ds.FirmNames{:,:}};
-    t4 = cell2table(vars,'VariableNames',labels);
-    writetable(t4,out,'FileType','spreadsheet','Sheet','Spillovers Net','WriteRowNames',true);
+    dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
+
+    for i = 1:(numel(ds.LabelsSheetsSimple) - 1)
+        sheet = ds.LabelsSheetsSimple{i};
+        measure = ['Spillovers' strrep(sheet,' ','')];
+
+        tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
+        writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
+    end
+    
+    tab = [dates_str array2table(ds.Indicators,'VariableNames',strrep(ds.LabelsIndicatorsSimple,' ','_'))];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+        catch
+            return;
+        end
+
+        try
+            exc_wb = excel.Workbooks.Open(out,0,false);
+
+            for i = 1:numel(ds.LabelsSheetsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
+            end
+
+            exc_wb.Save();
+            exc_wb.Close();
+            excel.Quit();
+        catch
+        end
+        
+        try
+            delete(excel);
+        catch
+        end
+    end
     
 end
 
@@ -320,15 +358,15 @@ function window_results = main_loop(r,lags,h,fevd)
     vd = variance_decomposition(r,lags,h,fevd);
     window_results.VarianceDecomposition = vd;
 
-    [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd);
-    window_results.SI = si;
+    [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd);
     window_results.SpilloversFrom = spillovers_from;
     window_results.SpilloversTo = spillovers_to;
     window_results.SpilloversNet = spillovers_net;
+    window_results.SI = si;
 
 end
 
-function [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd)
+function [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd)
 
     vd_diag = diag(vd);
     
@@ -378,14 +416,14 @@ function [step_indices,step_results] = steps_interpolation(data)
         vd_k = vd{step_indices(i)};
         vd_k = bsxfun(@rdivide,vd_k,sum(vd_k,2));
 
-        [si,spillovers_from,spillovers_to,spillovers_net] = calculate_spillover_measures(vd_k);
+        [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd_k);
 
         step_result = struct();
         step_result.VarianceDecomposition = vd_k;
-        step_result.SI = si;
         step_result.SpilloversFrom = spillovers_from;
         step_result.SpilloversTo = spillovers_to;
         step_result.SpilloversNet = spillovers_net;
+        step_result.SI = si;
         
         step_results{i} = step_result;
     end
@@ -396,15 +434,15 @@ end
 
 function plot_index(ds,id)
 
-    si = ds.SI;
-    y = smooth_data(si);
+    si = smooth_data(ds.Indicators(:,1));
 
-    f = figure('Name','Spillover Measures > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+    f = figure('Name','Spillover Measures > Spillover Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,6,1:5);
-    plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
+    plot(sub_1,ds.DatesNum,si,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
+    title(sub_1,ds.LabelsIndicators{1});
     
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -413,16 +451,12 @@ function plot_index(ds,id)
     end
     
     sub_2 = subplot(1,6,6);
-    boxplot(sub_2,y,'Notch','on','Symbol','k.');
+    boxplot(sub_2,si,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
-    
-    if (strcmp(ds.FEVD,'G'))
-        figure_title('Spillover Index (Generalized FEVD)');
-    else
-        figure_title('Spillover Index (Orthogonal FEVD)');
-    end
+
+	figure_title('Spillover Index');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -447,19 +481,13 @@ function plot_spillovers(ds,id)
     area(sub_1,ds.DatesNum,from,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) .* 100,'UniformOutput',false));
-    t2 = title(sub_1,'Spillovers From Others');
-    set(t2,'Units','normalized');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
+    title(sub_1,'Spillovers From Others');
 
     sub_2 = subplot(2,2,3);
     area(sub_2,ds.DatesNum,to,'EdgeColor',[0.000 0.447 0.741],'FaceColor','none');
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_2,'YLim',[0 1],'YTick',0:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.2:1) .* 100,'UniformOutput',false));
-    t3 = title(sub_2,'Spillovers To Others');
-    set(t3,'Units','normalized');
-    t3_position = get(t3,'Position');
-    set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);
+    title(sub_2,'Spillovers To Others');
     
     sub_3 = subplot(2,2,[2 4]);
     fill(sub_3,[ds.DatesNum; flipud(ds.DatesNum)],[net(:,1); fliplr(net(:,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
@@ -470,10 +498,7 @@ function plot_spillovers(ds,id)
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_3,'YLim',[-1 1],'YTick',-1:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(-1:0.2:1) .* 100,'UniformOutput',false));
     set(sub_3,'XGrid','on','YGrid','on');
-    t4 = title(sub_3,'Net Spillovers');
-    set(t4,'Units','normalized');
-    t4_position = get(t4,'Position');
-    set(t4,'Position',[0.4783 t4_position(2) t4_position(3)]);
+    title(sub_3,'Net Spillovers');
 
     if (ds.MonthlyTicks)
         date_ticks([sub_1 sub_2 sub_3],'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -481,11 +506,7 @@ function plot_spillovers(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    if (strcmp(ds.FEVD,'G'))
-        figure_title('Spillovers (Generalized FEVD)');
-    else
-        figure_title('Spillovers (Orthogonal FEVD)');
-    end
+    figure_title(['Spillovers (' ds.FEVD ', H=' sprintf('%d',ds.H) ', LAGS=' sprintf('%d',ds.Lags) ')']);
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -505,6 +526,8 @@ function plot_sequence(ds,id)
     net_all = smooth_data(ds.SpilloversNet);
 
     data = [repmat({dn},1,n); mat2cell(from_all,t,ones(1,n)); mat2cell(to_all,t,ones(1,n)); mat2cell(net_all,t,ones(1,n))];
+	
+	plots_title = [repmat({'From'},1,n); repmat({'To'},1,n); repmat({'Net'},1,n)];
     
     x_limits = [dn(1) dn(end)];
     
@@ -531,7 +554,7 @@ function plot_sequence(ds,id)
 
     core.PlotsAllocation = [3 1];
     core.PlotsSpan = {1 2 3};
-    core.PlotsTitle = [repmat({'From'},1,n); repmat({'To'},1,n); repmat({'Net'},1,n)];
+    core.PlotsTitle = plots_title;
 
     core.XDates = {mt mt mt};
     core.XGrid = {true true true};
@@ -569,7 +592,7 @@ function plot_sequence(ds,id)
         if (~isempty(xd))
             hold(subs(1),'on');
                 plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
-            hold(subs(1),'on');
+            hold(subs(1),'off');
         end
         
         plot(subs(2),x,to,'Color',[0.000 0.447 0.741]);

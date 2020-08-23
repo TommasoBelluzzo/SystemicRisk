@@ -165,24 +165,27 @@ function ds = initialize(ds,bw,k,f,q)
     ds.F = f;
     ds.K = k;
     ds.Q = q;
-
+    
+    f_label = sprintf('%.2f',ds.F);
     k_label = sprintf('%.0f%%',(ds.K * 100));
-    ds.Labels = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    ds.LabelsCATFINVaR = {'Non-Parametric' 'GPD' 'GEV' 'SGED'};
-    ds.LabelsIndicators = {'Absorption Ratio' 'CATFIN' 'Correlation Surprise' 'Turbulence Index'};
+    q_label = sprintf('%.2f',ds.Q);
+
+    ds.LabelsCATFINVaR = {'NP' 'GPD' 'GEV' 'SGED'};
     ds.LabelsPCAExplained = {'PC' 'Explained Variance'};
-    ds.LabelsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    
+    ds.LabelsIndicatorsSimple = {'Absorption Ratio' 'CATFIN' 'Correlation Surprise' 'Turbulence Index'};
+	ds.LabelsIndicatorsShort = {'AR' 'CATFIN' 'CS' 'TI'};
+    ds.LabelsIndicators = {['Absorption Ratio (F=' f_label ')'] ['CATFIN (K=' k_label ')'] 'Correlation Surprise' ['Turbulence Index (Q=' q_label ')']};
 
+    ds.LabelsSheetsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    ds.LabelsSheets = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    
     ds.CATFINReturns = rc;
-
     ds.CATFINVaR = NaN(t,4);
     ds.CATFINFirstCoefficients = NaN(1,3);
     ds.CATFINFirstExplained = NaN;
-    ds.CATFIN = NaN(t,1);
     
-    ds.AbsorptionRatio = NaN(t,1);
-    ds.CorrelationSurprise = NaN(t,1);
-    ds.TurbulenceIndex = NaN(t,1);
+    ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
 
     ds.PCACoefficients = cell(t,1);
     ds.PCAExplained = cell(t,1);
@@ -194,6 +197,8 @@ function ds = initialize(ds,bw,k,f,q)
     ds.PCAExplainedSumsOverall = NaN(1,4);
     ds.PCAScoresOverall = NaN(t,n);
 
+    ds.ComparisonReferences = {'Indicators' [] strcat({'CO-'},ds.LabelsIndicatorsShort)};
+
 end
 
 function ds = finalize(ds,results)
@@ -201,28 +206,26 @@ function ds = finalize(ds,results)
     t = ds.T;
 
     for i = 1:t
-        window_result = results{i};
+        result = results{i};
         
-        ds.CATFINVaR(i,:) = window_result.CATFINVaR;
+        ds.CATFINVaR(i,:) = result.CATFINVaR;
         
-        ds.AbsorptionRatio(i) = window_result.AbsorptionRatio;
-        ds.CorrelationSurprise(i) = window_result.CorrelationSurprise;
-        ds.TurbulenceIndex(i) = window_result.TurbulenceIndex;
+        ds.Indicators(i,[1 3 4]) = [result.AbsorptionRatio result.CorrelationSurprise result.TurbulenceIndex];
         
-        ds.PCACoefficients{i} = window_result.PCACoefficients;
-        ds.PCAExplained{i} = window_result.PCAExplained;
-        ds.PCAExplainedSums(i,:) = fliplr([cumsum([window_result.PCAExplained(1) window_result.PCAExplained(2) window_result.PCAExplained(3)]) 100]);
-        ds.PCAScores{i} = window_result.PCAScores;
+        ds.PCACoefficients{i} = result.PCACoefficients;
+        ds.PCAExplained{i} = result.PCAExplained;
+        ds.PCAExplainedSums(i,:) = fliplr([cumsum([result.PCAExplained(1) result.PCAExplained(2) result.PCAExplained(3)]) 100]);
+        ds.PCAScores{i} = result.PCAScores;
     end
 
     ds.CATFINVaR(:,4) = sanitize_data(ds.CATFINVaR(:,4),ds.DatesNum,[],[]);
 
     [coefficients,scores,explained] = calculate_pca(ds.CATFINVaR,false);
-    ds.CATFIN = scores(:,1);
     ds.CATFINFirstCoefficients = coefficients(:,1).';
     ds.CATFINFirstExplained = explained(1);
 
-    ds.AbsorptionRatio = sanitize_data(ds.AbsorptionRatio,ds.DatesNum,[],[0 1]);
+    ds.Indicators(:,1) = sanitize_data(ds.Indicators(:,1),ds.DatesNum,[],[0 1]);
+    ds.Indicators(:,2) = scores(:,1);
 
     [coefficients,scores,explained] = calculate_pca_overall(ds.Returns);
     ds.PCACoefficientsOverall = coefficients;
@@ -312,25 +315,25 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    labels = strrep(ds.LabelsCATFINVaR,'-','_');
-    t1 = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
-    writetable(t1,out,'FileType','spreadsheet','Sheet','CATFIN VaR','WriteRowNames',true);
+    labels = ds.LabelsCATFINVaR;
+    tab = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
 
-    labels = strrep(ds.LabelsIndicators,' ','_');
-    t2 = [dates_str array2table([ds.AbsorptionRatio ds.CATFIN ds.CorrelationSurprise ds.TurbulenceIndex],'VariableNames',labels)];
-    writetable(t2,out,'FileType','spreadsheet','Sheet','Indicators','WriteRowNames',true);
+    labels = strrep(ds.LabelsIndicatorsSimple,' ','_');
+    tab = [dates_str array2table(ds.Indicators,'VariableNames',labels)];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{2},'WriteRowNames',true);
 
     labels = strrep(ds.LabelsPCAExplained,' ','_');
-    t3 = array2table([(1:ds.N).' ds.PCAExplainedOverall],'VariableNames',labels);
-    writetable(t3,out,'FileType','spreadsheet','Sheet','PCA Overall Explained','WriteRowNames',true);
+    tab = array2table([(1:ds.N).' ds.PCAExplainedOverall],'VariableNames',labels);
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
 
     labels = [{'Firms'} ds.FirmNames];
-    t4 = cell2table([ds.FirmNames.' num2cell(ds.PCACoefficientsOverall)],'VariableNames',labels);
-    writetable(t4,out,'FileType','spreadsheet','Sheet','PCA Overall Coefficients','WriteRowNames',true);
+    tab = cell2table([ds.FirmNames.' num2cell(ds.PCACoefficientsOverall)],'VariableNames',labels);
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{4},'WriteRowNames',true);
 
     labels = ds.FirmNames;
-    t5 = [dates_str array2table(ds.PCAScoresOverall,'VariableNames',labels)];
-    writetable(t5,out,'FileType','spreadsheet','Sheet','PCA Overall Scores','WriteRowNames',true);
+    tab = [dates_str array2table(ds.PCAScoresOverall,'VariableNames',labels)];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{5},'WriteRowNames',true);
     
     if (ispc())
         try
@@ -342,8 +345,8 @@ function write_results(ds,temp,out)
         try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
-            for i = 1:numel(ds.LabelsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
+            for i = 1:numel(ds.LabelsSheetsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
             end
             
             exc_wb.Save();
@@ -441,14 +444,17 @@ function plot_catfin(ds,id)
     r = max(0,-ds.CATFINReturns);
     y_limits = plot_limits([-ds.CATFINVaR r],0.1,0);
 
+    cf = smooth_data(ds.Indicators(:,2));
+    cf_label = strrep(ds.LabelsIndicators{2},')',[', PCA.EV=' sprintf('%.2f%%',ds.CATFINFirstExplained) ')']);
+
     f = figure('Name','Component Measures > CATFIN','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     subs = gobjects(5,1);
     
     sub_1 = subplot(2,4,[1 4]);
-    plot(sub_1,ds.DatesNum,smooth_data(ds.CATFIN),'Color',[0.000 0.447 0.741]);
+    plot(sub_1,ds.DatesNum,cf,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XGrid','on','YGrid','on');
-    t1 = title(sub_1,['CATFIN (K=' sprintf('%.0f%%',ds.K * 100) ', PCA.EV=' sprintf('%.2f%%',ds.CATFINFirstExplained) ')']);
+    t1 = title(sub_1,cf_label);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
@@ -487,32 +493,35 @@ function plot_indicators_other(ds,id)
 
     alpha = 2 / (ds.BW + 1);
     
-    ar = ds.AbsorptionRatio;
+    ar = smooth_data(ds.Indicators(:,1));
     ar_limit = fix(min(ar) * 10) / 10;
+    
+    cs = ds.Indicators(:,3);
+    cs_ma = [cs(1); filter(alpha,[1 (alpha - 1)],cs(2:end),(1 - alpha) * cs(1))];
+    
+    ti = ds.Indicators(:,4);
+    ti_ma = [ti(1); filter(alpha,[1 (alpha - 1)],ti(2:end),(1 - alpha) * ti(1))];
 
     ti_th = NaN(ds.T,1);
 
     for i = 1:ds.T
-        ti_th(i) = quantile(ds.TurbulenceIndex(max(1,i-ds.BW):min(ds.T,i+ds.BW)),ds.Q);
+        ti_th(i) = quantile(ti(max(1,i-ds.BW):min(ds.T,i+ds.BW)),ds.Q);
     end
-
-    ti_ma = [ds.TurbulenceIndex(1); filter(alpha,[1 (alpha - 1)],ds.TurbulenceIndex(2:end),(1 - alpha) * ds.TurbulenceIndex(1))];
-    cs_ma = [ds.CorrelationSurprise(1); filter(alpha,[1 (alpha - 1)],ds.CorrelationSurprise(2:end),(1 - alpha) * ds.CorrelationSurprise(1))];
 
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,2,[1 3]);
-    plot(sub_1,ds.DatesNum,smooth_data(ds.AbsorptionRatio),'Color',[0.000 0.447 0.741]);
+    plot(sub_1,ds.DatesNum,ar,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_1,'YLim',[ar_limit 1],'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) .* 100,'UniformOutput',false));
+    set(sub_1,'YLim',[ar_limit 1],'YTick',ar_limit:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) .* 100,'UniformOutput',false));
     set(sub_1,'XGrid','on','YGrid','on');
-    t1 = title(sub_1,['Absorption Ratio (F=' sprintf('%.2f',ds.F) ')']);
+    t1 = title(sub_1,ds.LabelsIndicators{1});
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,2,2);
-    p2 = plot(sub_2,ds.DatesNum,ds.TurbulenceIndex,'Color',[0.65 0.65 0.65]);
+    p2 = plot(sub_2,ds.DatesNum,ti,'Color',[0.65 0.65 0.65]);
     p2.Color(4) = 0.35;
     hold on;
         p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741]);
@@ -523,19 +532,19 @@ function plot_indicators_other(ds,id)
     set(l,'NumColumns',2,'Units','normalized');
     l_position = get(l,'Position');
     set(l,'Position',[0.6710 0.4895 l_position(3) l_position(4)]);
-    t2 = title(sub_2,['Turbulence Index (Q=' sprintf('%.2f',ds.Q) ')']);
+    t2 = title(sub_2,ds.LabelsIndicators{4});
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
     
     sub_3 = subplot(2,2,4);
-    p3 = plot(sub_3,ds.DatesNum,ds.CorrelationSurprise,'Color',[0.65 0.65 0.65]);
+    p3 = plot(sub_3,ds.DatesNum,cs,'Color',[0.65 0.65 0.65]);
     p3.Color(4) = 0.35;
     hold on;
         plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741]);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    t3 = title(sub_3,'Correlation Surprise');
+    t3 = title(sub_3,ds.LabelsIndicators{3});
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);

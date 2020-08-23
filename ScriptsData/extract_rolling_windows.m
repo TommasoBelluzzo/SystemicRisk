@@ -54,7 +54,7 @@ function windows = extract_rolling_windows_internal(data,bw,truncate)
     else
         windows = cell(t,1);
         
-        k = round(nthroot(bw,1.81),0);
+        k = max(round(nthroot(bw,1.81),0),5);
 
         for i = 1:(bw - 1)
             windows{i} = data(1:max(i,k),:);

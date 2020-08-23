@@ -74,9 +74,11 @@ function l = plot_limits_internal(data,a,ll,ul,lc,uc)
     end
     
     if (data_ll > data_ul)
-        data_ll = data_ul;
+        data_ll = data_ul - eps();
+    elseif (data_ll == data_ul)
+        data_ul = data_ul + eps();
     end
-    
+
     l = [data_ll data_ul];
 
 end

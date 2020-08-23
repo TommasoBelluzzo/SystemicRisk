@@ -76,9 +76,9 @@ end
 paths_base = [strjoin(paths_base,';') ';'];
 addpath(paths_base);
 
-%% DATASET
+%% DATASET PARSING
 
-ds_version = 'v2.1';
+ds_version = 'v2.3';
 ds_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
@@ -116,23 +116,29 @@ if (ds_process)
     analyze_dataset(ds);
 end
 
-%% MEASURES
+%% EXECUTION
 
-setup = {
-    % NAME               ENABLED  ANALYZE  FUNCTION
-    'Component'          true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,252,0.99,0.2,0.75,analyze);
-    'Connectedness'      true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,252,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,'A',252,0.4,'W','N',analyze);
-    'CrossQuantilogram'  true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,252,0.05,60,'SB',0.05,100,analyze);
-    'CrossSectional'     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
-    'Default'            true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,252,0.45,3,0.08,100,0.10,3,'BSM',0.95,analyze);
-    'Liquidity'          true     true     @(ds,temp,file,analyze)run_liquidity(ds,temp,file,252,21,5,'B',500,0.01,0.0004,analyze);
-    'RegimeSwitching'    true     true     @(ds,temp,file,analyze)run_regime_switching(ds,temp,file,true,true,true,analyze);
-    'Spillover'          true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,252,10,2,4,'G',analyze);
+bw = 252;
+
+measures_setup = {
+%   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
+    'Component'          true     true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,bw,0.99,0.2,0.75,analyze);
+    'Connectedness'      true     true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,bw,0.05,false,0.06,analyze);
+    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'G',0.4,'W','N',analyze);
+    'CrossQuantilogram'  true     true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,bw,0.05,60,'SB',0.05,100,analyze);
+    'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
+    'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,0.95,analyze);
+    'Liquidity'          true     true     true     @(ds,temp,file,analyze)run_liquidity(ds,temp,file,bw,21,5,'B',500,0.01,0.0004,analyze);
+    'RegimeSwitching'    true     true     true     @(ds,temp,file,analyze)run_regime_switching(ds,temp,file,true,true,true,analyze);
+    'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);
 };
 
-for i = 1:size(setup,1)
-    [category,enabled,analysis,run_function] = setup{i,:};
+comparison_offset = 1;
+comparison_data = NaN(ds.T,100);
+comparison_labels = repmat({''},100,1);
+
+for i = 1:size(measures_setup,1)
+    [category,enabled,analyze,compare,run_function] = measures_setup{i,:};
     
     if (~enabled)
         continue;
@@ -146,17 +152,47 @@ for i = 1:size(setup,1)
 
     temp = fullfile(path_base,['Templates' filesep() 'Template' category '.xlsx']);
     out = fullfile(path_base,['Results' filesep() 'Results' category '.xlsx']);
-    [result,stopped] = run_function(ds,temp,out,analysis);
+    [result,stopped] = run_function(ds,temp,out,analyze);
 
     if (stopped)
+        clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');
         return;
+    end
+    
+    if (compare && ~isempty(result.ComparisonReferences))
+        for j = 1:size(result.ComparisonReferences,1)
+            [c_field,c_offsets,c_labels] = result.ComparisonReferences{j,:};
+            c_measures = result.(c_field);
+
+            if (~isempty(c_offsets))
+                c_measures = c_measures(:,c_offsets);
+            end
+            
+            c_measures_len = size(c_measures,2);
+            c_offset_final = comparison_offset + c_measures_len - 1;
+
+            comparison_data(:,comparison_offset:c_offset_final) = c_measures;
+            comparison_labels(comparison_offset:c_offset_final) = c_labels;
+            comparison_offset = comparison_offset + c_measures_len;
+        end
     end
 
     category_reference = ['result' lower(regexprep(category,'([A-Z])','_$1'))];
-
     eval([category_reference ' = result;']);
-    clear('result','stopped');
 
     mat = fullfile(path_base,['Results' filesep() 'Results' category '.mat']);
     save(mat,category_reference);
 end
+
+comparison_data(:,comparison_offset:end) = [];
+comparison_labels(comparison_offset:end) = [];
+
+if (ds.Crises == 0)
+    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the dataset does not include the ''Crises'' sheet.');
+elseif (numel(comparison_labels) <= 1)
+    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains a single time series.');
+else
+    comparison = true;
+end
+
+clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');

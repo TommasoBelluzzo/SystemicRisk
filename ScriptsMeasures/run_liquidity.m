@@ -110,14 +110,14 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
  
             if (ci)
                 sv_x = sv(1:offset,:);
-                [illiq,illiq_covariates,knots] = calculate_illiq(r_x,v_x,sv_x,mag,ds.BWM,ds.MEM);
+                [illiq,illiqc,knots] = calculate_illiq(r_x,v_x,sv_x,mag,ds.BWM,ds.MEM);
                 
                 ds.ILLIQ(1:offset,i) = illiq;
-                ds.ILLIQCovariates(1:offset,i) = illiq_covariates;
+                ds.ILLIQC(1:offset,i) = illiqc;
                 
                 if (~isempty(knots))
                     ds.ILLIQKnots(i) = knots(1);
-                    ds.ILLIQCovariatesKnots(i) = knots(2);
+                    ds.ILLIQCKnots(i) = knots(2);
                 end
             else
                 [illiq,~,knots] = calculate_illiq(r_x,v_x,[],mag,ds.BWM,ds.MEM);
@@ -129,7 +129,7 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
                 end
             end
 
-            ds.RIS(1:offset,i) = calculate_ris(p_x,ds.BWL,ds.SW,ds.C,ds.S2);
+            ds.RIS(1:offset,i) = calculate_ris(p_x,ds.BWL,ds.W,ds.C,ds.S2);
             ds.TR(1:offset,i) = calculate_tr(v_x,cp_x,ds.BWL);
             ds.VR(1:offset,i) = calculate_vr(r_x,ds.BWL,ds.BWM);
             
@@ -204,11 +204,22 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     ds.C = c;
     ds.MEM = mem;
     ds.S2 = s2;
-    ds.SW = w;
+    ds.W = w;
     
-    ds.LabelsSimple = {'HHLR' 'ILLIQ'  'RIS' 'TR' 'VR' 'Averages'};
-    ds.Labels = {'HHLR' ['ILLIQ (MEM=' ds.MEM ')'] 'RIS' 'TR' 'VR' 'Averages'};
-
+    mem_label = [' (MEM=' ds.MEM ')'];
+    ris_label = [' (W=' sprintf('%d',ds.W) ', C=' num2str(ds.C) ', S2=' num2str(ds.S2) ')'];
+    
+    if (ds.CI)
+        ds.LabelsMeasuresSimple = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR'};
+        ds.LabelsMeasures = {'HHLR' ['ILLIQ' mem_label] ['ILLIQC' mem_label] ['RIS' ris_label] 'TR' 'VR'};
+    else
+        ds.LabelsMeasuresSimple = {'HHLR' 'ILLIQ' 'RIS' 'TR' 'VR'};
+        ds.LabelsMeasures = {'HHLR' ['ILLIQ' mem_label] ['RIS' ris_label] 'TR' 'VR'};
+    end
+    
+    ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Averages'}];
+    ds.LabelsSheets = [ds.LabelsMeasures {'Averages'}];
+    
     ds.HHLR = NaN(t,n);
     ds.ILLIQ = NaN(t,n);
     
@@ -217,13 +228,10 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     end
     
     if (ds.CI)
-        ds.LabelsSimple = [ds.LabelsSimple(1:2) {'ILLIQ Covariates'} ds.LabelsSimple(3:end)];
-        ds.Labels = [ds.Labels(1:2) {['ILLIQ Covariates (MEM=' ds.MEM ')']} ds.Labels(3:end)];
-        
-        ds.ILLIQCovariates = NaN(t,n);
+        ds.ILLIQC = NaN(t,n);
         
         if (strcmp(ds.MEM,'S'))
-            ds.ILLIQCovariatesKnots = NaN(1,n);
+            ds.ILLIQCKnots = NaN(1,n);
         end
     end
     
@@ -231,7 +239,9 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     ds.TR = NaN(t,n);
     ds.VR = NaN(t,n);
     
-    ds.Averages = NaN(t,numel(ds.LabelsSimple) - 1);
+    ds.Averages = NaN(t,numel(ds.LabelsMeasures));
+    
+    ds.ComparisonReferences = {'Averages' [] strcat({'LI-'},ds.LabelsMeasuresSimple)};
 
 end
 
@@ -247,6 +257,13 @@ function ds = finalize(ds)
     illiq_avg = sum(ds.ILLIQ .* weights,2,'omitnan');
     illiq_avg = (illiq_avg - min(illiq_avg)) ./ (max(illiq_avg) - min(illiq_avg));
     
+    if (ds.CI)
+        illiqc_avg = sum(ds.ILLIQC .* weights,2,'omitnan');
+        illiqc_avg = (illiqc_avg - min(illiqc_avg)) ./ (max(illiqc_avg) - min(illiqc_avg));
+    else
+        illiqc_avg = [];
+    end
+    
     ris_avg = sum(ds.RIS .* weights,2,'omitnan');
 
     tr_avg = sum(ds.TR .* weights,2,'omitnan');
@@ -254,14 +271,7 @@ function ds = finalize(ds)
 
     vr_avg = sum(ds.VR .* weights,2,'omitnan');    
     
-    if (ds.CI)
-        illiq_covariates_avg = sum(ds.ILLIQCovariates .* weights,2,'omitnan');
-        illiq_covariates_avg = (illiq_covariates_avg - min(illiq_covariates_avg)) ./ (max(illiq_covariates_avg) - min(illiq_covariates_avg));
-
-        ds.Averages = [hhlr_avg illiq_avg illiq_covariates_avg ris_avg tr_avg vr_avg];
-    else
-        ds.Averages = [hhlr_avg illiq_avg ris_avg tr_avg vr_avg];
-    end
+    ds.Averages = [hhlr_avg illiq_avg illiqc_avg ris_avg tr_avg vr_avg];
 
 end
 
@@ -307,7 +317,7 @@ function temp = validate_template(temp)
         end
     end
 
-    sheets = {'HHLR' 'ILLIQ' 'ILLIQ Covariates' 'RIS' 'TR' 'VR' 'Averages'};
+    sheets = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR' 'Averages'};
     
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
@@ -357,18 +367,18 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    for i = 1:(numel(ds.Labels) - 1)
-        sheet = ds.LabelsSimple{i};
+    for i = 1:(numel(ds.LabelsSheetsSimple) - 1)
+        sheet = ds.LabelsSheetsSimple{i};
         measure = strrep(sheet,' ','');
 
         tab = [dates_str array2table(ds.(measure),'VariableNames',ds.FirmNames)];
         writetable(tab,out,'FileType','spreadsheet','Sheet',sheet,'WriteRowNames',true);
     end
 
-    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSimple(1:end-1),' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Averages','WriteRowNames',true);    
+    tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSheetsSimple(1:end-1),' ','_'))];
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
 
-    if (~ds.CI && ispc())
+    if (ispc())
         try
             excel = actxserver('Excel.Application');
         catch
@@ -378,10 +388,12 @@ function write_results(ds,temp,out)
         try
             exc_wb = excel.Workbooks.Open(out,0,false);
 
-            exc_wb.Sheets.Item('ILLIQ Covariates').Delete();
+            if (~ds.CI)
+                exc_wb.Sheets.Item('ILLIQC').Delete();
+            end
             
-            for i = 1:numel(ds.LabelsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSimple{i}).Name = ds.Labels{i};
+            for i = 1:numel(ds.LabelsSheetsSimple)
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
             end
             
             exc_wb.Save();
@@ -418,7 +430,7 @@ function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
     
 end
 
-function [illiq,illiq_covariates,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
+function [illiq,illiqc,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
 
     alpha = 2 / (bwm + 1);
 
@@ -441,11 +453,11 @@ function [illiq,illiq_covariates,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
     end
     
     if (isempty(sv))
-        illiq_covariates = [];
+        illiqc = [];
     else
-        [illiq_covariates,~,mem_params] = multiplicative_error([input sv],mem);
-        illiq_covariates = [illiq_covariates(1); filter(alpha,[1 (alpha - 1)],illiq_covariates(2:end),(1 - alpha) * illiq_covariates(1))];
-        illiq_covariates = (illiq_covariates - min(illiq_covariates)) ./ (max(illiq_covariates) - min(illiq_covariates));
+        [illiqc,~,mem_params] = multiplicative_error([input sv],mem);
+        illiqc = [illiqc(1); filter(alpha,[1 (alpha - 1)],illiqc(2:end),(1 - alpha) * illiqc(1))];
+        illiqc = (illiqc - min(illiqc)) ./ (max(illiqc) - min(illiqc));
         
         if (strcmp(mem,'S'))
             knots(2) = mem_params(1);
@@ -454,13 +466,13 @@ function [illiq,illiq_covariates,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
 
 end
 
-function ris = calculate_ris(p,bwl,sw,c,s2)
+function ris = calculate_ris(p,bwl,w,c,s2)
 
     windows = extract_rolling_windows(log(max(1e-6,p)),bwl);
     ris = zeros(numel(windows),1);
 
     parfor i = 1:numel(windows)
-        ris(i) = roll_gibbs(windows{i},sw,c,s2);
+        ris(i) = roll_gibbs(windows{i},w,c,s2);
     end
 
     alpha = 2 / (bwl + 1);
@@ -502,58 +514,58 @@ end
 function plot_averages(ds,id)
 
     hhlr = ds.Averages(:,1);
-    illiq = ds.Averages(:,find(strcmp('ILLIQ',ds.LabelsSimple),1,'first'));
-    ris = ds.Averages(:,find(strcmp('RIS',ds.LabelsSimple),1,'first'));
-    tr = ds.Averages(:,find(strcmp('TR',ds.LabelsSimple),1,'first'));
-    vr = ds.Averages(:,find(strcmp('VR',ds.LabelsSimple),1,'first'));
+    illiq = ds.Averages(:,find(strcmp('ILLIQ',ds.LabelsMeasuresSimple),1,'first'));
+    ris = ds.Averages(:,find(strcmp('RIS',ds.LabelsMeasuresSimple),1,'first'));
+    tr = ds.Averages(:,find(strcmp('TR',ds.LabelsMeasuresSimple),1,'first'));
+    vr = ds.Averages(:,find(strcmp('VR',ds.LabelsMeasuresSimple),1,'first'));
 
     f = figure('Name','Liquidity Measures > Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     if (ds.CI)
-        illiq_covariates = ds.Averages(:,find(strcmp('ILLIQ Covariates',ds.LabelsSimple),1,'first'));
+        illiqc = ds.Averages(:,find(strcmp('ILLIQC',ds.LabelsMeasuresSimple),1,'first'));
         
-        indices = (abs(illiq_covariates - illiq) > 0.01);
+        indices = (abs(illiqc - illiq) > 0.01);
         illiq_delta = NaN(ds.T,1);
-        illiq_delta(indices) = illiq_covariates(indices);
+        illiq_delta(indices) = illiqc(indices);
         
         sub_1 = subplot(3,2,1);
         plot(sub_1,ds.DatesNum,illiq,'Color',[0.000 0.447 0.741]);
         set(sub_1,'YLim',[0 1.1]);
-        title(sub_1,ds.Labels{2});
+        title(sub_1,ds.LabelsMeasures{2});
         
         sub_6 = subplot(3,2,2);
-        plot(sub_6,ds.DatesNum,illiq_covariates,'Color',[0.000 0.447 0.741]);
+        plot(sub_6,ds.DatesNum,illiqc,'Color',[0.000 0.447 0.741]);
         hold on;
             plot(sub_6,ds.DatesNum,illiq_delta,'Color',[0.494 0.184 0.556]);
         hold off;
         set(sub_6,'YLim',[0 1.1]);
-        title(sub_6,ds.Labels{3});
+        title(sub_6,ds.LabelsMeasures{3});
     else
         sub_1 = subplot(3,2,1:2);
         plot(sub_1,ds.DatesNum,illiq,'Color',[0.000 0.447 0.741]);
         set(sub_1,'YLim',[0 1.1]);
-        title(sub_1,ds.Labels{2});
+        title(sub_1,ds.LabelsMeasures{2});
     end
 
     sub_2 = subplot(3,2,3);
     plot(sub_2,ds.DatesNum,hhlr,'Color',[0.000 0.447 0.741]);
     set(sub_2,'YLim',[0 1]);
-    title(sub_2,ds.Labels{1});
+    title(sub_2,ds.LabelsMeasures{1});
     
     sub_3 = subplot(3,2,4);
     plot(sub_3,ds.DatesNum,ris,'Color',[0.000 0.447 0.741]);
     set(sub_3,'YLim',plot_limits(ris,0.1,0));
-    title(sub_3,ds.Labels{4});
+    title(sub_3,ds.LabelsMeasures{4});
     
     sub_4 = subplot(3,2,5);
     plot(sub_4,ds.DatesNum,tr,'Color',[0.000 0.447 0.741]);
     set(sub_4,'YLim',[0 1]);
-    title(sub_4,ds.Labels{5});
+    title(sub_4,ds.LabelsMeasures{5});
 
     sub_5 = subplot(3,2,6);
     plot(sub_5,ds.DatesNum,vr,'Color',[0.000 0.447 0.741]);
     set(sub_5,'YLim',plot_limits(vr,0.1,0));
-    title(sub_5,ds.Labels{6});
+    title(sub_5,ds.LabelsMeasures{6});
     
     set([sub_1 sub_2 sub_3 sub_4 sub_5],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_1 sub_2 sub_3 sub_4 sub_5],'XGrid','on','YGrid','on');
@@ -598,7 +610,7 @@ function plot_sequence_illiq(ds,id)
     if (ds.CI)
         k = 2;
         
-        data = [repmat({dn},1,n); mat2cell(ds.ILLIQ,t,ones(1,n)); mat2cell(ds.ILLIQCovariates,t,ones(1,n))];
+        data = [repmat({dn},1,n); mat2cell(ds.ILLIQ,t,ones(1,n)); mat2cell(ds.ILLIQC,t,ones(1,n))];
         
         plots_allocation = [2 1];
         plots_span = {1 2};
@@ -607,10 +619,10 @@ function plot_sequence_illiq(ds,id)
             label_1 = strrep(ds.Labels{2},')','');
             titles_1 = arrayfun(@(x)sprintf([label_1 ', KNOTS=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
             label_2 = strrep(ds.Labels{3},')','');
-            titles_2 = arrayfun(@(x)sprintf([label_2 ', KNOTS=%d)'],x),ds.ILLIQCovariatesKnots,'UniformOutput',false);
+            titles_2 = arrayfun(@(x)sprintf([label_2 ', KNOTS=%d)'],x),ds.ILLIQCKnots,'UniformOutput',false);
             plots_title = [titles_1; titles_2];
         else
-            plots_title = [repmat(ds.Labels(2),1,n); repmat(ds.Labels(3),1,n)];
+            plots_title = [repmat(ds.LabelsMeasures(2),1,n); repmat(ds.LabelsMeasures(3),1,n)];
         end
     else
         k = 1;
@@ -722,7 +734,7 @@ function plot_sequence_other(ds,target,id)
 
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
-    plots_title = repmat(ds.Labels(find(strcmp(target,ds.LabelsSimple),1,'first')),1,n);
+    plots_title = repmat(ds.LabelsMeasures(find(strcmp(target,ds.LabelsMeasuresSimple),1,'first')),1,n);
     
     x_limits = [dn(1) dn(end)];
     

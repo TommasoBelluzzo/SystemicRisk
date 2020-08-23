@@ -24,36 +24,51 @@ end
 function analyze_dataset_internal(ds)
 
     safe_plot(@(id)plot_index(ds,id));
-    safe_plot(@(id)plot_boxes('Returns',ds.Returns,ds.FirmNames,id));
+    
+    safe_plot(@(id)plot_boxes(ds,'Returns',id));
+    safe_plot(@(id)plot_sequence_returns(ds,id));
     
     if (~isempty(ds.Volumes))
-        safe_plot(@(id)plot_boxes('Volumes',ds.Volumes,ds.FirmNames,id));
+        safe_plot(@(id)plot_boxes(ds,'Volumes',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Volumes',id));
     end
 
     if (~isempty(ds.Capitalizations))
-        safe_plot(@(id)plot_boxes('Capitalizations',ds.Capitalizations,ds.FirmNames,id));
+        safe_plot(@(id)plot_boxes(ds,'Capitalizations',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Capitalizations',id));
     end
     
     if (~isempty(ds.CDS))
         safe_plot(@(id)plot_risk_free_rate(ds,id));
-        safe_plot(@(id)plot_boxes('CDS Spreads',ds.CDS,ds.FirmNames,id));
+        safe_plot(@(id)plot_boxes(ds,'CDS',id));
+        safe_plot(@(id)plot_sequence_other(ds,'CDS',id));
     end
     
     if (~isempty(ds.Assets) && ~isempty(ds.Equity))
-        safe_plot(@(id)plot_boxes('Assets',ds.Assets,ds.FirmNames,id));
-        safe_plot(@(id)plot_boxes('Equity',ds.Equity,ds.FirmNames,id));
-        safe_plot(@(id)plot_boxes('Liabilities',ds.Liabilities,ds.FirmNames,id));
+        safe_plot(@(id)plot_boxes(ds,'Assets',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Assets',id));
+        
+        safe_plot(@(id)plot_boxes(ds,'Equity',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Equity',id));
+        
+        safe_plot(@(id)plot_boxes(ds,'Liabilities',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Liabilities',id));
+    end
+    
+    if (ds.Crises > 0)
+        safe_plot(@(id)plot_crises(ds,id));
     end
 
 end
 
-function plot_boxes(name,x,firm_names,id)
+function plot_boxes(ds,target,id)
 
-    n = numel(firm_names);
+    n = ds.N;
+    y = ds.(target);
 
-    f = figure('Name',['Dataset > ' name],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);    
+    f = figure('Name',['Dataset > ' target ' (Box Plots)'],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);    
 
-    boxplot(x,'Notch','on','Symbol','k.');
+    boxplot(y,'Notch','on','Symbol','k.');
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     delete(findobj(f,'-regexp','Tag','\w*Outlier'));
@@ -70,10 +85,10 @@ function plot_boxes(name,x,firm_names,id)
     
     ax = gca();
     set(ax,'TickLength',[0 0]);
-    set(ax,'XTick',1:n,'XTickLabels',firm_names,'XTickLabelRotation',45);
+    set(ax,'XTick',1:n,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
     set(ax,'YLim',[y_low y_high]);
 
-    figure_title(name);
+    figure_title(target);
 
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -81,9 +96,45 @@ function plot_boxes(name,x,firm_names,id)
 
 end
 
-function plot_index(data,id)
+function plot_crises(ds,id)
 
-    index = data.Index;
+    cd = ds.CrisisDummies;
+    k = size(cd,2);
+
+    f = figure('Name','Dataset > Crises','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+
+    hold on;
+        for i = 1:k
+            area(ds.DatesNum,cd(:,i),'EdgeAlpha',0.25,'FaceAlpha',0.40);
+        end
+    hold off;
+    
+    ax = gca();
+    
+    if (k <= 10)
+        legend(ax,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
+    end
+
+    set(ax,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set(ax,'YLim',[0 1],'YTick',[]);
+
+    if (ds.MonthlyTicks)
+        date_ticks(ax,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(ax,'x','yyyy','KeepLimits');
+    end
+    
+    figure_title('Crises');
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
+
+end
+
+function plot_index(ds,id)
+
+    index = ds.Index;
 
     index_obs = numel(index);
     index_max = max(index);
@@ -98,8 +149,8 @@ function plot_index(data,id)
     f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,data.Index);
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
+    plot(sub_1,ds.DatesNum,ds.Index);
+    set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',[(index_min - 0.01) (index_max + 0.01)]);
     set(sub_1,'XGrid','on','YGrid','on');
     t1 = title(sub_1,'Log Returns');
@@ -107,18 +158,18 @@ function plot_index(data,id)
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
-    if (data.MonthlyTicks)
+    if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
     else
         date_ticks(sub_1,'x','yyyy','KeepLimits');
     end
     
     sub_2 = subplot(2,1,2);
-    hist = histogram(sub_2,data.Index,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
+    hist = histogram(sub_2,ds.Index,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
     edges = get(hist,'BinEdges');
     edges_max = max(edges);
     edges_min = min(edges);
-    [values,points] = ksdensity(data.Index);
+    [values,points] = ksdensity(ds.Index);
     hold on;
         plot(sub_2,points,values,'-b','LineWidth',1.5);
     hold off;
@@ -128,7 +179,7 @@ function plot_index(data,id)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    t = figure_title(['Index (' data.IndexName ')']);
+    t = figure_title(['Index (' ds.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
     
@@ -141,9 +192,9 @@ function plot_index(data,id)
 
 end
 
-function plot_risk_free_rate(data,id)
+function plot_risk_free_rate(ds,id)
 
-    rfr = data.RiskFreeRate;
+    rfr = ds.RiskFreeRate;
     y_limits_rfr = plot_limits(rfr,0.1);
     
     rfr_pc = [0; (((rfr(2:end) - rfr(1:end-1)) ./ rfr(1:end-1)) .* 100)];
@@ -152,8 +203,8 @@ function plot_risk_free_rate(data,id)
     f = figure('Name','Dataset > Risk-Free Rate','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,1,1);
-    plot(sub_1,data.DatesNum,smooth_data(rfr));
-    set(sub_1,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
+    plot(sub_1,ds.DatesNum,smooth_data(rfr));
+    set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',y_limits_rfr);
     set(sub_1,'XGrid','on','YGrid','on');
     t1 = title(sub_1,'Trend');
@@ -162,27 +213,192 @@ function plot_risk_free_rate(data,id)
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
     sub_2 = subplot(2,1,2);
-    plot(sub_2,data.DatesNum,rfr_pc);
-    set(sub_2,'XLim',[data.DatesNum(1) data.DatesNum(end)],'XTickLabelRotation',45);
+    plot(sub_2,ds.DatesNum,rfr_pc);
+    set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_2,'YLim',y_limits_rfr_pc);
     set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick'),'UniformOutput',false));
+    set(sub_2,'XGrid','on','YGrid','on');
     t2 = title(sub_2,'Percent Change');
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    if (data.MonthlyTicks)
+    if (ds.MonthlyTicks)
         date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
     
-    t = figure_title('Risk-Free Rate');
-    t_position = get(t,'Position');
-    set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    figure_title('Risk-Free Rate');
 
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+function plot_sequence_other(ds,target,id)
+
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+    
+    ts = ds.(target);
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
+    
+    plots_title = repmat({' '},1,n);
+    
+    x_limits = [dn(1) dn(end)];
+
+    core = struct();
+
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = ['Dataset > ' target ' (Time Series)'];
+    core.InnerTitle = [target ' (Time Series)'];
+    core.SequenceTitles = ds.FirmNames;
+
+    core.PlotsAllocation = [1 1];
+    core.PlotsSpan = {1};
+    core.PlotsTitle = plots_title;
+
+    core.XDates = {mt};
+    core.XGrid = {true};
+    core.XLabel = {[]};
+    core.XLimits = {x_limits};
+    core.XRotation = {45};
+    core.XTick = {[]};
+    core.XTickLabels = {[]};
+
+    core.YGrid = {true};
+    core.YLabel = {[]};
+    core.YLimits = {[]};
+    core.YRotation = {[]};
+    core.YTick = {[]};
+    core.YTickLabels = {[]};
+    
+    sequential_plot(core,id);
+
+    function plot_function(subs,data)
+
+        x = data{1};
+        y = data{2};
+        
+        d = find(isnan(y),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x(d) - 1;
+        end
+        
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
+
+    end
+
+end
+
+function plot_sequence_returns(ds,id)
+
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+    
+    ts = ds.Returns;
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
+	
+	plots_title = [repmat({'Log Returns'},1,n); repmat({'P&L Distribution'},1,n)];
+    
+    x_limits = [dn(1) dn(end)];
+
+    core = struct();
+
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = 'Dataset > Returns (Time Series)';
+    core.InnerTitle = 'Returns (Time Series)';
+    core.SequenceTitles = ds.FirmNames;
+
+    core.PlotsAllocation = [2 1];
+    core.PlotsSpan = {1 2};
+    core.PlotsTitle = plots_title;
+
+    core.XDates = {mt []};
+    core.XGrid = {true false};
+    core.XLabel = {[] []};
+    core.XLimits = {x_limits []};
+    core.XRotation = {45 []};
+    core.XTick = {[] []};
+    core.XTickLabels = {[] []};
+
+    core.YGrid = {true false};
+    core.YLabel = {[] []};
+    core.YLimits = {[] []};
+    core.YRotation = {[] []};
+    core.YTick = {[] []};
+    core.YTickLabels = {[] []};
+    
+    sequential_plot(core,id);
+
+    function plot_function(subs,data)
+
+        x = data{1};
+        y = data{2};
+        
+        y_obs = numel(y);
+        y_max = max(y,[],'omitnan');
+        y_min = min(y,[],'omitnan');
+
+        y_avg = mean(y,'omitnan');
+        y_med = median(y,'omitnan');
+        y_std = std(y,'omitnan');
+        y_ske = skewness(y,0);
+        y_kur = kurtosis(y,0);
+        
+        d = find(isnan(y),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x(d) - 1;
+        end
+        
+        delete(findall(gcf,'type','annotation'));
+
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+        set(subs(1),'YLim',[(y_min - 0.01) (y_max + 0.01)]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
+
+        hist = histogram(subs(2),y,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
+        edges = get(hist,'BinEdges');
+        edges_max = max(edges);
+        edges_min = min(edges);
+        [values,points] = ksdensity(y);
+        hold(subs(2),'on');
+            plot(subs(2),points,values,'-b','LineWidth',1.5);
+        hold(subs(2),'off');
+        set(subs(2),'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
+        
+        txt = {sprintf('Observations: %d',y_obs) sprintf('Mean: %.4f',y_avg) sprintf('Median: %.4f',y_med) sprintf('Standard Deviation: %.4f',y_std) sprintf('Skewness: %.4f',y_ske) sprintf('Kurtosis: %.4f',y_kur)};
+        annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
+
+    end
 
 end

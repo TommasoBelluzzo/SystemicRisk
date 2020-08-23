@@ -80,6 +80,22 @@ function ds = validate_dataset_internal(ds,measures)
         validate_field(ds,'GroupShortNames',{'cellstr'},{'nonempty' 'size' [groups 1]});
     end
     
+    crises = validate_field(ds,'Crises',{'double'},{'real' 'finite' 'integer' '>=' 0 'scalar'});
+    
+    if (crises == 0)
+        validate_field(ds,'CrisesDummy',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisNames',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisStarts',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisEnds',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisDummies',{'double'},{'size' [0 0]});
+    else
+        validate_field(ds,'CrisesDummy',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t 1]});
+        validate_field(ds,'CrisisNames',{'cellstr'},{'nonempty' 'size' [crises 1]});
+        validate_field(ds,'CrisisStarts',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
+        validate_field(ds,'CrisisEnds',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
+        validate_field(ds,'CrisisDummies',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t crises]});
+    end
+
     validate_field(ds,'Defaults',{'double'},{'real' 'nonempty' 'offset' 'size' [1 n]});
     validate_field(ds,'Insolvencies',{'double'},{'real' 'nonempty' 'offset' 'size' [1 n]});
 
@@ -91,6 +107,7 @@ function ds = validate_dataset_internal(ds,measures)
     validate_field(ds,'SupportsLiquidity',{'logical'},{'scalar'});
     validate_field(ds,'SupportsRegimeSwitching',{'logical'},{'scalar'});
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
+    validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
     
     if (~isempty(measures))
         measuresfinal = [upper(measures(1)) measures(2:end)];

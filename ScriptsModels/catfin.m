@@ -61,7 +61,7 @@ function [var_np,var_gpd,var_gev,var_sged] = catfin_internal(r,a,g,u)
     [xi,beta,zeta] = deal(gpd_params(1),gpd_params(2),k / t);
     var_gpd = -(threshold + (beta / xi) * ((((1 / zeta) * a) ^ -xi) - 1));
 
-    k = round(nthroot(t,1.81),0);
+    k = max(round(nthroot(t,1.81),0),5);
     block_maxima = find_block_maxima(r,t,k);
     theta = find_extremal_index(r,t,k);
     gev_params = gevfit(block_maxima);

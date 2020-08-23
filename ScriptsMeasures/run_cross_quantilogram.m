@@ -189,37 +189,56 @@ function ds = initialize(ds,bw,a,lags,cim,cis,cip)
     ds.CIS = cis;
     ds.Lags = lags;
     ds.PI = ~isempty(ds.StateVariables);
-
+    
+    label = [' (' ds.CIM ' ' num2str(ds.CIS) ', P='];
+    
+    if (strcmp(ds.CIM,'SB'))
+        label = [label sprintf('%d',ds.CIP) ')'];
+    else
+        label = [label  sprintf('%.2f',ds.CIP) ')'];
+    end
+    
     ds.CQFullFrom = NaN(lags,n,3);
     ds.CQFullTo = NaN(lags,n,3);
     
+    ds.LabelsMeasuresSimple = {'Full From' 'Full To'};
+    ds.LabelsMeasures = {['Full From' label] ['Full To' label]};
+
     if (ds.PI)
         ds.CQPartialFrom = NaN(lags,n,3);
         ds.CQPartialTo = NaN(lags,n,3);
+        
+        ds.LabelsMeasuresSimple = [ds.LabelsMeasuresSimple {'Partial From' 'Partial To'}];
+        ds.LabelsMeasures = [ds.LabelsMeasures {['Partial From' label] ['Partial To' label]}];
     end
+
+    ds.LabelsSheetsSimple = ds.LabelsMeasuresSimple;
+    ds.LabelsSheets = ds.LabelsMeasures;
+    
+    ds.ComparisonReferences = {};
 
 end
 
-function ds = finalize(ds,window_results)
+function ds = finalize(ds,results)
   
     n = ds.N;
 
     for i = 1:n
-        window_result = window_results{i};
+        result = results{i};
         
         for j = 1:3
-            ds.CQFullFrom(:,i,j) = window_result.CQFull(:,1,j);
-            ds.CQFullTo(:,i,j) = window_result.CQFull(:,2,j);
+            ds.CQFullFrom(:,i,j) = result.CQFull(:,1,j);
+            ds.CQFullTo(:,i,j) = result.CQFull(:,2,j);
         end
     end
     
     if (ds.PI)
         for i = 1:n
-            window_result = window_results{i};
+            result = results{i};
 
             for j = 1:3
-                ds.CQPartialFrom(:,i,j) = window_result.CQPartial(:,1,j);
-                ds.CQPartialTo(:,i,j) = window_result.CQPartial(:,2,j);
+                ds.CQPartialFrom(:,i,j) = result.CQPartial(:,1,j);
+                ds.CQPartialTo(:,i,j) = result.CQPartial(:,2,j);
             end
         end
     end
@@ -344,20 +363,20 @@ function write_results(ds,temp,out)
 
     vars = [row_headers num2cell(reshape(permute(ds.CQFullFrom,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Full From','WriteRowNames',true);
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
     
     vars = [row_headers num2cell(reshape(permute(ds.CQFullTo,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Full To','WriteRowNames',true);
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{2},'WriteRowNames',true);
     
     if (ds.PI)
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialFrom,[3 1 2]),ds.Lags * 3,ds.N))];
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
-        writetable(tab,out,'FileType','spreadsheet','Sheet','Partial From','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
 
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialTo,[3 1 2]),ds.Lags * 3,ds.N))];
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
-        writetable(tab,out,'FileType','spreadsheet','Sheet','Partial To','WriteRowNames',true);
+        writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{4},'WriteRowNames',true);
     else
         if (ispc())
             try
@@ -382,6 +401,38 @@ function write_results(ds,temp,out)
                 delete(excel);
             catch
             end
+        end
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+        catch
+            return;
+        end
+
+        try
+            exc_wb = excel.Workbooks.Open(out,0,false);
+            
+            if (ds.PI)
+                offset = 4;
+            else
+                offset = 2;
+            end
+
+            for i = 1:offset
+                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
+            end
+
+            exc_wb.Save();
+            exc_wb.Close();
+            excel.Quit();
+        catch
+        end
+        
+        try
+            delete(excel);
+        catch
         end
     end
 
@@ -455,6 +506,12 @@ function plot_sequence(ds,target,id)
     cq_to_all = ds.(['CQ' target 'To']);
     
     data = [repmat({(1:lags).'},1,n); cell(6,20)];
+	
+    if (strcmp(target,'Full'))
+        plots_title = [repmat(ds.LabelsMeasures(1),1,n); repmat(ds.LabelsMeasures(2),1,n)];
+    else
+        plots_title = [repmat(ds.LabelsMeasures(3),1,n); repmat(ds.LabelsMeasures(4),1,n)];
+    end
     
     for i = 1:n
         for j = 2:4
@@ -494,7 +551,7 @@ function plot_sequence(ds,target,id)
 
     core.PlotsAllocation = [2 1];
     core.PlotsSpan = {1 2};
-    core.PlotsTitle = [repmat({'From'},1,n); repmat({'To'},1,n)];
+    core.PlotsTitle = plots_title;
 
     core.XDates = {[] []};
     core.XGrid = {false false};

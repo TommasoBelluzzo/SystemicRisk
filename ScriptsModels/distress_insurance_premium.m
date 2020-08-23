@@ -3,9 +3,9 @@
 % cds = A vector of floats [0,Inf) of length n representing the credit default swap spreads.
 % lb = A vector of floats [0,Inf) of length n representing the liabilities.
 % lgd = A float [0,1] representing the loss given default.
-% c = An integer [50,1000] representing the number of simulated samples.
+% f = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors.
 % l = A float [0.05,0.20] representing the importance sampling threshold.
-% s = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors.
+% c = An integer [50,1000] representing the number of simulated samples.
 %
 % [OUTPUT]
 % dip = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.
@@ -20,9 +20,9 @@ function dip = distress_insurance_premium(varargin)
         ip.addRequired('cds',@(x)validateattributes(x,{'double'},{'real' 'nonnegative' 'vector' 'nonempty'}));
         ip.addRequired('lb',@(x)validateattributes(x,{'double'},{'real' 'nonnegative' 'vector' 'nonempty'}));
         ip.addRequired('lgd',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
-        ip.addRequired('c',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
+        ip.addRequired('f',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
         ip.addRequired('l',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
-        ip.addRequired('s',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
+        ip.addRequired('c',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -30,20 +30,20 @@ function dip = distress_insurance_premium(varargin)
     ipr = ip.Results;
     [n,indices,r,cds,lb] = validate_input(ipr.r,ipr.cds,ipr.lb);
     lgd = ipr.lgd;
-    c = ipr.c;
+    f = min(ipr.f,n);
     l = ipr.l;
-    s = min(ipr.s,n);
+    c = ipr.c;
 
     nargoutchk(1,1);
 
-    dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,c,l,s);
+    dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c);
 
 end
 
-function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,c,l,s)
+function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c)
 
     [dt,dw,ead,ead_volume,lgd] = estimate_default_parameters(cds(indices),lb(indices),n,lgd);
-    b = estimate_factor_loadings(r(:,indices),s);
+    b = estimate_factor_loadings(r(:,indices),f);
 
     bi = floor(c * 0.2);
     c2 = c^2;
@@ -51,7 +51,7 @@ function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,c,l,s)
     a = zeros(5,1);
     
     for iter = 1:5 
-        mcmc_p = slicesample(rand(1,s),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
+        mcmc_p = slicesample(rand(1,f),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
         [mu,sigma,weights] = gmm_fit(mcmc_p,2);  
         [z,g] = gmm_evaluate(mu,sigma,weights,c);
 
