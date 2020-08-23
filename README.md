@@ -78,7 +78,7 @@ The minimum required `MATLAB` version is `R2014b`. In addition, the following pr
 
 ## Usage
 
-1. Create a properly structured database (see the paragraph below).
+1. Create a properly structured database (see the paragraphs below).
 1. Edit the `run.m` script following your needs.
 1. Execute the `run.m` script.
 
@@ -110,7 +110,11 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
-The main dataset (`Datasets\Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
+* **Crises:** crisis definitions based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates. Every dataset observation falling inside the range of a crisis is considered to be part of a distress period.
+
+## Example Datasets
+
+The `Datasets` folder includes many example datasets. The main dataset (`Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
 
 #### Benchmark Index: S&P 500
 
