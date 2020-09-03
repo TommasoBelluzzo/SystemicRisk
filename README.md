@@ -95,7 +95,7 @@ Datasets must be built following the structure of default ones included in every
   * **Equity:** the book value of equity.
   * **Separate Accounts:** the separate accounts of insurance firms.
 * **State Variables:** systemic state variables, with daily frequency.
-* **Groups:** group definitions based on three-value tuples where the `Name` field represents the group names, the `Short Name` field represents the group acronyms and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms. For example, the following groups definition:
+* **Groups:** group definitions are based on three-value tuples where the `Name` field represents the group names, the `Short Name` field represents the group acronyms and the `Count` field represents the number of firms to include in the group. The sum of the `Count` fields must be equal to the number of firms. For example, the following groups definition:
 
   > Firms in the Shares Sheet: A, B, C, D, E, F, G, H  
   > Insurance Companies: 2  
@@ -110,7 +110,7 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
-* **Crises:** crisis definitions based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates. Every dataset observation falling inside the range of a crisis is considered to be part of a distress period.
+* **Crises:** crisis definitions are based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates. Every dataset observation falling inside the range of a crisis is considered to be part of a distress period.
 
 ## Example Datasets
 
