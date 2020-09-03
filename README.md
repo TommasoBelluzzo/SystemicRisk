@@ -196,7 +196,7 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
   
 * Firms whose time series value is constantly null in the tail, for a span that includes at least `5%` of total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly null in the tail, for a span that includes at least `5%` of total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain time point onward; defaulted firms are excluded by all the measures, while insolvent firms are excluded only by SCCA default measures.
 
-* Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script checks and the dataset is parsed once again the `Excel` spreadsheet is modified.
+* Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
 
 * The dataset parsing process is affected by several well-known problems. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of issues:
   * If the parsing process is too slow, the best way to speed it up is to provide an unformatted `Excel` spreadsheet (`.xlsx`), with no filters and no styles, or a binary `Excel` spreadsheet (`.xlsb`).
