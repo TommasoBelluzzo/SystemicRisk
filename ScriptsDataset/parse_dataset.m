@@ -586,7 +586,7 @@ function [tab,crises_dummy] = parse_table_crises_dates(file,file_name,index,name
             error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
         end
 
-        if (~isequal(tab.Properties.VariableNames,{'Date' 'Event'}))
+        if (~isequal(tab.Properties.VariableNames,{'Date' 'Name'}))
             error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
         end
         
@@ -605,7 +605,7 @@ function [tab,crises_dummy] = parse_table_crises_dates(file,file_name,index,name
             error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
         end
 
-        if (~isequal(options.VariableNames,{'Date' 'Event'}))
+        if (~isequal(options.VariableNames,{'Date' 'Name'}))
             error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
         end
 
