@@ -19,7 +19,7 @@ function [rc,rs] = kendall_rankings(varargin)
     ip.parse(varargin{:});
     
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds);
+    ds = validate_dataset(ipr.ds,'generic-result');
     measures = validate_input(ds,ipr.measures);
 
     nargoutchk(2,2);

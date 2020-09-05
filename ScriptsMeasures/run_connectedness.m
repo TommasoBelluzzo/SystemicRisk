@@ -196,7 +196,11 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.AverageDegreesOut = NaN(1,n);
     ds.AverageDegrees = NaN(1,n);
     
-    ds.ComparisonReferences = {'Indicators' [] strcat({'CO-'},ds.LabelsIndicatorsShort)};
+    if (ds.Groups == 0)
+        ds.ComparisonReferences = {'Indicators' 1:2 strcat({'CO-'},ds.LabelsIndicatorsShort)};
+    else
+        ds.ComparisonReferences = {'Indicators' 1:3 strcat({'CO-'},ds.LabelsIndicatorsShort)};
+    end
 
 end
 

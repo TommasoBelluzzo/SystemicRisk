@@ -341,7 +341,7 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
     ds.PortfolioComponents = pfc;
     ds.Portfolios = pf;
 
-    all_label = [' (RR=' sprintf('%.1f%%',(ds.RR * 100)) ', ' ds.PW ', ' ds.MD ')'];
+    all_label = [' (RR=' num2str(ds.RR * 100) ', ' ds.PW ', ' ds.MD ')'];
 
     ds.LabelsMeasuresSimple = {'SI' 'SV' 'CoJPoDs'};
     ds.LabelsMeasures = {['SI' all_label] ['SV' all_label] ['CoJPoDs' all_label]};
@@ -772,7 +772,7 @@ function plot_indicators(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Indicators (RR=' sprintf('%.1f%%',(ds.RR * 100)) ', ' ds.PW ', ' ds.MD ')']);
+    figure_title(['Indicators (RR=' num2str(ds.RR * 100) ', ' ds.PW ', ' ds.MD ')']);
 
     pause(0.01);
     frame = get(f,'JavaFrame');

@@ -207,7 +207,7 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     ds.W = w;
     
     mem_label = [' (MEM=' ds.MEM ')'];
-    ris_label = [' (W=' sprintf('%d',ds.W) ', C=' num2str(ds.C) ', S2=' num2str(ds.S2) ')'];
+    ris_label = [' (W=' num2str(ds.W) ', C=' num2str(ds.C) ', S2=' num2str(ds.S2) ')'];
     
     if (ds.CI)
         ds.LabelsMeasuresSimple = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR'};
@@ -617,9 +617,9 @@ function plot_sequence_illiq(ds,id)
   
         if (strcmp(ds.MEM,'S'))
             label_1 = strrep(ds.Labels{2},')','');
-            titles_1 = arrayfun(@(x)sprintf([label_1 ', KNOTS=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
+            titles_1 = arrayfun(@(x)sprintf([label_1 ', KT=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
             label_2 = strrep(ds.Labels{3},')','');
-            titles_2 = arrayfun(@(x)sprintf([label_2 ', KNOTS=%d)'],x),ds.ILLIQCKnots,'UniformOutput',false);
+            titles_2 = arrayfun(@(x)sprintf([label_2 ', KT=%d)'],x),ds.ILLIQCKnots,'UniformOutput',false);
             plots_title = [titles_1; titles_2];
         else
             plots_title = [repmat(ds.LabelsMeasures(2),1,n); repmat(ds.LabelsMeasures(3),1,n)];
@@ -634,7 +634,7 @@ function plot_sequence_illiq(ds,id)
 
         if (strcmp(ds.MEM,'S'))
             label = strrep(ds.Labels{2},')','');
-            plots_title = arrayfun(@(x)sprintf([label ', KNOTS=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
+            plots_title = arrayfun(@(x)sprintf([label ', KT=%d)'],x),ds.ILLIQKnots,'UniformOutput',false);
         else
             plots_title = repmat(ds.Labels(2),1,n);
         end

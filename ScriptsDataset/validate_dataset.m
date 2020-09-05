@@ -1,15 +1,16 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% measures = A string (one of 'component', 'connectedness', 'cross-sectional', 'spillover') representing the category of measures being calculated (optional, default='').
+% validation_type = A string representing the type of validation to perform (optional, default='').
 
 function ds = validate_dataset(varargin)
 
-    persistent measures_list;
+    persistent validation_types;
     
-    if (isempty(measures_list))
-        measures_list = {
+    if (isempty(validation_types))
+        validation_types = {
             'component' 'connectedness' 'cross-entropy' 'cross-quantilogram' ...
-            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover'
+            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover' ...
+            'generic-result'
         };
     end
     
@@ -18,22 +19,22 @@ function ds = validate_dataset(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addOptional('measures','',@(x)any(validatestring(x,measures_list)));
+        ip.addOptional('validation_type','',@(x)any(validatestring(x,validation_types)));
     end
 
     ip.parse(varargin{:});
 
     ipr = ip.Results;
     ds = ipr.ds;
-    measures = ipr.measures;
+    validation_type = ipr.validation_type;
     
     nargoutchk(1,1);
 
-    ds = validate_dataset_internal(ds,measures);
+    ds = validate_dataset_internal(ds,validation_type);
 
 end
 
-function ds = validate_dataset_internal(ds,measures)
+function ds = validate_dataset_internal(ds,validation_type)
 
     validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty' 'size' [1 8]});
 
@@ -81,19 +82,29 @@ function ds = validate_dataset_internal(ds,measures)
     end
     
     crises = validate_field(ds,'Crises',{'double'},{'real' 'finite' 'integer' '>=' 0 'scalar'});
+    crises_type = validate_field(ds,'CrisesType',{'char'},{'nonempty' 'size' [1 1]});
+    
+    if (~strcmp(crises_type,'E') && ~strcmp(crises_type,'R'))
+        error(['The dataset field ''crises_type'' is invalid.' newline() 'Expected value to be either ''E'' or ''R''.']);
+    end
     
     if (crises == 0)
         validate_field(ds,'CrisesDummy',{'double'},{'size' [0 0]});
-        validate_field(ds,'CrisisNames',{'double'},{'size' [0 0]});
-        validate_field(ds,'CrisisStarts',{'double'},{'size' [0 0]});
-        validate_field(ds,'CrisisEnds',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisDates',{'double'},{'size' [0 0]});
         validate_field(ds,'CrisisDummies',{'double'},{'size' [0 0]});
+        validate_field(ds,'CrisisNames',{'double'},{'size' [0 0]});
     else
         validate_field(ds,'CrisesDummy',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t 1]});
+        
+        if (strcmp(crises_type,'E'))
+            validate_field(ds,'CrisisDates',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
+            validate_field(ds,'CrisisDummies',{'double'},{'size' [0 0]});
+        else
+            validate_field(ds,'CrisisDates',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 2]});
+            validate_field(ds,'CrisisDummies',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t crises]});
+        end
+        
         validate_field(ds,'CrisisNames',{'cellstr'},{'nonempty' 'size' [crises 1]});
-        validate_field(ds,'CrisisStarts',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
-        validate_field(ds,'CrisisEnds',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
-        validate_field(ds,'CrisisDummies',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t crises]});
     end
 
     validate_field(ds,'Defaults',{'double'},{'real' 'nonempty' 'offset' 'size' [1 n]});
@@ -109,19 +120,34 @@ function ds = validate_dataset_internal(ds,measures)
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
     
-    if (~isempty(measures))
-        measuresfinal = [upper(measures(1)) measures(2:end)];
-        measures_underscore = strfind(measuresfinal,'-');
+    if (~isempty(validation_type))
+        if (strcmp(validation_type,'generic-result'))
+            labels = validate_field(ds,'LabelsMeasuresSimple',{'cellstr'},{'nonempty' 'size' [1 NaN]});
+            labels_len = numel(labels);
 
-        if (~isempty(measures_underscore))
-            measuresfinal(measures_underscore) = [];
-            measuresfinal(measures_underscore) = upper(measuresfinal(measures_underscore));
-        end
+            if (labels_len <= 1)
+                error('The dataset cannot be used for performing cross analyses on systemic risk measures.');
+            end
+            
+            for i = 1:labels_len
+                if (~isfield(ds,strrep(ds.LabelsMeasuresSimple{i},' ','')))
+                    error('The dataset does not contain all the required systemic risk measures.');
+                end
+            end
+        else
+            measures = [upper(validation_type(1)) validation_type(2:end)];
+            measures_underscore = strfind(measures,'-');
 
-        supports = ['Supports' measuresfinal];
+            if (~isempty(measures_underscore))
+                measures(measures_underscore) = [];
+                measures(measures_underscore) = upper(measures(measures_underscore));
+            end
 
-        if (~ds.(supports))
-            error(['The dataset cannot be used for calculating ''' measures ''' measures.']);
+            supports = ['Supports' measures];
+
+            if (~ds.(supports))
+                error(['The dataset cannot be used for calculating ''' validation_type ''' measures.']);
+            end
         end
     end
     

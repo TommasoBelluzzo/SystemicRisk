@@ -190,13 +190,7 @@ function ds = initialize(ds,bw,a,lags,cim,cis,cip)
     ds.Lags = lags;
     ds.PI = ~isempty(ds.StateVariables);
     
-    label = [' (' ds.CIM ' ' num2str(ds.CIS) ', P='];
-    
-    if (strcmp(ds.CIM,'SB'))
-        label = [label sprintf('%d',ds.CIP) ')'];
-    else
-        label = [label  sprintf('%.2f',ds.CIP) ')'];
-    end
+    label = [' (' ds.CIM ' ' num2str(ds.CIS) ', P=' num2str(ds.CIP) ')'];
     
     ds.CQFullFrom = NaN(lags,n,3);
     ds.CQFullTo = NaN(lags,n,3);
@@ -260,7 +254,7 @@ function [cim,cis,cip] = validate_ci(cim,cis,cip)
         cis_allowed = [0.005 0.010 0.025 0.050 0.100];
 
         if (~ismember(cis,cis_allowed))
-            cis_allowed_text = [sprintf('%.2f',cis_allowed(1)) sprintf(', %.2f',cis_allowed(2:end))];
+            cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
             error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
         end
         

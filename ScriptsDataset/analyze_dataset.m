@@ -98,21 +98,56 @@ end
 
 function plot_crises(ds,id)
 
-    cd = ds.CrisisDummies;
-    k = size(cd,2);
+    f = figure('Name','Dataset > Crises','Units','normalized','Tag',id);
 
-    f = figure('Name','Dataset > Crises','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+    if (strcmp(ds.CrisesType,'E'))
+        cd = ds.CrisesDummy;
+        cddn = ds.DatesNum(logical(cd));
+        cddn_len = numel(cddn);
+        
+        plot(ds.DatesNum,nan(ds.T,1));
+        
+        hold on;
+            for i = cddn_len:-1:1
+                l = line(ones(2,1) .* cddn(i),[0 1],'Color',[1 0.4 0.4]);
+                set(l,'Tag',num2str(i));
+            end
+        hold off;
+        
+        ax = gca();
 
-    hold on;
-        for i = 1:k
-            area(ds.DatesNum,cd(:,i),'EdgeAlpha',0.25,'FaceAlpha',0.40);
+        tooltips = ds.CrisisNames;
+        tooltips_target = l;
+    else
+        cd = ds.CrisisDummies;
+        k = size(cd,2);
+        
+        co = get(gca,'ColorOrder');
+        cor = ceil(k / size(co,1));
+        co = repmat(co,cor,1);
+        
+        hold on;
+            for i = k:-1:1
+                cddn = ds.DatesNum(logical(cd(:,i)));
+                cddn_max = max(cddn);
+                cddn_min = min(cddn);
+                
+                p = patch('XData',[cddn_min cddn_max cddn_max cddn_min],'YData',[0 0 1 1],'EdgeAlpha',0.25,'FaceAlpha',0.40,'FaceColor',co(i,:));
+                set(p,'Tag',num2str(i));
+            end
+        hold off;
+
+        ax = gca();
+
+        if (k <= 5)
+            legend(ax,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
+
+            tooltips = [];
+            tooltips_target = [];
+        else
+            tooltips = ds.CrisisNames;
+            tooltips_target = p;
         end
-    hold off;
-    
-    ax = gca();
-    
-    if (k <= 10)
-        legend(ax,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
     end
 
     set(ax,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
@@ -123,12 +158,32 @@ function plot_crises(ds,id)
     else
         date_ticks(ax,'x','yyyy','KeepLimits');
     end
-    
-    figure_title('Crises');
+
+    if (strcmp(ds.CrisesType,'E'))
+        figure_title('Crises (Events)');
+    else
+        figure_title('Crises (Ranges)');
+    end
 
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+    
+    if (~isempty(tooltips))
+        drawnow();
+
+        dcm = datacursormode(f);
+        set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,tooltips));
+        createDatatip(dcm,tooltips_target,[1 1]);
+    end
+
+    function tooltip = create_tooltip(~,evtd,tooltips)
+        
+        target = get(evtd,'Target');
+        index = str2double(get(target,'Tag'));
+        tooltip = tooltips{index};
+
+    end
 
 end
 

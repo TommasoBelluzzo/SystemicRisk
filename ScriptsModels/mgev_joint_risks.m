@@ -44,7 +44,7 @@ function [joint_vars,joint_es] = mgev_joint_risks_internal(l,k)
     [t,n] = size(l);
     l_sorted = sort(l,1);
     
-	q_fin = q(q >= k);
+    q_fin = q(q >= k);
     q_diff = diff([q_fin 1]);
     
     xi_s = (1:floor(t / 4)).';

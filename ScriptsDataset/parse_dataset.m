@@ -4,6 +4,7 @@
 % date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except balance sheet ones (optional, default='dd/mm/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
 % shares_type = A string (either 'P' for prices or 'R' for returns) representing the type of data included in the Shares sheet (optional, default='P').
+% crises_type = A string (either 'E' for events or 'R' for time ranges) representing the type of data included in the Crises sheet (optional, default='R').
 %
 % [OUTPUT]
 % ds = A structure containing the parsed dataset.
@@ -19,6 +20,7 @@ function ds = parse_dataset(varargin)
         ip.addOptional('date_format_base','dd/mm/yyyy',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P' 'R'})));
+        ip.addOptional('crises_type','R',@(x)any(validatestring(x,{'E' 'R'})));
     end
 
     ip.parse(varargin{:});
@@ -29,14 +31,15 @@ function ds = parse_dataset(varargin)
     date_format_base = validate_date_format(ipr.date_format_base,true);
     date_format_balance = validate_date_format(ipr.date_format_balance,false);
     shares_type = ipr.shares_type;
+    crises_type = ipr.crises_type;
     
     nargoutchk(1,1);
 
-    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type);
+    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type);
 
 end
 
-function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type)
+function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type)
 
     [~,file_name,file_ext] = fileparts(file);
     file_name = [file_name file_ext];
@@ -133,10 +136,9 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     
     crises = 0;
     crises_dummy = [];
-    crisis_names = [];
-    crisis_starts = [];
-    crisis_ends = [];
+    crisis_dates = [];
     crisis_dummies = [];
+    crisis_names = [];
 
     for tab = {'Volumes' 'Capitalizations' 'CDS' 'Assets' 'Equity' 'Separate Accounts' 'State Variables' 'Groups' 'Crises'}
 
@@ -152,37 +154,45 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         switch (tab_name)
             
             case 'Volumes'
+                
                 tab_volumes = parse_table_standard(file,file_name,tab_index,tab_name,date_format_base,dates_num,firm_names,true);
                 volumes = table2array(tab_volumes);
 
             case 'Capitalizations'
+                
                 tab_capitalizations = parse_table_standard(file,file_name,tab_index,tab_name,date_format_base,dates_num,firm_names,true);
                 capitalizations = table2array(tab_capitalizations);
 
             case 'CDS'
+                
                 tab_cds = parse_table_standard(file,file_name,tab_index,tab_name,date_format_base,dates_num,[{'RF'} firm_names],true);
                 tab_arr = table2array(tab_cds);
                 risk_free_rate = tab_arr(:,1);
                 cds = tab_arr(:,2:end) ./ 10000;
                 
             case 'Assets'
+                
                 tab_assets = parse_table_balance(file,file_name,tab_index,tab_name,date_format_balance,dates_num,firm_names,true);
                 assets = table2array(tab_assets);
 
             case 'Equity'
+                
                 tab_equity = parse_table_balance(file,file_name,tab_index,tab_name,date_format_balance,dates_num,firm_names,false);
                 equity = table2array(tab_equity);
 
             case 'Separate Accounts'
+                
                 tab_separate_accounts = parse_table_balance(file,file_name,tab_index,tab_name,date_format_balance,dates_num,firm_names,true);
                 separate_accounts = table2array(tab_separate_accounts);
 
             case 'State Variables'
+                
                 tab_state_variables = parse_table_standard(file,file_name,tab_index,tab_name,date_format_base,dates_num,[],false);
                 state_variables = table2array(tab_state_variables);
                 state_variables_names = tab_state_variables.Properties.VariableNames;
 
              case 'Groups'
+                 
                 [tab_groups,group_counts] = parse_table_groups(file,file_name,tab_index,tab_name,firm_names);
                 groups = height(tab_groups);
                 group_delimiters = cumsum(group_counts(1:end-1,:));
@@ -190,11 +200,18 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
                 group_short_names = tab_groups{:,2};
                 
              case 'Crises'
-                [tab_crises,crisis_dummies,crises_dummy] = parse_table_crises(file,file_name,tab_index,tab_name,date_format_base,dates_num);
-                crises = height(tab_crises);
-                crisis_names = tab_crises{:,1};
-                crisis_starts = datenum(tab_crises{:,2});
-                crisis_ends = datenum(tab_crises{:,3});
+                
+                if (strcmp(crises_type,'E'))
+                    [tab_crises,crises_dummy] = parse_table_crises_dates(file,file_name,tab_index,tab_name,date_format_base,dates_num);
+                    crises = height(tab_crises);
+                    crisis_dates = datenum(tab_crises{:,1});
+                    crisis_names = tab_crises{:,2};
+                else
+                    [tab_crises,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file_name,tab_index,tab_name,date_format_base,dates_num);
+                    crises = height(tab_crises);
+                    crisis_dates = [datenum(tab_crises{:,2}) datenum(tab_crises{:,3})];
+                    crisis_names = tab_crises{:,1};
+                end
 
         end
     end
@@ -210,8 +227,8 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         equity = remove_first_observation(equity);
         separate_accounts = remove_first_observation(separate_accounts);
         state_variables = remove_first_observation(state_variables);
-        crisis_dummies = remove_first_observation(crisis_dummies);
         crises_dummy = remove_first_observation(crises_dummy);
+        crisis_dummies = remove_first_observation(crisis_dummies);
     end
 
     [dates_year,~,~,~,~,~] = datevec(dates_num);
@@ -222,8 +239,10 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         liabilities = [];
     end
     
-	crisis_starts = max(crisis_starts,dates_num(1));
-    crisis_ends = min(crisis_ends,dates_num(end));
+    if (strcmp(crises_type,'R') && ~isempty(crises_dummy))
+        crisis_dates(:,1) = max(crisis_dates(:,1),dates_num(1));
+        crisis_dates(:,2) = min(crisis_dates(:,2),dates_num(end));
+    end
     
     if (isempty(prices))
         [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity);
@@ -308,7 +327,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.T = t;
 
     ds.DatesNum = dates_num;
-    ds.DatesStr = cellstr(datetime(dates_num,'ConvertFrom','datenum'));
+    ds.DatesStr = cellstr(datestr(datetime(dates_num,'ConvertFrom','datenum'),date_format_base));
     ds.MonthlyTicks = numel(unique(dates_year)) <= 3;
 
     ds.IndexName = index_name;
@@ -338,11 +357,11 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.GroupShortNames = group_short_names;
 
     ds.Crises = crises;
+    ds.CrisesType = crises_type;
     ds.CrisesDummy = crises_dummy;
-    ds.CrisisNames = crisis_names;
-    ds.CrisisStarts = crisis_starts;
-    ds.CrisisEnds = crisis_ends;
+    ds.CrisisDates = crisis_dates;
     ds.CrisisDummies = crisis_dummies;
+    ds.CrisisNames = crisis_names;
 
     ds.Defaults = defaults;
     ds.Insolvencies = insolvencies;
@@ -502,10 +521,6 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
     t_current = height(tab_partial);
     dates_num_current = datenum(tab_partial.Date);
     tab_partial.Date = [];
-
-    if (t_current ~= numel(unique(cellstr(datestr(dates_num,date_format)))))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains an invalid number of observation dates.']);
-    end
     
     if (t_current ~= numel(unique(dates_num_current)))
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains duplicate observation dates.']);
@@ -514,7 +529,11 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
     if (any(dates_num_current ~= sort(dates_num_current)))
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unsorted observation dates.']);
     end
-    
+
+    if (t_current ~= numel(unique(cellstr(datestr(dates_num,date_format)))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains an invalid number of observation dates.']);
+    end
+
     if (~isequal(tab_partial.Properties.VariableNames,firm_names))
         error(['Error in dataset ''' file_name ''': the firm names between the ''Shares'' sheet and the ''' name ''' sheet are mismatching.']);
     end
@@ -538,7 +557,112 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
 
 end
 
-function [tab,crisis_dummies,crisis_dummy] = parse_table_crises(file,file_name,index,name,date_format,dates_num)
+function [tab,crises_dummy] = parse_table_crises_dates(file,file_name,index,name,date_format,dates_num)
+
+    date_format_dt = date_format;
+    date_format_dt = strrep(date_format_dt,'m','M');
+    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
+
+    if (verLessThan('MATLAB','9.1'))
+        if (ispc())
+            try
+                tab = readtable(file,'Sheet',index,'Basic',true);
+            catch
+                tab = readtable(file,'Sheet',index);
+            end
+        else
+            tab = readtable(file,'Sheet',index);
+        end
+        
+        if (height(tab) == 0)
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
+        end
+
+        if (width(tab) ~= 2)
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 2 columns.']);
+        end
+        
+        if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
+        end
+
+        if (~isequal(tab.Properties.VariableNames,{'Date' 'Event'}))
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
+        end
+        
+        output_vars = varfun(@class,tab,'OutputFormat','cell');
+        
+        tab = ensure_field_consistency(name,tab,1,output_vars{1},'datetime',date_format_dt);
+        tab = ensure_field_consistency(name,tab,2,output_vars{2},'string',[]);
+    else
+        if (ispc())
+            options = detectImportOptions(file,'Sheet',index);
+        else
+            options = detectImportOptions(file,'Sheet',name);
+        end
+        
+        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
+        end
+
+        if (~isequal(options.VariableNames,{'Date' 'Event'}))
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
+        end
+
+        options = setvartype(options,{'datetime' 'char'});
+        
+        if (ispc())
+            try
+                tab = readtable(file,options,'Basic',true);
+            catch
+                tab = readtable(file,options);
+            end
+        else
+            tab = readtable(file,options);
+        end
+        
+        if (height(tab) == 0)
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
+        end
+
+        if (width(tab) ~= 2)
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 2 columns.']);
+        end
+    end
+    
+    if (any(any(ismissing(tab))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+    end
+
+    dates_num_min = min(dates_num);
+    dates_num_max = max(dates_num);
+
+    dates_num_current = datenum(tab.Date);
+
+    if (any(dates_num_current < dates_num_min) || any(dates_num_current > dates_num_max))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crisis events outside the scope of the dataset (' datestr(dates_num_min,date_format) ' - ' datestr(dates_num_max,date_format) ').']);
+    end
+
+    n = height(tab);
+    crises_dummy = zeros(numel(dates_num),1);
+
+    for i = 1:n
+        [check,index] = ismember(datenum(tab.Date(i)),dates_num);
+
+        if (~check)
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crisis events outside the scope of the dataset.']);
+        end
+        
+        crises_dummy(index) = 1;
+    end
+
+    if (all(crises_dummy == 1))
+        error(['Error in dataset ''' file_name ''': all the observation are considered to be part of a distress period.']);
+    end
+
+end
+
+function [tab,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file_name,index,name,date_format,dates_num)
 
     date_format_dt = date_format;
     date_format_dt = strrep(date_format_dt,'m','M');
@@ -644,9 +768,9 @@ function [tab,crisis_dummies,crisis_dummy] = parse_table_crises(file,file_name,i
         crisis_dummies(ismember(dates_num,seq),i) = 1;
     end
 
-    crisis_dummy = double(sum(crisis_dummies,2) > 0);
+    crises_dummy = double(sum(crisis_dummies,2) > 0);
     
-    if (all(crisis_dummy == 1))
+    if (all(crises_dummy == 1))
         error(['Error in dataset ''' file_name ''': all the observation are considered to be part of a distress period.']);
     end
 

@@ -270,16 +270,10 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
     ds.RR = rr;
     ds.ST =  1 ./ (1 + lst);
 
-    car_label = sprintf('%.1f%%',(ds.CAR * 100));
-    f_label = sprintf('%d',ds.F);
-    k_label = sprintf('%.1f%%',(ds.K * 100));
-    l_label = sprintf('%.1f%%',(ds.L * 100));
-    rr_label = sprintf('%.1f%%',(ds.RR * 100));
-    
     op_label =  [' (' ds.OP ')'];
-    d2c_label =  [' (' ds.OP ', CAR=' car_label ')'];
-    dip_label =  [' (RR=' rr_label ', F=' f_label ', L=' l_label ')'];
-    scca_label = [' (' ds.OP ', K=' k_label ')'];
+    d2c_label =  [' (' ds.OP ', CAR=' num2str(ds.CAR * 100) ')'];
+    dip_label =  [' (RR=' num2str(ds.RR * 100) ', F=' num2str(ds.F) ', L=' num2str(ds.L * 100) ')'];
+    scca_label = [' (' ds.OP ', K=' num2str(ds.K * 100) ')'];
 
     ds.LabelsMeasuresSimple = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL'};
     ds.LabelsMeasures = {['D2D' op_label] ['D2C' d2c_label] ['SCCA EL' op_label] ['SCCA CL' op_label]};
@@ -728,10 +722,8 @@ function plot_rankings(ds,id)
     text(rc_x,rc_y,rc_text,'FontSize',9,'HorizontalAlignment','center');
     set(sub_2,'FontWeight','bold','TickLength',[0 0]);
     set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
-    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
-    t2 = title(sub_2,'Ranking Concordance');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[t2_position(1) 0.2897 t2_position(3)]);
+    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
+    title(sub_2,'Ranking Concordance');
 
     if (~verLessThan('MATLAB','8.4'))
         tl = get(sub_2,'XTickLabel');
@@ -799,7 +791,7 @@ function plot_scca(ds,id)
     
     sub_3 = subplot(2,2,4);
     plot(sub_3,ds.DatesNum,smooth_data(jes),'Color',[0.000 0.447 0.741]);
-    title(sub_3,['Joint ES (K=' sprintf('%.0f%%',(ds.K * 100)) ')']);
+    title(sub_3,['Joint ES (K=' sprintf('%.1f%%',(ds.K * 100)) ')']);
     
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_2 sub_3],'XGrid','on','YGrid','on');

@@ -166,10 +166,8 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
     ds.Lags = lags;
     ds.Windows = numel(indices);
     ds.WindowsIndices = indices;
-    
-    h_label = sprintf('%d',ds.H);
-    lags_label = sprintf('%d',ds.Lags);
-    all_label = [' (' fevd ', H=' h_label ', LAGS=' lags_label ')'];
+
+    all_label = [' (' fevd ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')'];
 
     ds.LabelsIndicatorsSimple = {'SI'};
 	ds.LabelsIndicatorsShort = {'SI'};
@@ -506,7 +504,7 @@ function plot_spillovers(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Spillovers (' ds.FEVD ', H=' sprintf('%d',ds.H) ', LAGS=' sprintf('%d',ds.Lags) ')']);
+    figure_title(['Spillovers (' ds.FEVD ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')']);
     
     pause(0.01);
     frame = get(f,'JavaFrame');

@@ -209,13 +209,10 @@ function ds = initialize(ds,k,car,sf,d,fr)
     ds.K = k;
     ds.SF = sf;
 
-    car_label = sprintf('%.1f%%',(ds.CAR * 100));
-    d_label = sprintf('%.1f%%',(ds.D * 100));
-    k_label = sprintf('%.1f%%',(ds.K * 100));
-    
-    k_all_label = [' (K=' k_label ')'];
+    car_label = num2str(ds.CAR * 100);
+    k_all_label = [' (K=' num2str(ds.K * 100) ')'];
     ses_label =  [' (CAR=' car_label ')'];
-    srisk_label = [' (D=' d_label ', CAR=' car_label ')'];
+    srisk_label = [' (D=' num2str(ds.D * 100) ', CAR=' car_label ')'];
 
     ds.LabelsMeasuresSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK'};
     ds.LabelsMeasures = {'Beta' ['VaR' k_all_label] ['ES' k_all_label] ['CoVaR' k_all_label] ['Delta CoVaR' k_all_label] ['MES' k_all_label] ['SES' ses_label] ['SRISK' srisk_label]};
@@ -847,10 +844,8 @@ function plot_rankings(ds,id)
     text(rc_x,rc_y,rc_text,'FontSize',9,'HorizontalAlignment','center');
     set(sub_2,'FontWeight','bold','TickLength',[0 0]);
     set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
-    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45)
-    t2 = title(sub_2,'Ranking Concordance');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[t2_position(1) 0.2897 t2_position(3)]);
+    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
+    title(sub_2,'Ranking Concordance');
 
     if (~verLessThan('MATLAB','8.4'))
         tl = get(sub_2,'XTickLabel');

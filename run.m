@@ -78,10 +78,10 @@ addpath(paths_base);
 
 %% DATASET PARSING
 
-ds_version = 'v2.3';
+ds_version = 'v3.1';
 ds_process = false;
 
-file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
+file = fullfile(path_base,['Datasets' filesep() 'Example_Small_3.xlsx']);
 [file_path,file_name,file_extension] = fileparts(file);
 
 if (exist(file,'file') == 0)
@@ -111,9 +111,9 @@ else
 end
 
 if (ds_process)
-    ds = parse_dataset(file,ds_version,'dd/mm/yyyy','QQ yyyy','P');
-    save(mat,'ds');
+    ds = parse_dataset(file,ds_version,'dd/mm/yyyy','QQ yyyy','P','R');
     analyze_dataset(ds);
+    save(mat,'ds');
 end
 
 %% EXECUTION
@@ -133,9 +133,9 @@ measures_setup = {
     'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);
 };
 
-comparison_offset = 1;
-comparison_data = NaN(ds.T,100);
-comparison_labels = repmat({''},100,1);
+mlabels = repmat({''},1,100);
+mdata = NaN(ds.T,100);
+moff = 1;
 
 for i = 1:size(measures_setup,1)
     [category,enabled,analyze,compare,run_function] = measures_setup{i,:};
@@ -159,21 +159,21 @@ for i = 1:size(measures_setup,1)
         return;
     end
     
-    if (compare && ~isempty(result.ComparisonReferences))
+    if (compare && isfield(result,'ComparisonReferences') && ~isempty(result.ComparisonReferences))
         for j = 1:size(result.ComparisonReferences,1)
-            [c_field,c_offsets,c_labels] = result.ComparisonReferences{j,:};
+            [c_field,c_indices,c_labels] = result.ComparisonReferences{j,:};
             c_measures = result.(c_field);
 
-            if (~isempty(c_offsets))
-                c_measures = c_measures(:,c_offsets);
+            if (~isempty(c_indices))
+                c_measures = c_measures(:,c_indices);
             end
             
             c_measures_len = size(c_measures,2);
-            c_offset_final = comparison_offset + c_measures_len - 1;
+            c_coffset = moff + c_measures_len - 1;
 
-            comparison_data(:,comparison_offset:c_offset_final) = c_measures;
-            comparison_labels(comparison_offset:c_offset_final) = c_labels;
-            comparison_offset = comparison_offset + c_measures_len;
+            mlabels(moff:c_coffset) = c_labels;
+            mdata(:,moff:c_coffset) = c_measures;
+            moff = moff + c_measures_len;
         end
     end
 
@@ -184,15 +184,20 @@ for i = 1:size(measures_setup,1)
     save(mat,category_reference);
 end
 
-comparison_data(:,comparison_offset:end) = [];
-comparison_labels(comparison_offset:end) = [];
+mlabels(moff:end) = [];
+mdata(:,moff:end) = [];
 
-if (ds.Crises == 0)
-    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the dataset does not include the ''Crises'' sheet.');
-elseif (numel(comparison_labels) <= 1)
-    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains a single time series.');
+if (numel(mlabels) <= 1)
+    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
 else
-    comparison = true;
+    pause(2);
+    
+    temp = fullfile(path_base,['Templates' filesep() 'TemplateComparison.xlsx']);
+    out = fullfile(path_base,['Results' filesep() 'ResultsComparison.xlsx']);
+    cut_off = bw + 1;
+    analyze = true;
+
+    result_comparison = run_comparison(ds,temp,out,mlabels,mdata,cut_off,[],21,'AIC',0.01,false,'GG',analyze);
 end
 
 clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');

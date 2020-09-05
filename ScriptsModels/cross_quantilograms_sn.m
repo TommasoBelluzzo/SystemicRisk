@@ -140,7 +140,7 @@ function [civ,cif] = validate_input_ci(cis,cif)
     [cis_ok,j] = ismember(cis,cis_allowed);
 
     if (~cis_ok)
-        cis_allowed_text = [sprintf('%.2f',cis_allowed(1)) sprintf(', %.2f',cis_allowed(2:end))];
+        cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
         error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
     end
     

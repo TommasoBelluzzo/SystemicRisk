@@ -165,17 +165,15 @@ function ds = initialize(ds,bw,k,f,q)
     ds.F = f;
     ds.K = k;
     ds.Q = q;
-    
-    f_label = sprintf('%.2f',ds.F);
-    k_label = sprintf('%.0f%%',(ds.K * 100));
-    q_label = sprintf('%.2f',ds.Q);
+
+    k_label = num2str(ds.K * 100);
 
     ds.LabelsCATFINVaR = {'NP' 'GPD' 'GEV' 'SGED'};
     ds.LabelsPCAExplained = {'PC' 'Explained Variance'};
     
     ds.LabelsIndicatorsSimple = {'Absorption Ratio' 'CATFIN' 'Correlation Surprise' 'Turbulence Index'};
 	ds.LabelsIndicatorsShort = {'AR' 'CATFIN' 'CS' 'TI'};
-    ds.LabelsIndicators = {['Absorption Ratio (F=' f_label ')'] ['CATFIN (K=' k_label ')'] 'Correlation Surprise' ['Turbulence Index (Q=' q_label ')']};
+    ds.LabelsIndicators = {['Absorption Ratio (F=' [num2str(ds.F * 100) '%'] ')'] ['CATFIN (K=' k_label ')'] 'Correlation Surprise' ['Turbulence Index (Q=' num2str(ds.Q) ')']};
 
     ds.LabelsSheetsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
     ds.LabelsSheets = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
