@@ -81,7 +81,7 @@ addpath(paths_base);
 ds_version = 'v3.1';
 ds_process = false;
 
-file = fullfile(path_base,['Datasets' filesep() 'Example_Small_3.xlsx']);
+file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
 [file_path,file_name,file_extension] = fileparts(file);
 
 if (exist(file,'file') == 0)
