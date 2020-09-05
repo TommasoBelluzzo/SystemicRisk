@@ -110,7 +110,9 @@ Datasets must be built following the structure of default ones included in every
   > "Commercial Banks" contains E, F and G  
   > "Government-sponsored Enterprises" contains H
 
-* **Crises:** crisis definitions are based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates. Every dataset observation falling inside the range of a crisis is considered to be part of a distress period.
+* **Crises:** crises can be defined using two different approaches:
+  * *By Events:* based on two-value tuples where the `Date` field represents the crisis dates and the `Name` field represents the crisis events. Every dataset observation matching a crisis date is considered to be associated to a distress event.
+  * *By Ranges:* based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates; every dataset observation falling inside the range of a crisis is considered to be part of a distress period.
 
 ## Example Datasets
 
