@@ -33,6 +33,7 @@ This framework calculates and analyses the following systemic risk measures:
   * `SES (Systemic Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SRISK (Conditional Capital Shortfall Index)` by [Brownlees & Engle (2010)](https://doi.org/10.2139/ssrn.1611229)
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
+  * `Tail Dependence`
 * **DEFAULT MEASURES**
   * `D2C (Distance To Capital)` by [Chan-Lau & Sy (2007)](https://doi.org/10.1057/palgrave.jbr.2350056)
   * `D2D (Distance To Default)` by [Vassalou & Xing (2004)](https://doi.org/10.1111/j.1540-6261.2004.00650.x)
