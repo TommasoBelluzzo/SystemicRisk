@@ -1,6 +1,7 @@
 % [INPUT]
-% ds = A structure representing the dataset.
-% measures = A cell array of strings defining the target measures.
+% m = A variable representing the target measures, with two possible types:
+%   - A cell array of length k, where k is the number of measures, of t-by-n matrices.
+%   - A t-by-n-by-k matrix, where k is the number of measures.
 %
 % [OUTPUT]
 % rc = A column vector of floats of length n representing the value of assets.
@@ -12,42 +13,36 @@ function [rc,rs] = kendall_rankings(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addRequired('measures',@(x)validateattributes(x,{'cell'},{'vector' 'nonempty'}));
+        ip.addRequired('m',@(x)validateattributes(x,{'cell' 'double'},{'nonempty'}));
     end
 
     ip.parse(varargin{:});
     
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'generic-result');
-    measures = validate_input(ds,ipr.measures);
+    m = validate_input(ipr.m);
 
     nargoutchk(2,2);
 
-    [rc,rs] = kendall_rankings_internal(ds,measures);
+    [rc,rs] = kendall_rankings_internal(m);
 
 end
 
-function [rc,rs] = kendall_rankings_internal(ds,measures)
+function [rc,rs] = kendall_rankings_internal(m)
 
-    t = ds.T;
-
-    m = numel(measures);
-    measures_pairs = nchoosek(1:m,2);
+    [t,~,k] = size(m);
+    p = nchoosek(1:k,2);
     
-    rc = zeros(m,m);
-    rs = zeros(1,m);
+    rc = zeros(k,k);
+    rs = zeros(1,k);
 
-    for i = 1:size(measures_pairs,1)
-        pair = measures_pairs(i,:);
-
-        index_1 = pair(1);
-        field_1 = strrep(ds.LabelsMeasuresSimple{index_1},' ','');
-        measure_1 = ds.(field_1);
+    for i = 1:size(p,1)
+        p_i = p(i,:);
         
-        index_2 = pair(2);
-        field_2 = strrep(ds.LabelsMeasuresSimple{index_2},' ','');
-        measure_2 = ds.(field_2);
+        index_1 = p_i(1);
+        measure_1 = m(:,:,index_1);
+
+        index_2 = p_i(2);
+        measure_2 = m(:,:,index_2);
         
         for j = 1:t
             [~,rank_1] = sort(measure_1(j,:),'ascend');
@@ -57,9 +52,8 @@ function [rc,rs] = kendall_rankings_internal(ds,measures)
         end
     end
     
-    for i = 1:m
-        field = strrep(ds.LabelsMeasuresSimple{i},' ','');
-        measure = ds.(field);
+    for i = 1:k
+        measure = m(:,:,i);
         
         for j = t:-1:2
             [~,rank_previous] = sort(measure(j-1,:),'ascend');
@@ -69,7 +63,7 @@ function [rc,rs] = kendall_rankings_internal(ds,measures)
         end
     end
     
-    rc = ((rc + rc.') / t) + eye(m);
+    rc = ((rc + rc.') / t) + eye(k);
     rs = rs ./ (t - 1);
 
 end
@@ -77,41 +71,88 @@ end
 function cc = concordance_coefficient(rank_1,rank_2)
 
     m = [rank_1 rank_2];
-    [n,k] = size(m);
+    [g,f] = size(m);
 
-    rm = zeros(n,k);
+    rm = zeros(g,f);
 
-    for i = 1:k
+    for i = 1:f
         x_i = m(:,i);
         [~,b] = sortrows(x_i,'ascend');
-        rm(b,i) = 1:n;
+        rm(b,i) = 1:g;
     end
 
     rm_sum = sum(rm,2);
-    s = sum(rm_sum.^2,1) - ((sum(rm_sum) ^ 2) / n);
+    s = sum(rm_sum.^2,1) - (sum(rm_sum)^2 / g);
 
-    cc = (12 * s) / ((k ^ 2) * (( n^ 3) - n));
+    cc = (12 * s) / ((f ^ 2) * (g^3 - g));
 
 end
 
-function measures = validate_input(ds,measures)
+function m_final = validate_input(m)
 
-    if (~iscellstr(measures)) %#ok<ISCLSTR>
-        error('The value of ''measures'' is invalid. Expected input to be a cell array of character vectors.');
-    end
-    
-    m = numel(measures);
-    
-    if (m < 2)
-        error('The value of ''measures'' is invalid. Expected input to contain at least 2 elements.');
-    end
-    
-    measures = strrep(measures,' ','');
-    
-    for i = 1:m
-        if (~isfield(ds,measures{i}))
-            error('The dataset does not contain all the specified measures.');
+    if (iscell(m))
+        if (~isvector(m))
+            error('The value of ''m'' is invalid. Expected input to be a vector, when specified as a cell array.');
         end
+        
+        k = numel(m);
+
+        if (k < 2)
+            error('The value of ''m'' is invalid. Expected input to contain at least 2 elements, when specified as a cell array.');
+        end
+
+        ts = zeros(k,1);
+        ns = zeros(k,1);
+
+        for i = 1:k
+            m_i = m{i};
+
+            if (~ismatrix(m_i))
+                error('The value of ''m'' is invalid. Expected input to contain only matrices, when specified as a cell array.');
+            end
+
+            [t,n] = size(m_i);
+            
+            if ((t < 5) || (n < 2))
+                error('The value of ''m'' is invalid. Expected input to contain matrices whose size is greater than or equal to 5x2.');
+            end
+            
+            ts(i) = t;
+            ns(i) = n;
+        end
+
+        ts_uni = unique(ts);
+        ns_uni = unique(ns);
+
+        if ((numel(ts_uni) ~= 1) || (numel(ns_uni) ~= 1))
+            error('The value of ''m'' is invalid. Expected input to contain equally sized matrices, when specified as a cell array.');
+        end
+        
+        t = ts_uni(1);
+        n = ns_uni(1);
+        m_final = zeros(t,n,k);
+
+        for i = 1:k
+            m_final(:,:,i) = m{i};
+        end
+    else
+        m_size = size(m);
+        
+        if (numel(m_size) ~= 3)
+            error('The value of ''m'' is invalid. Expected input to have 3 dimensions, when specified as a matrix.');
+        end
+        
+        [t,n,k] = deal(m_size(1),m_size(2),m_size(3));
+
+        if (k < 2)
+            error('The value of ''m'' is invalid. Expected input to have third dimension greater than or equal to 2, when specified as a matrix.');
+        end
+        
+        if ((t < 5) || (n < 2))
+            error('The value of ''m'' is invalid. Expected input to have 2-dimensional size greater than or equal to 5x2.');
+        end
+        
+        m_final = m;
     end
     
 end

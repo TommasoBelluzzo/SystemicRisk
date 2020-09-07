@@ -5,7 +5,7 @@
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % k = A float [0.90,0.99] representing the confidence level used to calculate the CATFIN (optional, default=0.99).
 % f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio (optional, default=0.2).
-% q = A float (0.5,1.0) representing the quantile threshold of the Turbulence Index (optional, default=0.75).
+% q = A float (0.5,1.0) representing the quantile threshold of Correlation Surprise and Turbulence Index (optional, default=0.75).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -169,11 +169,10 @@ function ds = initialize(ds,bw,k,f,q)
     k_label = num2str(ds.K * 100);
 
     ds.LabelsCATFINVaR = {'NP' 'GPD' 'GEV' 'SGED'};
-    ds.LabelsPCAExplained = {'PC' 'Explained Variance'};
-    
-    ds.LabelsIndicatorsSimple = {'Absorption Ratio' 'CATFIN' 'Correlation Surprise' 'Turbulence Index'};
-	ds.LabelsIndicatorsShort = {'AR' 'CATFIN' 'CS' 'TI'};
-    ds.LabelsIndicators = {['Absorption Ratio (F=' [num2str(ds.F * 100) '%'] ')'] ['CATFIN (K=' k_label ')'] 'Correlation Surprise' ['Turbulence Index (Q=' num2str(ds.Q) ')']};
+    ds.LabelsPCAExplained = {'PC' 'EV'};
+
+    ds.LabelsIndicatorsSimple = {'AR' 'CATFIN' 'CS' 'TI'};
+    ds.LabelsIndicators = {['AR (F=' [num2str(ds.F * 100) '%'] ')'] ['CATFIN (K=' k_label ')'] ['CS (Q=' num2str(ds.Q) ')'] ['TI (Q=' num2str(ds.Q) ')']};
 
     ds.LabelsSheetsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
     ds.LabelsSheets = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
@@ -195,7 +194,7 @@ function ds = initialize(ds,bw,k,f,q)
     ds.PCAExplainedSumsOverall = NaN(1,4);
     ds.PCAScoresOverall = NaN(t,n);
 
-    ds.ComparisonReferences = {'Indicators' [] strcat({'CO-'},ds.LabelsIndicatorsShort)};
+    ds.ComparisonReferences = {'Indicators' [] strcat({'CO-'},ds.LabelsIndicatorsSimple)};
 
 end
 
@@ -317,11 +316,11 @@ function write_results(ds,temp,out)
     tab = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
 
-    labels = strrep(ds.LabelsIndicatorsSimple,' ','_');
+    labels = ds.LabelsIndicatorsSimple;
     tab = [dates_str array2table(ds.Indicators,'VariableNames',labels)];
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{2},'WriteRowNames',true);
 
-    labels = strrep(ds.LabelsPCAExplained,' ','_');
+    labels = ds.LabelsPCAExplained;
     tab = array2table([(1:ds.N).' ds.PCAExplainedOverall],'VariableNames',labels);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
 
@@ -493,10 +492,7 @@ function plot_indicators_other(ds,id)
     
     ar = smooth_data(ds.Indicators(:,1));
     ar_limit = fix(min(ar) * 10) / 10;
-    
-    cs = ds.Indicators(:,3);
-    cs_ma = [cs(1); filter(alpha,[1 (alpha - 1)],cs(2:end),(1 - alpha) * cs(1))];
-    
+
     ti = ds.Indicators(:,4);
     ti_ma = [ti(1); filter(alpha,[1 (alpha - 1)],ti(2:end),(1 - alpha) * ti(1))];
 
@@ -505,6 +501,21 @@ function plot_indicators_other(ds,id)
     for i = 1:ds.T
         ti_th(i) = quantile(ti(max(1,i-ds.BW):min(ds.T,i+ds.BW)),ds.Q);
     end
+    
+    ti_math = ti_ma;
+    ti_math(ti_ma <= ti_th) = NaN;
+    
+    cs = ds.Indicators(:,3);
+    cs_ma = [cs(1); filter(alpha,[1 (alpha - 1)],cs(2:end),(1 - alpha) * cs(1))];
+    
+    cs_th = NaN(ds.T,1);
+
+    for i = 1:ds.T
+        cs_th(i) = quantile(cs(max(1,i-ds.BW):min(ds.T,i+ds.BW)),ds.Q);
+    end
+    
+    cs_math = cs_ma;
+    cs_math(cs_ma <= cs_th) = NaN;
 
     f = figure('Name','Component Measures > Other Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -513,7 +524,7 @@ function plot_indicators_other(ds,id)
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',[ar_limit 1],'YTick',ar_limit:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) .* 100,'UniformOutput',false));
     set(sub_1,'XGrid','on','YGrid','on');
-    t1 = title(sub_1,ds.LabelsIndicators{1});
+    t1 = title(sub_1,['Absorption Ratio (F=' [num2str(ds.F * 100) '%'] ')']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
@@ -523,14 +534,14 @@ function plot_indicators_other(ds,id)
     p2.Color(4) = 0.35;
     hold on;
         p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741]);
-        p22 = plot(sub_2,ds.DatesNum,ti_th,'Color',[1 0.4 0.4]);
+        p22 = plot(sub_2,ds.DatesNum,ti_math,'Color',[1 0.4 0.4]);
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    l = legend(sub_2,[p21 p22],'EWMA','Threshold','Location','best');
+    l = legend(sub_2,[p21 p22],'EWMA','Threshold Exceeded','Location','best');
     set(l,'NumColumns',2,'Units','normalized');
     l_position = get(l,'Position');
     set(l,'Position',[0.6710 0.4895 l_position(3) l_position(4)]);
-    t2 = title(sub_2,ds.LabelsIndicators{4});
+    t2 = title(sub_2,['Turbulence Index (Q=' num2str(ds.Q) ')']);
     set(t2,'Units','normalized');
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
@@ -540,9 +551,10 @@ function plot_indicators_other(ds,id)
     p3.Color(4) = 0.35;
     hold on;
         plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741]);
+        plot(sub_3,ds.DatesNum,cs_math,'Color',[1 0.4 0.4]);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    t3 = title(sub_3,ds.LabelsIndicators{3});
+    t3 = title(sub_3,['Correlation Surprise (Q=' num2str(ds.Q) ')']);
     set(t3,'Units','normalized');
     t3_position = get(t3,'Position');
     set(t3,'Position',[0.4783 t3_position(2) t3_position(3)]);

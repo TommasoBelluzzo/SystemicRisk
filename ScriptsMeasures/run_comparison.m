@@ -4,7 +4,7 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % ml = A cell array of strings representing the measures labels.
 % md = A float t-by-n matrix containing the measures time series.
-% co = An integer representing the comparison cut-off, a limit before which all the observations are discarded (optional, default=1).% lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for Granger-causality and Price Discovery models (optional, default=10).
+% co = An integer representing the comparison cut-off, a limit before which all the observations are discarded (optional, default=1).
 % sc = Optional argument specified as a vector of floats [0,Inf) of length 3 representing the score coefficient of each comparison model (Granger-causality, Logistic, Price Discovery).
 %      When defined, comparison models with a coefficient equal to 0 are not computed. When left undefined, all the comparison models are computed and their scores are equally weighted.  
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for Granger-causality and Price Discovery models (optional, default=10).
@@ -657,13 +657,14 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     [scores,order] = sort(ds.GCScores);
     labels = ds.MLabels(order);
 
+    data_labels = ds.MLabels;
     data = ds.GCData;
 
     f = figure('Name','Measures Comparison > Granger-causality','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,scores,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_1,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
+    set(sub_1,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',90);
     set(sub_1,'YGrid','on','YLim',[0 100]);
     title('Scores');
 
@@ -676,8 +677,8 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
         s.CData = cdata;
     hold off;
     set(sub_2,'TickLength',[0 0]);
-    set(sub_2,'XTick',off,'XTickLabels',ds.MLabels,'XTickLabelRotation',45);
-    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',45);
+    set(sub_2,'XLim',[0.5 (mn + 1.5)],'XTick',off,'XTickLabels',ds.MLabels,'XTickLabelRotation',90);
+    set(sub_2,'YDir','reverse','YLim',[0.5 (mn + 1.5)],'YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',0);
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
     
@@ -690,18 +691,26 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     drawnow();
 
     dcm = datacursormode(f);
-    set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,data));
+    set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,s,data_labels,data));
     createDatatip(dcm,s,[1 1]);
 
-    function tooltip = create_tooltip(~,evtd,data)
+    function tooltip = create_tooltip(~,evtd,element,data_labels,data)
 
+        targ = get(evtd,'Target');
+        
+        if (targ ~= element)
+            tooltip = [];
+            return;
+        end
+        
         [i,j] = ind2sub(size(data),get(evtd,'DataIndex'));
         data_ij = data{i,j};
         
         if (isempty(data_ij))
             tooltip = '';
         else
-            tooltip = sprintf('F: %.4f | CV: %.4f\nRestricted Lag: %d\nUnrestricted Lag: %d',data_ij.F,data_ij.CV,data_ij.LagR,data_ij.LagU);
+            vs = [data_labels{i} ' vs ' data_labels{j}];
+            tooltip = sprintf('%s\nF: %.4f | CV: %.4f\nRestricted Lag: %d\nUnrestricted Lag: %d',vs,data_ij.F,data_ij.CV,data_ij.LagR,data_ij.LagU);
         end
 
     end
@@ -770,13 +779,14 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     [scores,order] = sort(ds.PDScores);
     labels = ds.MLabels(order);
 
+    data_labels = ds.MLabels;
     data = ds.PDData;
 
     f = figure('Name','Measures Comparison > Price Discovery','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,scores,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_1,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
+    set(sub_1,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',90);
     set(sub_1,'YGrid','on','YLim',[0 100]);
     title('Scores');
 
@@ -789,8 +799,8 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
         s.CData = cdata;
     hold off;
     set(sub_2,'TickLength',[0 0]);
-    set(sub_2,'XTick',off,'XTickLabels',ds.MLabels,'XTickLabelRotation',45);
-    set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',45);
+    set(sub_2,'XLim',[0.5 (mn + 1.5)],'XTick',off,'XTickLabels',ds.MLabels,'XTickLabelRotation',90);
+    set(sub_2,'YDir','reverse','YLim',[0.5 (mn + 1.5)],'YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',0);
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
     
@@ -803,18 +813,26 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     drawnow();
 
     dcm = datacursormode(f);
-    set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,data));
+    set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,s,data_labels,data));
     createDatatip(dcm,s,[1 1]);
 
-    function tooltip = create_tooltip(~,evtd,data)
+    function tooltip = create_tooltip(~,evtd,element,data_labels,data)
 
+        targ = get(evtd,'Target');
+        
+        if (targ ~= element)
+            tooltip = [];
+            return;
+        end
+        
         [i,j] = ind2sub(size(data),get(evtd,'DataIndex'));
         data_ij = data{i,j};
         
         if (isempty(data_ij))
             tooltip = '';
         else
-            tooltip = sprintf('M1: %f\nM2: %f\nLag: %d',data_ij.M1,data_ij.M2,data_ij.Lag);
+            vs = [data_labels{i} ' vs ' data_labels{j}];
+            tooltip = sprintf('%s\nM1: %f\nM2: %f\nLag: %d',vs,data_ij.M1,data_ij.M2,data_ij.Lag);
         end
 
     end

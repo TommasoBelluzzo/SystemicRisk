@@ -347,7 +347,6 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
     ds.LabelsMeasures = {['SI' all_label] ['SV' all_label] ['CoJPoDs' all_label]};
     
     ds.LabelsIndicatorsSimple = {'JPoD' 'FSI' 'PCE'};
-    ds.LabelsIndicatorsShort = ds.LabelsIndicatorsSimple;
     ds.LabelsIndicators = {['JPoD' all_label] ['FSI' all_label] ['PCE' all_label]};
 
     ds.LabelsSheetsSimple = [{'Indicators' 'Average DiDe'} ds.LabelsMeasuresSimple];

@@ -278,9 +278,8 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
     ds.LabelsMeasuresSimple = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL'};
     ds.LabelsMeasures = {['D2D' op_label] ['D2C' d2c_label] ['SCCA EL' op_label] ['SCCA CL' op_label]};
     
-    ds.LabelsIndicatorsSimple = {'Average D2D' 'Average D2C' 'Portfolio D2D' 'Portfolio D2C' 'DIP' 'SCCA JES'};
-	ds.LabelsIndicatorsShort = {'AD2D' 'AD2C' 'PD2D' 'PD2C' 'DIP' 'SCCAJES'};
-    ds.LabelsIndicators = {['Average D2D' op_label] ['Average D2C' d2c_label] ['Portfolio D2D' op_label] ['Portfolio D2C' d2c_label] ['DIP' dip_label] ['SCCA JES' scca_label]};
+    ds.LabelsIndicatorsSimple = {'AD2D' 'AD2C' 'PD2D' 'PD2C' 'DIP' 'SCCA JES'};
+    ds.LabelsIndicators = {['AD2D' op_label] ['AD2C' d2c_label] ['PD2D' op_label] ['PD2C' d2c_label] ['DIP' dip_label] ['SCCA JES' scca_label]};
 
     ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Indicators'}];
     ds.LabelsSheets = [ds.LabelsMeasures {'Indicators'}];
@@ -291,11 +290,11 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
     ds.SCCAAlphas = NaN(t,n);
     ds.SCCAEL = NaN(t,n);
     ds.SCCACL = NaN(t,n);
-    ds.SCCAJointVaRs = NaN(t,numel(q));
+    ds.SCCAJVaRs = NaN(t,numel(q));
 
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
     
-    ds.ComparisonReferences = {'Indicators' [] strcat({'DE-'},ds.LabelsIndicatorsShort)};
+    ds.ComparisonReferences = {'Indicators' [] strcat({'DE-'},strrep(ds.LabelsIndicatorsSimple,' ',''))};
 
 end
 
@@ -319,8 +318,15 @@ function ds = finalize_1(ds,results)
     ds.Indicators(:,2) = d2c_avg;
     ds.Indicators(:,3) = d2d_por;
     ds.Indicators(:,4) = d2c_por;
-    
-    [rc,rs] = kendall_rankings(ds,ds.LabelsMeasuresSimple);
+	
+	measures_len = numel(ds.LabelsMeasuresSimple);
+	measures = cell(measures_len,1);
+	
+    for i = 1:measures_len
+        measures{i} = ds.(strrep(ds.LabelsMeasuresSimple{i},' ',''));
+    end
+	
+    [rc,rs] = kendall_rankings(measures);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
 
@@ -333,10 +339,10 @@ function ds = finalize_2(ds,results)
     for i = 1:t
         result = results{i};
         
-        ds.SCCAJointVaRs(i,:) = result.SCCAJointVaRs;
+        ds.SCCAJVaRs(i,:) = result.SCCAJVaRs;
 
         ds.Indicators(i,5) = result.DIP;
-        ds.Indicators(i,6) = result.SCCAJointES;
+        ds.Indicators(i,6) = result.SCCAJES;
     end
     
     w = max(round(nthroot(ds.BW,1.81),0),5); 
@@ -528,9 +534,9 @@ function window_results = main_loop_2(r,cds,lb,lgd,f,l,c,cl,k)
     dip = distress_insurance_premium(r,cds,lb,lgd,f,l,c);
     window_results.DIP = dip;
 
-    [joint_vars,joint_es] = mgev_joint_risks(cl,k);
-    window_results.SCCAJointVaRs = joint_vars;
-    window_results.SCCAJointES = joint_es;
+    [jvars,jes] = mgev_joint_risk_metrics(cl,k);
+    window_results.SCCAJVaRs = jvars;
+    window_results.SCCAJES = jes;
 
 end
 
@@ -576,6 +582,9 @@ end
 function plot_distances(ds,id)
 
     distances = ds.Indicators(:,1:4);
+    
+    op_label =  [' (' ds.OP ')'];
+    d2c_label =  [' (' ds.OP ', CAR=' num2str(ds.CAR * 100) ')'];
 
     y_min = min(min(min(distances)),-1);
     y_max = max(max(distances));
@@ -591,28 +600,28 @@ function plot_distances(ds,id)
     hold on;
         p = plot(sub_1,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
     hold off;
-    title(sub_1,ds.LabelsIndicators{1});
+    title(sub_1,['Average D2D' op_label]);
     
     sub_2 = subplot(2,2,2);
     plot(sub_2,ds.DatesNum,smooth_data(distances(:,3)),'Color',[0.000 0.447 0.741]);
     hold on;
         plot(sub_2,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
     hold off;
-    title(sub_2,ds.LabelsIndicators{2});
+    title(sub_2,['Average D2C' d2c_label]);
     
     sub_3 = subplot(2,2,3);
     plot(sub_3,ds.DatesNum,smooth_data(distances(:,2)),'Color',[0.000 0.447 0.741]);
     hold on;
         plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
     hold off;
-    title(sub_3,ds.LabelsIndicators{3});
+    title(sub_3,['Portfolio D2D' op_label]);
     
     sub_4 = subplot(2,2,4);
     plot(sub_4,ds.DatesNum,smooth_data(distances(:,4)),'Color',[0.000 0.447 0.741]);
     hold on;
         plot(sub_4,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
     hold off;
-    title(sub_4,ds.LabelsIndicators{4});
+    title(sub_4,['Portfolio D2C' d2c_label]);
     
     set([sub_1 sub_2 sub_3 sub_4],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_1 sub_2 sub_3 sub_4],'YLim',y_limits,'YTick',y_ticks,'YTickLabel',y_ticks_labels);
@@ -648,7 +657,7 @@ function plot_dip(ds,id)
     plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
-    title(sub_1,ds.LabelsIndicators{5});
+    title(sub_1,['DIP (RR=' num2str(ds.RR * 100) ', F=' num2str(ds.F) ', L=' num2str(ds.L * 100) ')']);
     
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -694,26 +703,9 @@ function plot_rankings(ds,id)
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_1,'XTickLabel',rs_names);
+    set(sub_1,'XTickLabel',rs_names,'XTickLabelRotation',45);
     set(sub_1,'YLim',[0 1]);
     title(sub_1,'Ranking Stability');
-
-    if (~verLessThan('MATLAB','8.4'))
-        tl = get(sub_1,'XTickLabel');
-        tl_new = cell(size(tl));
-
-        for i = 1:length(tl)
-            tl_i = tl{i};
-
-            if (ismember(tl_i,labels(1:3)))
-                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
-            else
-                tl_new{i} = ['\bf{' tl_i '}'];
-            end
-        end
-
-        set(sub_1,'XTickLabel',tl_new);
-    end
     
     sub_2 = subplot(1,2,2);
     pcolor(padarray(rc,[1 1],'post'));
@@ -724,38 +716,6 @@ function plot_rankings(ds,id)
     set(sub_2,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
     set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
     title(sub_2,'Ranking Concordance');
-
-    if (~verLessThan('MATLAB','8.4'))
-        tl = get(sub_2,'XTickLabel');
-        tl_new = cell(size(tl));
-
-        for i = 1:length(tl)
-            tl_i = tl{i};
-
-            if (ismember(tl_i,labels(1:3)))
-                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '}'];
-            else
-                tl_new{i} = ['\bf{' tl_i '}'];
-            end
-        end
-
-        set(sub_2,'XTickLabel',tl_new);
-        
-        tl = get(sub_2,'YTickLabel');
-        tl_new = cell(size(tl));
-
-        for i = 1:length(tl)
-            tl_i = tl{i};
-
-            if (ismember(tl_i,labels(1:3)))
-                tl_new{i} = ['\color[rgb]{0.5 0.5 0.5}\bf{' tl_i '} '];
-            else
-                tl_new{i} = ['\bf{' tl_i '} '];
-            end
-        end
-
-        set(sub_2,'YTickLabel',tl_new);
-    end
     
     figure_title('Rankings (Kendall''s W)');
 

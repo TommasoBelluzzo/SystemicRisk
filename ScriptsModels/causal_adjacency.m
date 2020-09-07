@@ -111,7 +111,7 @@ function r = validate_input(r)
     [t,n] = size(r);
 
     if ((t < 5) || (n < 2))
-        error('The value of ''r'' is invalid. Expected input to have a minimum size of size 5x2.');
+        error('The value of ''r'' is invalid. Expected input to have a minimum size of 5x2.');
     end
 
 end

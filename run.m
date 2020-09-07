@@ -133,8 +133,8 @@ measures_setup = {
     'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);
 };
 
-mlabels = repmat({''},1,100);
-mdata = NaN(ds.T,100);
+ml = repmat({''},1,100);
+md = NaN(ds.T,100);
 moff = 1;
 
 for i = 1:size(measures_setup,1)
@@ -171,8 +171,8 @@ for i = 1:size(measures_setup,1)
             c_measures_len = size(c_measures,2);
             c_coffset = moff + c_measures_len - 1;
 
-            mlabels(moff:c_coffset) = c_labels;
-            mdata(:,moff:c_coffset) = c_measures;
+            ml(moff:c_coffset) = c_labels;
+            md(:,moff:c_coffset) = c_measures;
             moff = moff + c_measures_len;
         end
     end
@@ -184,20 +184,20 @@ for i = 1:size(measures_setup,1)
     save(mat,category_reference);
 end
 
-mlabels(moff:end) = [];
-mdata(:,moff:end) = [];
+ml(moff:end) = [];
+md(:,moff:end) = [];
 
-if (numel(mlabels) <= 1)
+if (numel(ml) <= 1)
     warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
 else
     pause(2);
     
     temp = fullfile(path_base,['Templates' filesep() 'TemplateComparison.xlsx']);
     out = fullfile(path_base,['Results' filesep() 'ResultsComparison.xlsx']);
-    cut_off = bw + 1;
+    co = bw + 1;
     analyze = true;
 
-    result_comparison = run_comparison(ds,temp,out,mlabels,mdata,cut_off,[],21,'AIC',0.01,false,'GG',analyze);
+    result_comparison = run_comparison(ds,temp,out,ml,md,co,[],21,'AIC',0.01,false,'GG',analyze);
 end
 
 clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');

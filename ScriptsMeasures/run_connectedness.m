@@ -166,7 +166,6 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.LabelsCentralities = {'Betweenness Centrality' 'Closeness Centrality' 'Degree Centrality' 'Eigenvector Centrality' 'Katz Centrality' 'Clustering Coefficient'};
 
     ds.LabelsIndicatorsSimple = {'DCI' 'CIO' 'CIOO'};
-    ds.LabelsIndicatorsShort = ds.LabelsIndicatorsSimple;
     ds.LabelsIndicators = {['DCI' all_label] ['CIO' all_label] ['CIOO' all_label]};
 
     ds.LabelsSheetsSimple = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures'};
@@ -197,9 +196,9 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.AverageDegrees = NaN(1,n);
     
     if (ds.Groups == 0)
-        ds.ComparisonReferences = {'Indicators' 1:2 strcat({'CO-'},ds.LabelsIndicatorsShort)};
+        ds.ComparisonReferences = {'Indicators' 1:2 strcat({'CO-'},ds.LabelsIndicatorsSimple)};
     else
-        ds.ComparisonReferences = {'Indicators' 1:3 strcat({'CO-'},ds.LabelsIndicatorsShort)};
+        ds.ComparisonReferences = {'Indicators' 1:3 strcat({'CO-'},ds.LabelsIndicatorsSimple)};
     end
 
 end
@@ -583,9 +582,9 @@ function plot_network(ds,id)
             end
         hold off;
 
-        legend(sub,lines_ref,ds.GroupShortNames,'Units','normalized','Position',[0.181 0.716 0.040 0.076]);
+        legend(sub,lines_ref,ds.GroupShortNames,'Units','normalized','Position',[0.725 0.131 0.040 0.076]);
     end
-
+    
     axis(sub,[-1 1 -1 1]);
     axis('equal','off');
 

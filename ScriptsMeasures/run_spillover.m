@@ -170,7 +170,6 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
     all_label = [' (' fevd ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')'];
 
     ds.LabelsIndicatorsSimple = {'SI'};
-	ds.LabelsIndicatorsShort = {'SI'};
     ds.LabelsIndicators = {['SI' all_label]};
 
     ds.LabelsSheetsSimple = {'From' 'To' 'Net' 'Indicators'};
@@ -184,7 +183,7 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
     
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
     
-    ds.ComparisonReferences = {'Indicators' [] strcat({'SP-'},ds.LabelsIndicatorsShort)};
+    ds.ComparisonReferences = {'Indicators' [] strcat({'SP-'},ds.LabelsIndicatorsSimple)};
 
 end
 

@@ -275,7 +275,7 @@ function [n,indices,r,cds,lb] = validate_input(r,cds,lb)
     [t,n_tot] = size(r);
 
     if ((t < 5) || (n_tot < 2))
-        error('The value of ''r'' is invalid. Expected input to have a minimum size of size 5x2.');
+        error('The value of ''r'' is invalid. Expected input to have a minimum size of 5x2.');
     end
     
     cds = cds(:).';

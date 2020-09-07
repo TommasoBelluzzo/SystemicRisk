@@ -69,7 +69,7 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
 
     try
 
-        r_m = ds.Index - mean(ds.Index);
+        r_m = ds.Index;
         r_x = ds.Returns;
 
         cp = ds.Capitalizations;
@@ -253,7 +253,14 @@ function ds = finalize(ds)
     srisk_avg = sum(ds.SRISK .* weights,2,'omitnan');
     ds.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
 
-    [rc,rs] = kendall_rankings(ds,ds.LabelsMeasuresSimple);
+	measures_len = numel(ds.LabelsMeasuresSimple);
+	measures = cell(measures_len,1);
+
+    for i = 1:measures_len
+        measures{i} = ds.(strrep(ds.LabelsMeasuresSimple{i},' ',''));
+    end
+	
+    [rc,rs] = kendall_rankings(measures);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
 
@@ -816,7 +823,7 @@ function plot_rankings(ds,id)
 
     sub_1 = subplot(1,2,1);
     bar(sub_1,seq,rs,'FaceColor',[0.749 0.862 0.933]);
-    set(sub_1,'XTickLabel',rs_names);
+    set(sub_1,'XTickLabel',rs_names,'XTickLabelRotation',45);
     set(sub_1,'YLim',[0 1]);
     title(sub_1,'Ranking Stability');
 

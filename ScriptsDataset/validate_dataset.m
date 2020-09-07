@@ -9,8 +9,7 @@ function ds = validate_dataset(varargin)
     if (isempty(validation_types))
         validation_types = {
             'component' 'connectedness' 'cross-entropy' 'cross-quantilogram' ...
-            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover' ...
-            'generic-result'
+            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover'
         };
     end
     
@@ -121,34 +120,19 @@ function ds = validate_dataset_internal(ds,validation_type)
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
     
     if (~isempty(validation_type))
-        if (strcmp(validation_type,'generic-result'))
-            labels = validate_field(ds,'LabelsMeasuresSimple',{'cellstr'},{'nonempty' 'size' [1 NaN]});
-            labels_len = numel(labels);
+		measures = [upper(validation_type(1)) validation_type(2:end)];
+		measures_underscore = strfind(measures,'-');
 
-            if (labels_len <= 1)
-                error('The dataset cannot be used for performing cross analyses on systemic risk measures.');
-            end
-            
-            for i = 1:labels_len
-                if (~isfield(ds,strrep(ds.LabelsMeasuresSimple{i},' ','')))
-                    error('The dataset does not contain all the required systemic risk measures.');
-                end
-            end
-        else
-            measures = [upper(validation_type(1)) validation_type(2:end)];
-            measures_underscore = strfind(measures,'-');
+		if (~isempty(measures_underscore))
+			measures(measures_underscore) = [];
+			measures(measures_underscore) = upper(measures(measures_underscore));
+		end
 
-            if (~isempty(measures_underscore))
-                measures(measures_underscore) = [];
-                measures(measures_underscore) = upper(measures(measures_underscore));
-            end
+		supports = ['Supports' measures];
 
-            supports = ['Supports' measures];
-
-            if (~ds.(supports))
-                error(['The dataset cannot be used for calculating ''' validation_type ''' measures.']);
-            end
-        end
+		if (~ds.(supports))
+			error(['The dataset cannot be used for calculating ''' validation_type ''' measures.']);
+		end
     end
     
 end
