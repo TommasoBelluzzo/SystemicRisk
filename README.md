@@ -1,6 +1,6 @@
 # Systemic Risk
 
-This framework calculates and analyses the following systemic risk measures:
+This framework calculates, analyses and compares the following systemic risk measures:
 
 * **COMPONENT MEASURES**
   * `AR (Absorption Ratio)` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
