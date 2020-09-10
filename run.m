@@ -124,7 +124,7 @@ measures_setup = {
 %   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
     'Component'          true     true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,bw,0.99,0.98,0.05,0.2,0.75,analyze);
     'Connectedness'      true     true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,bw,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'F',0.4,'W','N',analyze);
+    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'G',0.4,'W','N',analyze);
     'CrossQuantilogram'  true     true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,bw,0.05,60,'SB',0.05,100,analyze);
     'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
     'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,0.95,analyze);
