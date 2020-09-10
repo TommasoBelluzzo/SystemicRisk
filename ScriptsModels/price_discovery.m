@@ -96,6 +96,7 @@ function lag = select_lag_order(data,lag_max,lag_sel)
     end
 
     data_lag = data_lag(:,3:end);
+    s = size(data_lag,1);
     
     data_y = data(lag_sam:end,:);
 
@@ -126,13 +127,14 @@ function lag = select_lag_order(data,lag_max,lag_sel)
         
         switch (lag_sel)
             case 'AIC'
-                crit(i) = log(sigmad) + (2 * d);
+                crit(i) = log(sigmad) + ((2 / s) * d);
             case 'BIC'
-                crit(i) = log(sigmad) + (log(k) * d);
+                crit(i) = log(sigmad) + ((log(s) / s) * d);
             case 'FPE'
-                crit(i) = log(sigmad) + log((k + d + 1) / (k - d - 1));
+                ns = size(data_x,2);
+                crit(i) = ((s + ns) / (s - ns))^2 * sigmad;
             otherwise
-                crit(i) = log(sigmad) + (2 * log(log(k)) * d);
+                crit(i) = log(sigmad) + (2 * (log(log(s)) / s) * d);
         end
     end
 

@@ -158,9 +158,9 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.SST = sst;
 
     if (ds.RP)
-        all_label = [' (SST=' num2str(ds.SST) ', R)'];
+        all_label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ', R)'];
     else
-        all_label = [' (SST=' num2str(ds.SST) ')'];
+        all_label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ')'];
     end
     
     ds.LabelsCentralities = {'Betweenness Centrality' 'Closeness Centrality' 'Degree Centrality' 'Eigenvector Centrality' 'Katz Centrality' 'Clustering Coefficient'};
@@ -461,20 +461,24 @@ function plot_indicators(ds,id)
     threshold_indices = dci >= ds.K;
     threshold = NaN(ds.T,1);
     threshold(threshold_indices) = connections_max;
+    
+    if (ds.RP)
+        label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ', R)'];
+    else
+        label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ')'];
+    end
 
     f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
     sub_1 = subplot(2,1,1);
-    plot(sub_1,ds.DatesNum,dci);
+    p1 = plot(sub_1,ds.DatesNum,dci);
     hold on;
-        plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1 0.4 0.4]);
+        p2 = plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1 0.4 0.4]);
     hold off;
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
-    t1 = title(sub_1,ds.LabelsIndicators{1});
-    set(t1,'Units','normalized');
-    t1_position = get(t1,'Position');
-    set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
+    legend(sub_1,[p1 p2],'Indicator','Threshold','Location','eastoutside');
+    title(sub_1,['DCI' label]);
 
     sub_2 = subplot(2,1,2);
     a1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
@@ -487,17 +491,18 @@ function plot_indicators(ds,id)
         end
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45,'YLim',[0 connections_max]);
-    legend(sub_2,[a2 a3 a1],'In & Out','In & Out - Other','Granger-causality Threshold','Location','best');
-    t2 = title(sub_2,strrep(ds.LabelsIndicators{2},'CIO','Connections'));
-    set(t2,'Units','normalized');
-    t2_position = get(t2,'Position');
-    set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
+    legend(sub_2,[a2 a3 a1],'CIO','CIOO','Threshold Exceeded','Location','eastoutside');
+    title(sub_2,['Connections' label]);
 
     if (ds.MonthlyTicks)
         date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
+    
+    sub_1_position = get(sub_1,'Position');
+    sub_2_position = get(sub_2,'Position');
+    set(sub_1,'Position',[sub_2_position(1) sub_1_position(2) sub_2_position(3) sub_2_position(4)]);
 
     figure_title('Indicators');
     

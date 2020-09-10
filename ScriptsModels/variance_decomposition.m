@@ -94,7 +94,8 @@ function vd = variance_decomposition_internal(data,lags,h,fevd)
         y(ar_x,:) = y(ar_x,:) - (z(:,~fs) * f(~fs)).';
     end
 
-    [f(fs),c] = mvregress(x,y,'CovType','full','VarFormat','beta','VarType','fisher','MaxIter',1000);
+    [b,c] = mvregress(x,y,'CovType','full','VarFormat','beta','VarType','fisher');
+    f(fs) = b;
 
     coefficients = cell(1,lags);
     ar_start = ar_first;

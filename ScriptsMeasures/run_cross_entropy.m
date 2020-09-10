@@ -14,12 +14,12 @@
 % stopped = A boolean that indicates whether the process has been stopped through user input.
 %
 % [NOTES]
-% If the number of time series is greater than 10, systemic risk measures are calculated as an average of multiple reduced portfolios results.
-% Each reduced portfolio contains 5 time series and they are created by ranking firms or groups according to the following criteria:
-%   1) highest CDS spreads;
-%   2) highest variance of returns;
-%   3) highest market capitalizations (if data is available);
-%   4) highest liabilities (if data is available).
+% If the number of time series is greater than 10, systemic risk measures are calculated as the average of the results of multiple reduced portfolios.
+% Each reduced portfolio contains 6 time series and they are created by ranking firms or groups according to the following criteria:
+%   1) top 3 and bottom 3 entities by CDS spreads;
+%   2) top 3 and bottom 3 entities by variance of returns;
+%   3) top 3 and bottom 3 entities by market capitalization (if data is available);
+%   4) top 3 and bottom 3 entities by liabilities (if data is available);
 
 function [result,stopped] = run_cross_entropy(varargin)
 
@@ -253,9 +253,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
         
         pf = {'Unique' r pods []};
     else
-        nc = 5;
+        nc = 6;
+        nch = nc / 2;
 
-        pfc = arrayfun(@(x)sprintf('C%d',x),1:5,'UniformOutput',false);
+        pfc = arrayfun(@(x)sprintf('C%d',x),1:nc,'UniformOutput',false);
         pf = [repmat({''},4,1) cell(4,3)];
 
         rw = extract_rolling_windows(ds.Returns,bw);
@@ -265,8 +266,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
         pf_r = zeros(t,nc);
 
         for i = 1:t
-            [~,indices] = sort(max(cds(i,:),0));
-            indices = fliplr(indices(end-nc+1:end));
+            [cds_i,indices] = sort(cds(i,:),'ascend');
+
+            indices(isnan(cds_i)) = [];
+            indices = [fliplr(indices(end-nch+1:end)) fliplr(indices(1:nch))];
 
             pf_r(i,:) = r(i,indices);
             pf_pods(i,:) = pods(i,indices);
@@ -280,8 +283,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
         pf_r = zeros(t,nc);
 
         for i = 1:t
-            [~,indices] = sort(max(var(rw{i}),0));
-            indices = fliplr(indices(end-nc+1:end));
+            [v_i,indices] = sort(var(rw{i}),'ascend');
+
+            indices(isnan(v_i)) = [];
+            indices = [fliplr(indices(end-nch+1:end)) fliplr(indices(1:nch))];
 
             pf_r(i,:) = r(i,indices);
             pf_pods(i,:) = pods(i,indices);
@@ -298,8 +303,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
             pf_r = zeros(t,nc);
 
             for i = 1:t
-                [~,indices] = sort(max(cp(i,:),0));
-                indices = fliplr(indices(end-nc+1:end));
+                [cp_i,indices] = sort(cp(i,:),'ascend');
+                
+                indices(isnan(cp_i)) = [];
+                indices = [fliplr(indices(end-nch+1:end)) fliplr(indices(1:nch))];
 
                 pf_r(i,:) = r(i,indices);
                 pf_pods(i,:) = pods(i,indices);
@@ -316,8 +323,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
             pf_r = zeros(t,nc);
 
             for i = 1:t
-                [~,indices] = sort(max(lb(i,:),0));
-                indices = fliplr(indices(end-nc+1:end));
+                [lb_i,indices] = sort(lb(i,:),'ascend');
+                
+                indices(isnan(lb_i)) = [];
+                indices = [fliplr(indices(end-nch+1:end)) fliplr(indices(1:nch))];
 
                 pf_r(i,:) = r(i,indices);
                 pf_pods(i,:) = pods(i,indices);

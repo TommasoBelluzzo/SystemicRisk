@@ -122,9 +122,9 @@ bw = 252;
 
 measures_setup = {
 %   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
-    'Component'          true     true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,bw,0.99,0.2,0.75,analyze);
+    'Component'          true     true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,bw,0.99,0.98,0.05,0.2,0.75,analyze);
     'Connectedness'      true     true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,bw,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'G',0.4,'W','N',analyze);
+    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'F',0.4,'W','N',analyze);
     'CrossQuantilogram'  true     true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,bw,0.05,60,'SB',0.05,100,analyze);
     'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
     'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,0.95,analyze);
@@ -188,7 +188,16 @@ ml(moff:end) = [];
 md(:,moff:end) = [];
 
 if (numel(ml) <= 1)
-    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
+    enabled_all = [measures_setup{:,2}];
+    
+    if (any(enabled_all))
+        compare_all = [measures_setup{:,4}];
+        compare_all = compare_all(enabled_all);
+        
+        if (any(compare_all))
+            warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
+        end
+    end
 else
     pause(2);
     

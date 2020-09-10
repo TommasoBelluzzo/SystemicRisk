@@ -250,20 +250,32 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         [defaults,insolvencies] = detect_distress(prices,volumes,capitalizations,cds,equity);
     end
     
+    dd_limit = ceil(n * 0.1);
+    defaults_cnt = sum(~isnan(defaults));
+    insolvencies_cnt = sum(~isnan(insolvencies));
+    
     if (any(defaults == 1))
         error(['Error in dataset ''' file_name ''': it contains firms defaulted since the beginning of the observations period that must be removed.']);
     end
     
     if (sum(isnan(defaults)) < 3)
-        error(['Error in dataset ''' file_name ''': it contains observations in which less than 3 firms are not defaulted.']);
+        error(['Error in dataset ''' file_name ''': it contains less than 3 non-defaulted firms.']);
+    end
+    
+    if (defaults_cnt > dd_limit)
+        error(['Error in dataset ''' file_name ''': it contains too many defaulted firms (' num2str(defaults_cnt) ' out of a maximum of ' num2str(dd_limit) ').']);
     end
     
     if (any(insolvencies == 1))
         error(['Error in dataset ''' file_name ''': it contains firms being insolvent since the beginning of the observation period that must be removed.']);
     end
 
-    if (sum(isnan(defaults)) < 3)
-        error(['Error in dataset ''' file_name ''': it contains observations in which less than 3 firms are not insolvent.']);
+    if (sum(isnan(insolvencies)) < 3)
+        error(['Error in dataset ''' file_name ''': it contains less than 3 non-insolvent firms.']);
+    end
+
+    if (insolvencies_cnt > dd_limit)
+        error(['Error in dataset ''' file_name ''': it contains too many insolvent firms (' num2str(insolvencies_cnt) ' out of a maximum of ' num2str(dd_limit) ').']);
     end
     
     includes_volumes = ismember({'Volumes'},file_sheets_other);

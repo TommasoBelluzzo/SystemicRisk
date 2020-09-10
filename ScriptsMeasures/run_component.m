@@ -4,6 +4,8 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % k = A float [0.90,0.99] representing the confidence level used to calculate the CATFIN (optional, default=0.99).
+% g = A float [0.75,0.99] representing the weighting factor of the non-parametric value-at-risk used to calculate the CATFIN (optional, default=0.98).
+% u = A float [0.01,0.10] representing the threshold of the GPD value-at-risk used to calculate the CATFIN (optional, default=0.05).
 % f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio (optional, default=0.2).
 % q = A float (0.5,1.0) representing the quantile threshold of Correlation Surprise and Turbulence Index (optional, default=0.75).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
@@ -23,6 +25,8 @@ function [result,stopped] = run_component(varargin)
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addOptional('k',0.99,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
+        ip.addOptional('g',0.98,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.50 '<=' 0.99 'scalar'}));
+        ip.addOptional('u',0.05,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
         ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.2 '<=' 0.8 'scalar'}));
         ip.addOptional('q',0.75,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0.5 '<' 1 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
@@ -36,23 +40,25 @@ function [result,stopped] = run_component(varargin)
     out = validate_output(ipr.out);
     bw = ipr.bw;
     k = ipr.k;
+    g = ipr.g;
+    u = ipr.u;
     f = ipr.f;
     q = ipr.q;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze);
+    [result,stopped] = run_component_internal(ds,temp,out,bw,k,g,u,f,q,analyze);
 
 end
 
-function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
+function [result,stopped] = run_component_internal(ds,temp,out,bw,k,g,u,f,q,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    ds = initialize(ds,bw,k,f,q);
+    ds = initialize(ds,bw,k,g,u,f,q);
     t = ds.T;
 
     rng(double(bitxor(uint16('T'),uint16('B'))));
@@ -69,14 +75,14 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,f,q,analyze)
     try
 
         windows_rf = extract_rolling_windows(ds.Returns,ds.BW);
-        windows_rc = extract_rolling_windows(ds.CATFINReturns,ds.BW);
+        windows_rp = extract_rolling_windows(ds.CATFINReturns,ds.BW);
 
         futures(1:t) = parallel.FevalFuture;
         futures_max = 0;
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop,1,windows_rf{i},windows_rc{i},ds.Components,ds.A);
+            futures(i) = parfeval(@main_loop,1,windows_rf{i},windows_rp{i},ds.Components,ds.A);
         end
 
         for i = 1:t
@@ -150,36 +156,38 @@ end
 
 %% DATA
 
-function ds = initialize(ds,bw,k,f,q)
+function ds = initialize(ds,bw,k,g,u,f,q)
 
     n = ds.N;
     t = ds.T;
 
     r = ds.Returns;
     rw = 1 ./ (repmat(n,t,1) - sum(isnan(r),2));
-    rc = sum(r .* repmat(rw,1,n),2,'omitnan');
+    rp = sum(r .* repmat(rw,1,n),2,'omitnan');
 
     ds.A = 1 - k;
     ds.BW = bw;
     ds.Components = round(ds.N * f,0);
+    ds.G = g;
+    ds.U = u;
     ds.F = f;
     ds.K = k;
     ds.Q = q;
 
     k_label = num2str(ds.K * 100);
 
-    ds.LabelsCATFINVaR = {'NP' 'GPD' 'GEV' 'SGED'};
+    ds.LabelsCATFINVaRs = {['NP (G=' num2str(ds.G) ')'] ['GPD (U=' num2str(ds.U) ')'] 'GEV' 'SGED'};
     ds.LabelsPCAExplained = {'PC' 'EV'};
 
     ds.LabelsIndicatorsSimple = {'AR' 'CATFIN' 'CS' 'TI'};
     ds.LabelsIndicators = {['AR (F=' [num2str(ds.F * 100) '%'] ')'] ['CATFIN (K=' k_label ')'] ['CS (Q=' num2str(ds.Q) ')'] ['TI (Q=' num2str(ds.Q) ')']};
 
-    ds.LabelsSheetsSimple = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    ds.LabelsSheets = {['CATFIN VaR (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-    
-    ds.CATFINReturns = rc;
-    ds.CATFINVaR = NaN(t,4);
-    ds.CATFINFirstCoefficients = NaN(1,3);
+    ds.LabelsSheetsSimple = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    ds.LabelsSheets = {['CATFIN VaRs (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+
+    ds.CATFINReturns = rp;
+    ds.CATFINVaRs = NaN(t,4);
+    ds.CATFINFirstCoefficients = NaN(1,4);
     ds.CATFINFirstExplained = NaN;
     
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
@@ -205,7 +213,7 @@ function ds = finalize(ds,results)
     for i = 1:t
         result = results{i};
         
-        ds.CATFINVaR(i,:) = result.CATFINVaR;
+        ds.CATFINVaRs(i,:) = result.CATFINVaRs;
         
         ds.Indicators(i,[1 3 4]) = [result.AbsorptionRatio result.CorrelationSurprise result.TurbulenceIndex];
         
@@ -215,9 +223,9 @@ function ds = finalize(ds,results)
         ds.PCAScores{i} = result.PCAScores;
     end
 
-    ds.CATFINVaR(:,4) = sanitize_data(ds.CATFINVaR(:,4),ds.DatesNum,[],[]);
+    ds.CATFINVaRs(:,4) = sanitize_data(ds.CATFINVaRs(:,4),ds.DatesNum,[],[]);
 
-    [coefficients,scores,explained] = calculate_pca(ds.CATFINVaR,false);
+    [coefficients,scores,explained] = calculate_pca(ds.CATFINVaRs,false);
     ds.CATFINFirstCoefficients = coefficients(:,1).';
     ds.CATFINFirstExplained = explained(1);
 
@@ -262,7 +270,7 @@ function temp = validate_template(temp)
         end
     end
     
-    sheets = {'CATFIN VaR' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    sheets = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
@@ -312,8 +320,8 @@ function write_results(ds,temp,out)
 
     dates_str = cell2table(ds.DatesStr,'VariableNames',{'Date'});
 
-    labels = ds.LabelsCATFINVaR;
-    tab = [dates_str array2table(ds.CATFINVaR,'VariableNames',labels)];
+    labels = regexprep(ds.LabelsCATFINVaRs,'\s\([^)]+\)$','');
+    tab = [dates_str array2table(ds.CATFINVaRs,'VariableNames',labels)];
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
 
     labels = ds.LabelsIndicatorsSimple;
@@ -362,15 +370,15 @@ end
 
 %% MEASURES
 
-function window_results = main_loop(rf,rc,components,a)
+function window_results = main_loop(rf,rp,components,a)
 
     window_results = struct();
 
     nan_indices = any(isnan(rf),1);
     rf(:,nan_indices) = [];
 
-    [var_np,var_gpd,var_gev,var_sged] = catfin(rc,a,0.98,0.05);
-    window_results.CATFINVaR = -1 .* [var_np var_gpd var_gev var_sged];
+    [var_np,var_gpd,var_gev,var_sged] = catfin(rp,a,0.98,0.05);
+    window_results.CATFINVaRs = -1 .* [var_np var_gpd var_gev var_sged];
     
     [ar,cs,ti] = calculate_component_indicators(rf,components);
     window_results.AbsorptionRatio = ar;
@@ -439,10 +447,10 @@ end
 function plot_catfin(ds,id)
 
     r = max(0,-ds.CATFINReturns);
-    y_limits = plot_limits([-ds.CATFINVaR r],0.1,0);
+    y_limits = plot_limits([-ds.CATFINVaRs r],0.1,0);
 
     cf = smooth_data(ds.Indicators(:,2));
-    cf_label = strrep(ds.LabelsIndicators{2},')',[', PCA.EV=' sprintf('%.2f%%',ds.CATFINFirstExplained) ')']);
+    cf_label = ['CATFIN (K=' num2str(ds.K * 100) '%, PCA.EV=' sprintf('%.2f%%',ds.CATFINFirstExplained) ')'];
 
     f = figure('Name','Component Measures > CATFIN','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -462,11 +470,18 @@ function plot_catfin(ds,id)
         sub = subplot(2,4,i + 4);
         plot(sub,ds.DatesNum,r,'Color',[0.000 0.447 0.741]);
         hold on;
-            plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaR(:,i),5),'Color',[1 0.4 0.4],'LineWidth',1.5);
+            plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaRs(:,i),5),'Color',[1 0.4 0.4],'LineWidth',1.5);
         hold off;
         set(sub,'YLim',y_limits);
-        title(sub,[ds.LabelsCATFINVaR{i} ' VaR (PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']);
         
+        label = ds.LabelsCATFINVaRs{i};
+        
+        if (regexp(label,'^[^(]+\([^)]+\)$'))
+            title(sub,strrep(strrep(ds.LabelsCATFINVaRs{i},'(','Var ('),')',[ ', PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']));
+        else
+            title(sub,[ds.LabelsCATFINVaRs{i} ' VaR (PCA.C=' sprintf('%.4f',ds.CATFINFirstCoefficients(i)) ')']);
+        end
+
         subs(i+1) = sub;
     end
     
@@ -533,8 +548,8 @@ function plot_indicators_other(ds,id)
     p2 = plot(sub_2,ds.DatesNum,ti,'Color',[0.65 0.65 0.65]);
     p2.Color(4) = 0.35;
     hold on;
-        p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741]);
-        p22 = plot(sub_2,ds.DatesNum,ti_math,'Color',[1 0.4 0.4]);
+        p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741],'LineWidth',1);
+        p22 = plot(sub_2,ds.DatesNum,ti_math,'Color',[1 0.4 0.4],'LineWidth',1);
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     l = legend(sub_2,[p21 p22],'EWMA','Threshold Exceeded','Location','best');
@@ -550,8 +565,8 @@ function plot_indicators_other(ds,id)
     p3 = plot(sub_3,ds.DatesNum,cs,'Color',[0.65 0.65 0.65]);
     p3.Color(4) = 0.35;
     hold on;
-        plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741]);
-        plot(sub_3,ds.DatesNum,cs_math,'Color',[1 0.4 0.4]);
+        plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741],'LineWidth',1);
+        plot(sub_3,ds.DatesNum,cs_math,'Color',[1 0.4 0.4],'LineWidth',1);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     t3 = title(sub_3,['Correlation Surprise (Q=' num2str(ds.Q) ')']);
