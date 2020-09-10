@@ -60,6 +60,7 @@ Some of the aforementioned models have been improved or extended according to th
 The project has been published in `"MATLAB Digest | Financial Services | May 2019"`.
 
 If you found it useful to you, please consider making a donation to support its maintenance and development:
+
 [![PayPal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CTTYMG23C36G6)
 
 ## Requirements
