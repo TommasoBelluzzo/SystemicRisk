@@ -75,8 +75,8 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
         
         ci = ds.CI;
 
-        r = ds.Returns;
         p = ds.Prices;
+        r = ds.Returns;
         v = ds.Volumes;
         cp = ds.Capitalizations;
         sv = ds.StateVariables;
@@ -101,38 +101,33 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
             
             offset = min(ds.Defaults(i) - 1,t);
 
-            r_x = r(1:offset,i);
-            p_x = p(1:offset,i);
-            v_x = v(1:offset,i);
-            cp_x = cp(1:offset,i);
-            
-            ds.HHLR(1:offset,i) = calculate_hhlr(p_x,v_x,cp_x,ds.BWL,ds.BWS);
- 
+            p_i = p(1:offset,i);
+            r_i = r(1:offset,i);
+            v_i = v(1:offset,i);
+            cp_i = cp(1:offset,i);
+
             if (ci)
-                sv_x = sv(1:offset,:);
-                [illiq,illiqc,knots] = calculate_illiq(r_x,v_x,sv_x,mag,ds.BWM,ds.MEM);
-                
+                sv_i = sv(1:offset,:);
+                [illiq,illiqc,knots] = illiq_indicator(r_i,v_i,sv_i,ds.BWM,ds.MEM,mag);
                 ds.ILLIQ(1:offset,i) = illiq;
                 ds.ILLIQC(1:offset,i) = illiqc;
-                
-                if (~isempty(knots))
-                    ds.ILLIQKnots(i) = knots(1);
-                    ds.ILLIQCKnots(i) = knots(2);
-                end
             else
-                [illiq,~,knots] = calculate_illiq(r_x,v_x,[],mag,ds.BWM,ds.MEM);
-                
+                [illiq,~,knots] = illiq_indicator(r_i,v_i,[],ds.BWM,ds.MEM,mag);
                 ds.ILLIQ(1:offset,i) = illiq;
-                
-                if (~isempty(knots))
-                    ds.ILLIQKnots(i) = knots(1);
-                end
             end
 
-            ds.RIS(1:offset,i) = calculate_ris(p_x,ds.BWL,ds.W,ds.C,ds.S2);
-            ds.TR(1:offset,i) = calculate_tr(v_x,cp_x,ds.BWL);
-            ds.VR(1:offset,i) = calculate_vr(r_x,ds.BWL,ds.BWM);
+            if (strcmp(ds.MEM,'S'))
+                ds.ILLIQKnots = knots;
+            end
+
+            ris = roll_implicit_spread(p_i,ds.BWL,ds.W,ds.C,ds.S2);
+            ds.RIS(1:offset,i) = ris;
             
+            [hhlr,tr,vr] = liquidity_metrics(p_i,r_i,v_i,cp_i,ds.BWL,ds.BWM,ds.BWS);
+            ds.HHLR(1:offset,i) = hhlr;
+            ds.TR(1:offset,i) = tr;
+            ds.VR(1:offset,i) = vr;
+
             if (getappdata(bar,'Stop'))
                 stopped = true;
                 break;
@@ -275,74 +270,6 @@ function ds = finalize(ds)
 
 end
 
-function [bwl,bwm,bws] = validate_bandwidths(bwl,bwm,bws)
-
-    if (bwl < (bwm * 2))
-        error(['The long bandwidth (' num2str(bwl) ') must be at least twice the medium bandwidth (' num2str(bwm) ').']);
-    end
-  
-    if (bwm < (bws * 2))
-        error(['The medium bandwidth (' num2str(bwm) ') must be at least twice the short bandwidth (' num2str(bws) ').']);
-    end
-    
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
-    sheets = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR' 'Averages'};
-    
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
-
-end
-
 function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
@@ -410,105 +337,6 @@ function write_results(ds,temp,out)
 
 end
 
-%% MEASURES
-
-function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
-
-    tr = v ./ cp;
-    tr(~isfinite(tr)) = 0;
-
-    windows_p = extract_rolling_windows(p,bws);
-    dp = cellfun(@(x)(max(x) - min(x)) / min(x),windows_p);
-    
-    alpha = 2 / (bwl + 1);
-
-    hhlr = dp ./ tr;
-    hhlr(~isfinite(hhlr)) = 0;
-    hhlr(1:bws) = mean(hhlr(bws+1:bws*2+1));
-    hhlr = [hhlr(1); filter(alpha,[1 (alpha - 1)],hhlr(2:end),(1 - alpha) * hhlr(1))];
-    hhlr = (hhlr - min(hhlr)) ./ (max(hhlr) - min(hhlr));
-    
-end
-
-function [illiq,illiqc,knots] = calculate_illiq(r,v,sv,mag,bwm,mem)
-
-    alpha = 2 / (bwm + 1);
-
-    input = mag .* (abs(r) ./ v);
-    input(~isfinite(input) | (input == 0)) = NaN;
-    input(isnan(input)) = mean(input,'omitnan');
-    
-    if (any(strcmp(mem,{'A' 'P'})))
-        input = [input r];
-    end
-    
-    knots = [];
-
-    [illiq,~,mem_params] = multiplicative_error(input,mem);
-    illiq = [illiq(1); filter(alpha,[1 (alpha - 1)],illiq(2:end),(1 - alpha) * illiq(1))];
-    illiq = (illiq - min(illiq)) ./ (max(illiq) - min(illiq));
-    
-    if (strcmp(mem,'S'))
-        knots(1) = mem_params(1);
-    end
-    
-    if (isempty(sv))
-        illiqc = [];
-    else
-        [illiqc,~,mem_params] = multiplicative_error([input sv],mem);
-        illiqc = [illiqc(1); filter(alpha,[1 (alpha - 1)],illiqc(2:end),(1 - alpha) * illiqc(1))];
-        illiqc = (illiqc - min(illiqc)) ./ (max(illiqc) - min(illiqc));
-        
-        if (strcmp(mem,'S'))
-            knots(2) = mem_params(1);
-        end
-    end
-
-end
-
-function ris = calculate_ris(p,bwl,w,c,s2)
-
-    windows = extract_rolling_windows(log(max(1e-6,p)),bwl);
-    ris = zeros(numel(windows),1);
-
-    parfor i = 1:numel(windows)
-        ris(i) = roll_gibbs(windows{i},w,c,s2);
-    end
-
-    alpha = 2 / (bwl + 1);
-    ris = [ris(1); filter(alpha,[1 (alpha - 1)],ris(2:end),(1 - alpha) * ris(1))];
-
-end
-
-function tr = calculate_tr(v,cp,bwl)
-
-    alpha = 2 / (bwl + 1);
-
-    tr = v ./ cp;
-    tr(~isfinite(tr)) = 0;
-    tr = [tr(1); filter(alpha,[1 (alpha - 1)],tr(2:end),(1 - alpha) * tr(1))];
-    tr = (tr - min(tr)) ./ (max(tr) - min(tr));
-
-end
-
-function vr = calculate_vr(r,bwl,bwm)
-
-    alpha = 2 / (bwl + 1);
-    t = bwl / bwm;
-
-    windows_long = extract_rolling_windows(r,bwl);
-    var_long = cellfun(@var,windows_long);
-    
-    windows_short = extract_rolling_windows(r,bwm);
-    var_short = cellfun(@var,windows_short);
-
-    vr = var_long ./ (t .* var_short);
-    vr(~isfinite(vr)) = 0;
-    vr(1:bwm) = mean(vr(bwm+1:bwm*2+1));
-    vr = [vr(1); filter(alpha,[1 (alpha - 1)],vr(2:end),(1 - alpha) * vr(1))];
-
-end
-
 %% PLOTTING
 
 function plot_averages(ds,id)
@@ -524,7 +352,7 @@ function plot_averages(ds,id)
     if (ds.CI)
         illiqc = ds.Averages(:,find(strcmp('ILLIQC',ds.LabelsMeasuresSimple),1,'first'));
         
-        indices = (abs(illiqc - illiq) > 0.01);
+        indices = (abs(illiqc - illiq) > 0.025);
         illiq_delta = NaN(ds.T,1);
         illiq_delta(indices) = illiqc(indices);
         
@@ -705,7 +533,7 @@ function plot_sequence_illiq(ds,id)
         if (k == 2)
             y2 = data{3};
             
-            indices = (abs(y2 - y1) > 0.01);
+            indices = (abs(y2 - y1) > 0.025);
             delta = NaN(numel(y2),1);
             delta(indices) = y2(indices);
             
@@ -796,6 +624,76 @@ function plot_sequence_other(ds,target,id)
             hold(subs(1),'off');
         end
 
+    end
+
+end
+
+%% VALIDATION
+
+function [bwl,bwm,bws] = validate_bandwidths(bwl,bwm,bws)
+
+    if (bwl < (bwm * 2))
+        error(['The long bandwidth (' num2str(bwl) ') must be at least twice the medium bandwidth (' num2str(bwm) ').']);
+    end
+  
+    if (bwm < (bws * 2))
+        error(['The medium bandwidth (' num2str(bwm) ') must be at least twice the short bandwidth (' num2str(bws) ').']);
+    end
+    
+end
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    end
+
+    sheets = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR' 'Averages'};
+    
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(temp,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

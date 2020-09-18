@@ -147,7 +147,7 @@ function [data,lag_max] = validate_input(data,lag_max)
     t = size(data,1);
 
     if (t < 5)
-        error('The value of ''data'' is invalid. Expected input to contain at least 5 observations.');
+        error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end
     
     if (lag_max > (t - 2))

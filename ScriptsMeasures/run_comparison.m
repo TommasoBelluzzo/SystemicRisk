@@ -682,7 +682,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
     
-    figure_title(['Granger-causality (A=' num2str(ds.GCA) ', LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
+    figure_title(['Granger-causality (A=' num2str(ds.GCA * 100) '%, LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
     pause(0.01);
     frame = get(f,'JavaFrame');

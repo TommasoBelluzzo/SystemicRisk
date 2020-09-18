@@ -3,10 +3,10 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k = A float [0.90,0.99] representing the confidence level (optional, default=0.95).
-% car = A float [0.03,0.20] representing the capital adequacy ratio (optional, default=0.08).
-% sf = A float [0,1] representing the fraction of separate accounts, if available, to include in liabilities (optional, default=0.40).
 % d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.40).
-% fr = An integer [0,6] representing the number of months of forward-rolling used to calculate the SRISK, which simulates the difficulty of renegotiating debt in case of financial distress (optional, default=3).
+% car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK (optional, default=0.08).
+% sf = A float [0,1] representing the fraction of separate accounts, if available, to include in liabilities and used to calculate SES and SRISK (optional, default=0.40).
+% fr = An integer [0,6] representing the number of months of forward-rolling used to calculate the SRISK, simulating the difficulty of renegotiating debt in case of financial distress (optional, default=3).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -23,9 +23,9 @@ function [result,stopped] = run_cross_sectional(varargin)
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
+        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.1 '<=' 0.6 'scalar'}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
         ip.addOptional('sf',0.40,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
-        ip.addOptional('d',0.40,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.1 '<=' 0.6 'scalar'}));
         ip.addOptional('fr',3,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 6 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -37,25 +37,25 @@ function [result,stopped] = run_cross_sectional(varargin)
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     k = ipr.k;
+    d = ipr.d;
     car = ipr.car;
     sf = ipr.sf;
-    d = ipr.d;
     fr = ipr.fr;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,fr,analyze);
+    [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,fr,analyze);
 
 end
 
-function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,fr,analyze)
+function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,fr,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,k,car,sf,d,fr);
+    ds = initialize(ds,k,d,car,sf,fr);
     n = ds.N;
     t = ds.T;
 
@@ -69,23 +69,12 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
 
     try
 
-        r_m = ds.Index;
-        r_x = ds.Returns;
+        rm = ds.Index;
+        rf = ds.Returns;
 
         cp = ds.Capitalizations;
-
-        lb = ds.Liabilities;
-        lbr = apply_forward_rolling(ds.Liabilities,ds.DatesNum,ds.FR);
-        
-        sa = ds.SeparateAccounts;
-        
-        if (~isempty(sa))
-            lb = lb - ((1 - ds.SF) .* sa);
-            
-            sar = apply_forward_rolling(ds.SeparateAccounts,ds.DatesNum,ds.FR);
-            lbr = lbr - ((1 - ds.SF) .* sar);
-        end
-
+        lb = ds.TargetLiabilities;
+        lbr = ds.TargetLiabilitiesRolled;
         sv = ds.StateVariables;
 
         for i = 1:n
@@ -97,38 +86,25 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
             end
             
             offset = min(ds.Defaults(i) - 1,t);
-
-            r0_m = r_m(1:offset)- mean(r_m(1:offset));
-            r0_x = r_x(1:offset,i) - mean(r_x(1:offset,i));
-
-            cp_x = cp(1:offset,i);
-
-            lb_x = lb(1:offset,i);
-            lbr_x = lbr(1:offset,i);
+            
+            r_i = [rm(1:offset) rf(1:offset,i)];
+            cp_i = cp(1:offset,i);
+            lb_i = lb(1:offset,i);
+            lbr_i = lbr(1:offset,i);
             
             if (isempty(sv))
-                sv_x = [];
+                sv_i = [];
             else
-                sv_x = sv(1:offset,:);
+                sv_i = sv(1:offset,:);
             end
 
-            [p,h] = dcc_gjrgarch([r0_m r0_x]);
-            s_m = sqrt(h(:,1));
-            s_x = sqrt(h(:,2));
-            rho = squeeze(p(1,2,:));
-
-            [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,ds.A);
-            [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv_x,ds.A);
-            [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,ds.A,ds.D);
-            ses = calculate_ses(lb_x,cp_x,ds.CAR);
-            srisk = calculate_srisk(lbr_x,cp_x,lrmes,ds.CAR);
-
+            [beta,var,es,covar,dcovar,mes,ses,srisk] = cross_sectional_metrics(r_i,cp_i,lb_i,lbr_i,sv_i,ds.A,ds.D,ds.CAR);
             ds.Beta(1:offset,i) = beta;
-            ds.VaR(1:offset,i) = -1 * var;
-            ds.ES(1:offset,i) = -1 * es;
-            ds.CoVaR(1:offset,i) = -1 * covar;
-            ds.DeltaCoVaR(1:offset,i) = -1 * dcovar;
-            ds.MES(1:offset,i) = -1 * mes;
+            ds.VaR(1:offset,i) = var;
+            ds.ES(1:offset,i) = es;
+            ds.CoVaR(1:offset,i) = covar;
+            ds.DeltaCoVaR(1:offset,i) = dcovar;
+            ds.MES(1:offset,i) = mes;
             ds.SES(1:offset,i) = ses;
             ds.SRISK(1:offset,i) = srisk;
             
@@ -195,9 +171,21 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,car,sf,d,
 
 end
 
-%% DATA
+%% PROCESS
 
-function ds = initialize(ds,k,car,sf,d,fr)
+function ds = initialize(ds,k,d,car,sf,fr)
+
+    lb = ds.Liabilities;
+    sa = ds.SeparateAccounts;
+    
+    lbr = forward_roll_data(lb,ds.DatesNum,fr);
+
+    if (~isempty(sa))
+        lb = lb - ((1 - sf) .* sa);
+
+        sar = forward_roll_data(sa,ds.DatesNum,fr);
+        lbr = lbr - ((1 - sf) .* sar);
+    end
 
     n = ds.N;
     t = ds.T;
@@ -209,16 +197,18 @@ function ds = initialize(ds,k,car,sf,d,fr)
     ds.K = k;
     ds.SF = sf;
 
-    car_label = num2str(ds.CAR * 100);
-    k_all_label = [' (K=' num2str(ds.K * 100) ')'];
-    ses_label =  [' (CAR=' car_label ')'];
-    srisk_label = [' (D=' num2str(ds.D * 100) ', CAR=' car_label ')'];
+    k_all_label = [' (K=' num2str(ds.K * 100) '%)'];
+    ses_label =  [' (CAR=' num2str(ds.CAR * 100) '%)'];
+    srisk_label = [' (D=' num2str(ds.D * 100) '%, CAR=' num2str(ds.CAR * 100) '%)'];
 
     ds.LabelsMeasuresSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK'};
     ds.LabelsMeasures = {'Beta' ['VaR' k_all_label] ['ES' k_all_label] ['CoVaR' k_all_label] ['Delta CoVaR' k_all_label] ['MES' k_all_label] ['SES' ses_label] ['SRISK' srisk_label]};
 
     ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Averages'}];
     ds.LabelsSheets = [ds.LabelsMeasures {'Averages'}];
+    
+    ds.TargetLiabilities = lb;
+    ds.TargetLiabilitiesRolled = lbr;
 
     ds.Beta = NaN(t,n);
     ds.VaR = NaN(t,n);
@@ -263,62 +253,6 @@ function ds = finalize(ds)
     [rc,rs] = kendall_rankings(measures);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
-
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
-    sheets = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
-    
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -381,139 +315,6 @@ function write_results(ds,temp,out)
             delete(excel);
         catch
         end
-    end
-
-end
-
-%% MEASURES
-
-function data_fr = apply_forward_rolling(data,dates_num,fr)
-
-    if (~isempty(data) && (fr > 0))
-        [~,a] = unique(cellstr(datestr(dates_num,'mm/yyyy')),'stable');
-        data_monthly = data(a,:);
-
-        indices_seq = [a(1:fr:numel(a)) - 1; numel(dates_num)];
-        data_seq = data_monthly(1:fr:numel(a),:);
-
-        data_fr = NaN(size(data));
-
-        for i = 2:numel(indices_seq)
-            indices = (indices_seq(i-1) + 1):indices_seq(i);
-            data_fr(indices,:) = repmat(data_seq(i-1,:),numel(indices),1);
-        end
-    else
-        data_fr = data;
-    end
-
-end
-
-function [covar,dcovar] = calculate_covar(r0_m,r0_x,var,sv,a)
-
-    if (isempty(sv))
-        b = quantile_regression(r0_m,r0_x,a);
-        covar = b(1) + (b(2) .* var);
-    else
-        b = quantile_regression(r0_m(2:end),[r0_x(2:end) sv(1:end-1,:)],a);
-        covar = b(1) + (b(2) .* var(2:end));
-
-        for i = 1:size(sv,2)
-            covar = covar + (b(i+2) .* sv(1:end-1,i));
-        end
-        
-        covar = [covar(1); covar];
-    end
-
-    dcovar = b(2) .* (var - repmat(median(r0_x),length(r0_m),1));
-
-end
-
-function [beta,var,es] = calculate_idiosyncratic(s_m,r0_x,s_x,rho,a)
-
-    beta = rho .* (s_x ./ s_m);
-    
-    c = quantile((r0_x ./ s_x),a);
-    var = s_x * c;
-    es = s_x * -(normpdf(c) / a);
-
-end
-
-function [mes,lrmes] = calculate_mes(r0_m,s_m,r0_x,s_x,rho,beta,a,d)
-
-    c = quantile(r0_m,a);
-    z = sqrt(1 - rho.^2);
-
-    u = r0_m ./ s_m;
-    x = ((r0_x ./ s_x) - (rho .* u)) ./ z;
-
-    r0_n = 4 / (3 * length(r0_m));
-    r0_s = min([std(r0_m ./ s_m) (iqr(r0_m ./ s_m) ./ 1.349)]);
-    h = r0_s * r0_n ^0.2;
-
-    f = normcdf(((c ./ s_m) - u) ./ h);
-    f_sum = sum(f);
-
-    k1 = sum(u .* f) ./ f_sum;
-    k2 = sum(x .* f) ./ f_sum;
-
-    mes = (s_x .* rho .* k1) + (s_x .* z .* k2);
-    lrmes = 1 - exp(log(1 - d) .* beta);
-
-end
-
-function ses = calculate_ses(lb,eq,z)
-
-    lb_pc = [0; diff(lb) ./ lb(1:end-1)];
-    eq_pc = [0; diff(eq) ./ eq(1:end-1)];
-    
-    ses = (z .* lb .* (1 + lb_pc)) - ((1 - z) .* eq .* (1 + eq_pc));
-    ses(ses < 0) = 0;
-
-end
-
-function srisk = calculate_srisk(lb,eq,lrmes,car)
-
-    srisk = (car .* lb) - ((1 - car) .* (1 - lrmes) .* eq);
-    srisk(srisk < 0) = 0;
-
-end
-
-function beta = quantile_regression(y,x,k)
-
-    [n,m] = size(x);
-    m = m + 1;
-
-    x = [ones(n,1) x];
-    x_star = x;
-
-    beta = ones(m,1);
-
-    diff = 1;
-    i = 0;
-
-    while ((diff > 1e-6) && (i < 1000))
-        x_star_t = x_star.';
-        beta_0 = beta;
-
-        beta = ((x_star_t * x) \ x_star_t) * y;
-
-        residuals = y - (x * beta);
-        residuals(abs(residuals) < 1e-06) = 1e-06;
-        residuals(residuals < 0) = k * residuals(residuals < 0);
-        residuals(residuals > 0) = (1 - k) * residuals(residuals > 0);
-        residuals = abs(residuals);
-
-        z = zeros(n,m);
-
-        for j = 1:m 
-            z(:,j) = x(:,j) ./ residuals;
-        end
-
-        x_star = z;
-        beta_1 = beta;
-        
-        diff = max(abs(beta_1 - beta_0));
-        i = i + 1;
     end
 
 end
@@ -963,6 +764,64 @@ function plot_sequence(ds,target,id)
             hold(subs(1),'off');
         end
 
+    end
+
+end
+
+%% VALIDATION
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    end
+
+    sheets = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
+    
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(temp,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

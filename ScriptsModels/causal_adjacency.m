@@ -32,6 +32,8 @@ end
 
 function am = causal_adjacency_internal(r,sst,rp)
 
+    up = isempty(getCurrentTask());
+
     n = size(r,2);
     
     nan_indices = any(isnan(r),1);
@@ -54,12 +56,24 @@ function am = causal_adjacency_internal(r,sst,rp)
     pvals = zeros(k,1);
 
     if (rp)
-        for y = 1:k
-            [~,pvals(y)] = linear_granger_causality(r_in{y},r_out{y});
+        if (up)
+            parfor y = 1:k
+                [~,pvals(y)] = linear_granger_causality(r_in{y},r_out{y});
+            end
+        else
+            for y = 1:k
+                [~,pvals(y)] = linear_granger_causality(r_in{y},r_out{y});
+            end
         end
     else
-        for y = 1:k
-            [pvals(y),~] = linear_granger_causality(r_in{y},r_out{y});
+        if (up)
+            parfor y = 1:k
+                [pvals(y),~] = linear_granger_causality(r_in{y},r_out{y});
+            end
+        else
+            for y = 1:k
+                [pvals(y),~] = linear_granger_causality(r_in{y},r_out{y});
+            end
         end
     end
 
@@ -111,7 +125,7 @@ function r = validate_input(r)
     [t,n] = size(r);
 
     if ((t < 5) || (n < 2))
-        error('The value of ''r'' is invalid. Expected input to have a minimum size of 5x2.');
+        error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2.');
     end
 
 end

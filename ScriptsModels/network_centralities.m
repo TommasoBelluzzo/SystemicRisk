@@ -2,18 +2,15 @@
 % am = A binary n-by-n matrix representing the adjcency matrix.
 %
 % [OUTPUT]
-% bc = A row vector of floats of length n representing the betweenness centrality values.
-% cc = A row vector of floats of length n representing the closeness centrality values.
-% dc = A row vector of floats of length n representing the degree centrality values.
-% ec = A row vector of floats of length n representing the eigenvector centrality values.
-% kc = A row vector of floats of length n representing the Katz centrality values.
-% clc = A row vector of floats of length n representing the clustering coefficient.
-% deg = A row vector of floats of length n representing the degrees.
-% deg_in = A row vector of floats of length n representing the in-degrees.
-% deg_out = A row vector of floats of length n representing the out-degrees.
-%
-% [NOTES]
-% Credit goes to Kevin Sheppard, the author of the original code.
+% bc = A row vector of floats [0,Inf) of length n representing the betweenness centrality values.
+% cc = A row vector of floats [0,Inf) of length n representing the closeness centrality values.
+% dc = A row vector of floats [0,Inf) of length n representing the degree centrality values.
+% ec = A row vector of floats [0,Inf) of length n representing the eigenvector centrality values.
+% kc = A row vector of floats [0,Inf) of length n representing the Katz centrality values.
+% clc = A row vector of floats [0,Inf) of length n representing the clustering coefficient.
+% deg = A row vector of floats [0,Inf) of length n representing the degrees.
+% deg_in = A row vector of floats [0,Inf) of length n representing the in-degrees.
+% deg_out = A row vector of floats [0,Inf) of length n representing the out-degrees.
 
 function [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(varargin)
 
@@ -21,7 +18,7 @@ function [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(varargin
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('am',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 '2d' 'square' 'nonempty'}));
+        ip.addRequired('am',@(x)validateattributes(x,{'double'},{'real' 'finite' 'binary' '2d' 'square' 'nonempty'}));
     end
 
     ip.parse(varargin{:});
@@ -205,7 +202,7 @@ function am = validate_input(am)
     amv = am(:);
 
     if (numel(amv) < 4)
-        error('The value of ''am'' is invalid. Expected input to be a square matrix with at least 2 columns/rows.');
+        error('The value of ''am'' is invalid. Expected input to be a square matrix with a minimum size of 2x2.');
     end
 
 end

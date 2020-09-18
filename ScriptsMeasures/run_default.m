@@ -10,6 +10,7 @@
 % f = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors used to calculate the DIP (optional, default=2).
 % l = A float [0.05,0.20] representing the importance sampling threshold used to calculate the DIP (optional, default=0.10).
 % c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
+% it = An integer [5,100] representing the number of iterations to perform to calculate the DIP (optional, default=5).
 % k = A float [0.90,0.99] representing the confidence level used by the Systemic CCA framework (optional, default=0.95).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -34,6 +35,7 @@ function [result,stopped] = run_default(varargin)
         ip.addOptional('f',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
         ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
         ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
+        ip.addOptional('it',5,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 5 '<=' 100 'scalar'}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -52,22 +54,23 @@ function [result,stopped] = run_default(varargin)
     f = validate_f(ipr.f,ds.N);
     l = ipr.l;
     c = ipr.c;
+    it = ipr.it;
     k = ipr.k;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,k,analyze);
+    [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,it,k,analyze);
 
 end
 
-function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,k,analyze)
+function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,it,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k);
+    ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k);
     n = ds.N;
     t = ds.T;
     
@@ -97,7 +100,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
 
         for i = 1:n
             offsets = [ds.Defaults(i) ds.Insolvencies(i)] - 1;
-            futures(i) = parfeval(@main_loop_1,1,firms_data{i},offsets,r,ds.ST(i),ds.DT(i),ds.LCAR,ds.OP);
+            futures(i) = parfeval(@main_loop_1,1,firms_data{i},offsets,r,ds.ST(i),ds.DT(i),ds.CAR,ds.OP);
         end
 
         for i = 1:n
@@ -168,7 +171,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.F,ds.L,ds.C,windows_cl{i},ds.K);
+            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.F,ds.L,ds.C,ds.IT,windows_cl{i},ds.K);
         end
 
         for i = 1:t
@@ -245,9 +248,9 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
 
 end
 
-%% DATA
+%% PROCESS
 
-function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
+function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k)
 
     q = [(0.900:0.025:0.975) 0.99];
     q = q(q >= k);
@@ -261,9 +264,9 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
     ds.CAR = car;
     ds.DT = max(0.5,0.7 - (0.3 .* (1 ./ lst)));
     ds.F = f;
+    ds.IT = it;
     ds.K = k;
     ds.L = l;
-    ds.LCAR = 1 / (1 - car);
     ds.LGD = 1 - rr;
     ds.LST = lst;
     ds.OP = op;
@@ -271,9 +274,9 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
     ds.ST =  1 ./ (1 + lst);
 
     op_label =  [' (' ds.OP ')'];
-    d2c_label =  [' (' ds.OP ', CAR=' num2str(ds.CAR * 100) ')'];
-    dip_label =  [' (RR=' num2str(ds.RR * 100) ', F=' num2str(ds.F) ', L=' num2str(ds.L * 100) ')'];
-    scca_label = [' (' ds.OP ', K=' num2str(ds.K * 100) ')'];
+    d2c_label =  [' (' ds.OP ', CAR=' num2str(ds.CAR * 100) '%)'];
+    dip_label =  [' (RR=' num2str(ds.RR * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%, IT=' num2str(it) ')'];
+    scca_label = [' (' ds.OP ', K=' num2str(ds.K * 100) '%)'];
 
     ds.LabelsMeasuresSimple = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL'};
     ds.LabelsMeasures = {['D2D' op_label] ['D2C' d2c_label] ['SCCA EL' op_label] ['SCCA CL' op_label]};
@@ -298,9 +301,61 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,k)
 
 end
 
+function window_results = main_loop_1(firm_data,offsets,r,st,dt,car,op)
+
+    t = size(firm_data,1);
+
+    offset1 = min(offsets(1),t);
+    cp_o = max(1e-6,firm_data(1:offset1,1));
+    lb_o = max(1e-6,firm_data(1:offset1,3));
+    db_o = (lb_o .* st) + (dt .* (lb_o .* (1 - st)));
+    r_o = r(1:offset1);
+
+    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
+    [d2d,d2c] = default_metrics(va,vap(1),db_o,r_o,1,car);
+    
+    offset2 = min(min(offsets),t);
+    cp_o = max(1e-6,firm_data(1:offset2,1));
+    lb_o = max(1e-6,firm_data(1:offset2,3));
+    db_o = (lb_o .* st) + (dt .* (lb_o .* (1 - st)));
+    r_o = r(1:offset2);
+    cds_o = firm_data(1:offset2,2);
+
+    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
+    [el,cl,a] = contingent_claims_analysis(va,vap,cds_o,db_o,r_o,1);
+
+    window_results = struct();
+    window_results.Offset1 = offset1;
+    window_results.Offset2 = offset2;
+    window_results.D2D = d2d;
+    window_results.D2C = d2c;
+    window_results.SCCAAlphas = a;
+    window_results.SCCAEL = el;
+    window_results.SCCACL = cl;
+
+end
+
+function window_results = main_loop_2(r,cds,lb,lgd,f,l,c,it,cl,k)
+
+    window_results = struct();
+
+    dip = distress_insurance_premium(r,cds,lb,lgd,f,l,c,it);
+    window_results.DIP = dip;
+
+    [jvars,jes] = mgev_joint_risk_metrics(cl,k);
+    window_results.SCCAJVaRs = jvars;
+    window_results.SCCAJES = jes;
+
+end
+
 function ds = finalize_1(ds,results)
   
     n = ds.N;
+    t = ds.T;
+    
+    cp = ds.Capitalizations;
+    lb = ds.Liabilities;
+    r = max(0,ds.RiskFreeRate);
 
     for i = 1:n
         result = results{i};
@@ -313,7 +368,18 @@ function ds = finalize_1(ds,results)
         ds.SCCACL(1:result.Offset2,i) = result.SCCACL;
     end
 
-    [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds);
+    weights = cp ./ repmat(sum(cp,2,'omitnan'),1,n);
+    d2d_avg = sum(ds.D2D .* weights,2,'omitnan');
+    d2c_avg = sum(ds.D2C .* weights,2,'omitnan');
+
+    cp = max(1e-6,sum(cp,2,'omitnan'));
+    lbs = lb .* repmat(ds.ST,t,1);
+    lbl = repmat(ds.DT,t,1) .* (lb .* (1 - repmat(ds.ST,t,1)));
+    db = max(1e-6,sum(lbs + lbl,2,'omitnan'));
+
+    [va,vap] = kmv_structural(cp,db,r,1,ds.OP);
+    [d2d_por,d2c_por] = default_metrics(va,vap(1),db,r,1,ds.CAR);
+
     ds.Indicators(:,1) = d2d_avg;
     ds.Indicators(:,2) = d2c_avg;
     ds.Indicators(:,3) = d2d_por;
@@ -347,84 +413,6 @@ function ds = finalize_2(ds,results)
     
     w = max(round(nthroot(ds.BW,1.81),0),5); 
     ds.Indicators(:,5) = sanitize_data(ds.Indicators(:,5),ds.DatesNum,w,[]);
-
-end
-
-function lst = validate_lst(lst,n)
-
-    if (isscalar(lst))
-        lst = ones(1,n) .* lst;
-    else
-        if (numel(lst) ~= n)
-            error(['The number of lst coefficients, when specified as a vector, must be equal to the number of firms (' num2str(n) ').']);
-        end
-        
-        lst = lst(:).';
-    end
-
-end
-
-function out_file = validate_output(out_file)
-
-    [path,name,extension] = fileparts(out_file);
-
-    if (~strcmp(extension,'.xlsx'))
-        out_file = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function f = validate_f(f,n)
-
-    if (f > n)
-        error(['The value of ''f'' is invalid. Expected input to be less than or equal to (' num2str(n) ').']);
-    end
-    
-end
-
-function out_temp = validate_template(out_temp)
-
-    if (exist(out_temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(out_temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(out_temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-
-    sheets = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL' 'Indicators'};
-
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -489,92 +477,6 @@ function write_results(ds,temp,out)
         end
     end
 
-end
-
-%% MEASURES
-
-function window_results = main_loop_1(firm_data,offsets,r,st,dt,lcar,op)
-
-    t = size(firm_data,1);
-
-    offset1 = min(offsets(1),t);
-    cp_o = max(1e-6,firm_data(1:offset1,1));
-    lb_o = max(1e-6,firm_data(1:offset1,3));
-    db_o = (lb_o .* st) + (dt .* (lb_o .* (1 - st)));
-    r_o = r(1:offset1);
-
-    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
-    [d2d,d2c] = calculate_distances(va,vap,db_o,r_o,1,lcar);
-    
-    offset2 = min(min(offsets),t);
-    cp_o = max(1e-6,firm_data(1:offset2,1));
-    lb_o = max(1e-6,firm_data(1:offset2,3));
-    db_o = (lb_o .* st) + (dt .* (lb_o .* (1 - st)));
-    r_o = r(1:offset2);
-    cds_o = firm_data(1:offset2,2);
-
-    [va,vap] = kmv_structural(cp_o,db_o,r_o,1,op);
-    [el,cl,a] = contingent_claims_analysis(va,vap,cds_o,db_o,r_o,1);
-
-    window_results = struct();
-    window_results.Offset1 = offset1;
-    window_results.Offset2 = offset2;
-    window_results.D2D = d2d;
-    window_results.D2C = d2c;
-    window_results.SCCAAlphas = a;
-    window_results.SCCAEL = el;
-    window_results.SCCACL = cl;
-
-end
-
-function window_results = main_loop_2(r,cds,lb,lgd,f,l,c,cl,k)
-
-    window_results = struct();
-
-    dip = distress_insurance_premium(r,cds,lb,lgd,f,l,c);
-    window_results.DIP = dip;
-
-    [jvars,jes] = mgev_joint_risk_metrics(cl,k);
-    window_results.SCCAJVaRs = jvars;
-    window_results.SCCAJES = jes;
-
-end
-
-function [d2d,d2c] = calculate_distances(va,vap,db,r,t,lcar)
-
-    s = vap(1);
-    rst = (r + (0.5 * s^2)) * t;
-    st = s * sqrt(t);
-
-    d1 = (log(va ./ db) + rst) ./ st;
-    d2d = d1 - st;
-
-    d1 = (log(va ./ (lcar .* db)) + rst) ./ st;
-    d2c = d1 - st;
-
-end
-
-function [d2d_avg,d2c_avg,d2d_por,d2c_por] = calculate_overall_distances(ds)
-
-    n = ds.N;
-    t = ds.T;
-
-    cp = ds.Capitalizations;
-    lb = ds.Liabilities;
-    r = max(0,ds.RiskFreeRate);
-
-    weights = cp ./ repmat(sum(cp,2,'omitnan'),1,n);
-    d2d_avg = sum(ds.D2D .* weights,2,'omitnan');
-    d2c_avg = sum(ds.D2C .* weights,2,'omitnan');
-
-    cp = max(1e-6,sum(cp,2,'omitnan'));
-    lbs = lb .* repmat(ds.ST,t,1);
-    lbl = repmat(ds.DT,t,1) .* (lb .* (1 - repmat(ds.ST,t,1)));
-    db = max(1e-6,sum(lbs + lbl,2,'omitnan'));
-
-    [va,vap] = kmv_structural(cp,db,r,1,ds.OP);
-    [d2d_por,d2c_por] = calculate_distances(va,vap,db,r,1,ds.LCAR);
-    
 end
 
 %% PLOTTING
@@ -657,7 +559,7 @@ function plot_dip(ds,id)
     plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
-    title(sub_1,['DIP (RR=' num2str(ds.RR * 100) ', F=' num2str(ds.F) ', L=' num2str(ds.L * 100) ')']);
+    title(sub_1,['DIP (RR=' num2str(ds.RR * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%)']);
     
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -854,6 +756,86 @@ function plot_sequence(ds,target,distance,id)
             hold(subs(1),'off');
         end
 
+    end
+
+end
+
+%% VALIDATION
+
+function lst = validate_lst(lst,n)
+
+    if (isscalar(lst))
+        lst = ones(1,n) .* lst;
+    else
+        if (numel(lst) ~= n)
+            error(['The number of lst coefficients, when specified as a vector, must be equal to the number of firms (' num2str(n) ').']);
+        end
+        
+        lst = lst(:).';
+    end
+
+end
+
+function out_file = validate_output(out_file)
+
+    [path,name,extension] = fileparts(out_file);
+
+    if (~strcmp(extension,'.xlsx'))
+        out_file = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function f = validate_f(f,n)
+
+    if (f > n)
+        error(['The value of ''f'' is invalid. Expected input to be less than or equal to (' num2str(n) ').']);
+    end
+    
+end
+
+function out_temp = validate_template(out_temp)
+
+    if (exist(out_temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(out_temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(out_temp);
+        
+        if (isempty(file_status))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+
+    sheets = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL' 'Indicators'};
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

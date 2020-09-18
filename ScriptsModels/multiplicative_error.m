@@ -385,7 +385,7 @@ function [v,d,z,type] = validate_input(data,type)
     
     if (any(strcmp(type,{'A' 'P'})))
         if (n < 2)
-            error('The value of ''data'' is invalid. Expected input to contain at least two columns.');
+            error('The value of ''data'' is invalid. Expected input to be a matrix with at least 2 columns.');
         end
 
         if (strcmp(type,'A'))

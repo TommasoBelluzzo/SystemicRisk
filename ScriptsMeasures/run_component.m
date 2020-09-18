@@ -82,7 +82,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,g,u,f,q,anal
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop,1,windows_rf{i},windows_rp{i},ds.Components,ds.A);
+            futures(i) = parfeval(@main_loop,1,windows_rf{i},windows_rp{i},ds.A,ds.G,ds.U,ds.F);
         end
 
         for i = 1:t
@@ -154,7 +154,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,g,u,f,q,anal
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,bw,k,g,u,f,q)
 
@@ -167,25 +167,29 @@ function ds = initialize(ds,bw,k,g,u,f,q)
 
     ds.A = 1 - k;
     ds.BW = bw;
-    ds.Components = round(ds.N * f,0);
     ds.G = g;
     ds.U = u;
     ds.F = f;
     ds.K = k;
     ds.Q = q;
+    
+    ds.CATFINReturns = rp;
+	
+    g_label = num2str(ds.G);
+    u_label = num2str(ds.U);
+    f_label = [num2str(ds.F * 100) '%'];
+    k_label = [num2str(ds.K * 100) '%'];
+    q_label = num2str(ds.Q);
 
-    k_label = num2str(ds.K * 100);
-
-    ds.LabelsCATFINVaRs = {['NP (G=' num2str(ds.G) ')'] ['GPD (U=' num2str(ds.U) ')'] 'GEV' 'SGED'};
+    ds.LabelsCATFINVaRs = {['NP (G=' g_label ')'] ['GPD (U=' u_label ')'] 'GEV' 'SGED'};
     ds.LabelsPCAExplained = {'PC' 'EV'};
 
     ds.LabelsIndicatorsSimple = {'AR' 'CATFIN' 'CS' 'TI'};
-    ds.LabelsIndicators = {['AR (F=' [num2str(ds.F * 100) '%'] ')'] ['CATFIN (K=' k_label ')'] ['CS (Q=' num2str(ds.Q) ')'] ['TI (Q=' num2str(ds.Q) ')']};
+    ds.LabelsIndicators = {['AR (F=' f_label ')'] ['CATFIN (K=' k_label ')'] ['CS (Q=' q_label ')'] ['TI (Q=' q_label ')']};
 
     ds.LabelsSheetsSimple = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
     ds.LabelsSheets = {['CATFIN VaRs (K=' k_label ')'] 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
 
-    ds.CATFINReturns = rp;
     ds.CATFINVaRs = NaN(t,4);
     ds.CATFINFirstCoefficients = NaN(1,4);
     ds.CATFINFirstExplained = NaN;
@@ -203,6 +207,25 @@ function ds = initialize(ds,bw,k,g,u,f,q)
     ds.PCAScoresOverall = NaN(t,n);
 
     ds.ComparisonReferences = {'Indicators' [] strcat({'CO-'},ds.LabelsIndicatorsSimple)};
+
+end
+
+function window_results = main_loop(rf,rp,a,g,u,f)
+
+    window_results = struct();
+
+    [var_np,var_gpd,var_gev,var_sged] = catfin(rp,a,g,u);
+    window_results.CATFINVaRs = -1 .* [var_np var_gpd var_gev var_sged];
+    
+    [ar,cs,ti] = component_metrics(rf,f);
+    window_results.AbsorptionRatio = ar;
+    window_results.CorrelationSurprise = cs;
+    window_results.TurbulenceIndex = ti;
+    
+    [coefficients,scores,explained] = pca_shorthand(rf,true);
+    window_results.PCACoefficients = coefficients;
+    window_results.PCAExplained = explained;
+    window_results.PCAScores = scores;
 
 end
 
@@ -225,74 +248,23 @@ function ds = finalize(ds,results)
 
     ds.CATFINVaRs(:,4) = sanitize_data(ds.CATFINVaRs(:,4),ds.DatesNum,[],[]);
 
-    [coefficients,scores,explained] = calculate_pca(ds.CATFINVaRs,false);
+    [coefficients,scores,explained] = pca_shorthand(ds.CATFINVaRs,false);
     ds.CATFINFirstCoefficients = coefficients(:,1).';
     ds.CATFINFirstExplained = explained(1);
 
     ds.Indicators(:,1) = sanitize_data(ds.Indicators(:,1),ds.DatesNum,[],[0 1]);
     ds.Indicators(:,2) = scores(:,1);
+    
+    r = ds.Returns;
+    nan_indices = isnan(r);
+    r_m = repmat(mean(r,1,'omitnan'),size(r,1),1);
+    r(nan_indices) = r_m(nan_indices);
 
-    [coefficients,scores,explained] = calculate_pca_overall(ds.Returns);
+    [coefficients,scores,explained] = pca_shorthand(r,true);
     ds.PCACoefficientsOverall = coefficients;
     ds.PCAExplainedOverall = explained;
     ds.PCAExplainedSumsOverall = fliplr([cumsum([explained(1) explained(2) explained(3)]) 100]);
     ds.PCAScoresOverall = scores;
-
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
-    sheets = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
-
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -366,80 +338,6 @@ function write_results(ds,temp,out)
         end
     end
     
-end
-
-%% MEASURES
-
-function window_results = main_loop(rf,rp,components,a)
-
-    window_results = struct();
-
-    nan_indices = any(isnan(rf),1);
-    rf(:,nan_indices) = [];
-
-    [var_np,var_gpd,var_gev,var_sged] = catfin(rp,a,0.98,0.05);
-    window_results.CATFINVaRs = -1 .* [var_np var_gpd var_gev var_sged];
-    
-    [ar,cs,ti] = calculate_component_indicators(rf,components);
-    window_results.AbsorptionRatio = ar;
-    window_results.CorrelationSurprise = cs;
-    window_results.TurbulenceIndex = ti;
-    
-    [coefficients,scores,explained] = calculate_pca(rf,true);
-    window_results.PCACoefficients = coefficients;
-    window_results.PCAExplained = explained;
-    window_results.PCAScores = scores;
-
-end
-
-function [ar,cs,ti] = calculate_component_indicators(x,components)
-
-    zero_indices = find(~x);
-    x(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
-    
-    novar_indices = find(var(x,1) == 0);
-    x(:,novar_indices) = x(:,novar_indices) + ((-9e-9 .* rand(size(x(:,novar_indices)))) + 1e-8);
-
-    c = cov(x);
-    bm = eye(size(c)) .* diag(c);
-    e = eigs(c,size(c,1));
-
-    v = x(end,:) - mean(x(1:end-1,:),1);
-    vt = v.';
-
-    ar = sum(e(1:components)) / trace(c);
-    cs = ((v / c) * vt) / ((v / bm) * vt);
-    ti = (v / c) * vt;
-
-end
-
-function [coefficients,scores,explained] = calculate_pca_overall(r)
-
-    nan_indices = isnan(r);
-    rm = repmat(mean(r,1,'omitnan'),size(r,1),1);
-    r(nan_indices) = rm(nan_indices);
-
-    [coefficients,scores,explained] = calculate_pca(r,true);
-
-end
-
-function [coefficients,scores,explained] = calculate_pca(x,normalize)
-
-    if (normalize)
-        for i = 1:size(x,2)
-            c = x(:,i);
-
-            m = mean(c,'omitnan');
-
-            s = std(c,'omitnan');
-            s(s == 0) = 1;
-
-            x(:,i) = (c - m) ./ s;
-        end
-    end
-
-    [coefficients,scores,~,~,explained] = pca(x,'Economy',false);
-
 end
 
 %% PLOTTING
@@ -539,7 +437,7 @@ function plot_indicators_other(ds,id)
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'YLim',[ar_limit 1],'YTick',ar_limit:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(ar_limit:0.1:1) .* 100,'UniformOutput',false));
     set(sub_1,'XGrid','on','YGrid','on');
-    t1 = title(sub_1,['Absorption Ratio (F=' [num2str(ds.F * 100) '%'] ')']);
+    t1 = title(sub_1,['Absorption Ratio (F=' num2str(ds.F * 100) '%)']);
     set(t1,'Units','normalized');
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
@@ -659,5 +557,63 @@ function plot_pca(ds,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+%% VALIDATION
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    sheets = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
+    end
 
 end

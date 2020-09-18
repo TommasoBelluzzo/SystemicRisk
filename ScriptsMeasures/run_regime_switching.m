@@ -185,7 +185,7 @@ function [result,stopped] = run_regime_switching_internal(ds,temp,out,rs2,rs3,rs
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,rs2,rs3,rs4)
 
@@ -258,70 +258,6 @@ function ds = finalize(ds)
         ds.JointProbabilities(:,index) = prod(sprob_hv,2,'omitnan');
     end
     
-end
-
-function [rs2,rs3,rs4] = validate_booleans(rs2,rs3,rs4)
-
-    if (~rs2 && ~rs3 && ~rs4)
-        error('At least one regime-switching model must be computed.');
-    end
-    
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
-    sheets = {'Indicators' 'RS2 CM' 'RS2 CV' 'RS2 SP' 'RS3 CM' 'RS3 CV' 'RS3 SP' 'RS4 CM' 'RS4 CV' 'RS4 SP'};
-    
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
-
 end
 
 function write_results(ds,temp,out)
@@ -481,7 +417,7 @@ function write_results(ds,temp,out)
 
 end
 
-%% MEASURES
+%% INTERNAL CALCULATIONS
 
 function [mu_params,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching_2(r)
 
@@ -637,6 +573,12 @@ function plot_indicators(ds,target,id)
         set(sub_1,'YLim',[0 1]);
         set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
         set(sub_1,'XGrid','on','YGrid','on');
+        
+        if (ds.MonthlyTicks)
+            date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
+        else
+            date_ticks(sub_1,'x','yyyy','KeepLimits');
+        end
     end
     
     t1 = title(sub_1,'Average Probability of High Variance');
@@ -879,6 +821,72 @@ function plot_sequence(ds,target,id)
         
         bar(subs(4),1:k,dur,'FaceColor',[0.749 0.862 0.933]);
 
+    end
+
+end
+
+%% VALIDATION
+
+function [rs2,rs3,rs4] = validate_booleans(rs2,rs3,rs4)
+
+    if (~rs2 && ~rs3 && ~rs4)
+        error('At least one regime-switching model must be computed.');
+    end
+    
+end
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    end
+
+    sheets = {'Indicators' 'RS2 CM' 'RS2 CV' 'RS2 SP' 'RS3 CM' 'RS3 CV' 'RS3 SP' 'RS4 CM' 'RS4 CV' 'RS4 SP'};
+    
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(temp,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

@@ -38,6 +38,8 @@ end
 
 function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel)
 
+    up = isempty(getCurrentTask());
+
     t = size(data,1);
     x = data(:,1);
     y = data(:,2);
@@ -67,40 +69,78 @@ function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_s
     k_r = zeros(lag_max,1);
     rss_r = zeros(lag_max,1);
 
-    parfor i = 1:lag_max
-        xb_i = xb(:,i);
-        tmp_i = tmp(:,i);
-        
-        y_star =  tmp_i((i + 1):t);
-        x_star = [ones(t - i,1) zeros(t - i,i)];
+    if (up)
+        parfor i = 1:lag_max
+            xb_i = xb(:,i);
+            tmp_i = tmp(:,i);
 
-        for j = 1:i
-            x_star(:,j + 1) = xb_i((i - j + 1):(t - j));
+            y_star =  tmp_i((i + 1):t);
+            x_star = [ones(t - i,1) zeros(t - i,i)];
+
+            for j = 1:i
+                x_star(:,j + 1) = xb_i((i - j + 1):(t - j));
+            end
+
+            [~,~,e] = regress(y_star,x_star);  
+            e(isnan(e)) = []; 
+
+            y_valid = y_star;
+            y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
+
+            d = i + 1;
+            k = numel(y_valid);
+            sse = e.' * e;
+
+            switch (lag_sel)
+                case 'AIC'
+                    crit_r(i) = (k * log(sse / k)) + (2 * d);
+                case 'BIC'
+                    crit_r(i) = (k * log(sse / k)) + (log(k) * d);
+                case 'FPE'
+                    crit_r(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
+                otherwise
+                    crit_r(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
+            end
+
+            k_r(i) = k;
+            rss_r(i) = sse;
         end
+    else
+        for i = 1:lag_max
+            xb_i = xb(:,i);
+            tmp_i = tmp(:,i);
 
-        [~,~,e] = regress(y_star,x_star);  
-        e(isnan(e)) = []; 
+            y_star =  tmp_i((i + 1):t);
+            x_star = [ones(t - i,1) zeros(t - i,i)];
 
-        y_valid = y_star;
-        y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
-        
-        d = i + 1;
-        k = numel(y_valid);
-        sse = e.' * e;
+            for j = 1:i
+                x_star(:,j + 1) = xb_i((i - j + 1):(t - j));
+            end
 
-        switch (lag_sel)
-            case 'AIC'
-                crit_r(i) = (k * log(sse / k)) + (2 * d);
-            case 'BIC'
-                crit_r(i) = (k * log(sse / k)) + (log(k) * d);
-            case 'FPE'
-                crit_r(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
-            otherwise
-                crit_r(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
+            [~,~,e] = regress(y_star,x_star);  
+            e(isnan(e)) = []; 
+
+            y_valid = y_star;
+            y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
+
+            d = i + 1;
+            k = numel(y_valid);
+            sse = e.' * e;
+
+            switch (lag_sel)
+                case 'AIC'
+                    crit_r(i) = (k * log(sse / k)) + (2 * d);
+                case 'BIC'
+                    crit_r(i) = (k * log(sse / k)) + (log(k) * d);
+                case 'FPE'
+                    crit_r(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
+                otherwise
+                    crit_r(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
+            end
+
+            k_r(i) = k;
+            rss_r(i) = sse;
         end
-        
-        k_r(i) = k;
-        rss_r(i) = sse;
     end
 
     [~,lag_r] = min(crit_r);
@@ -109,49 +149,96 @@ function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_s
     k_u = zeros(lag_max,1);
     rss_u = zeros(lag_max,1);
 
-    parfor i = 1:lag_max
-        lag_e = max(i,lag_r);
-        fob = lag_e + 1;
-        obs = t - lag_e;
-        
-        xb_i = xb(:,i);
-        yb_i = yb(:,i);
-        tmp_i = tmp(:,i);
+    if (up)
+        parfor i = 1:lag_max
+            lag_e = max(i,lag_r);
+            fob = lag_e + 1;
+            obs = t - lag_e;
 
-        y_star = tmp_i(fob:t) ;
-        x_star = [ones(obs,1) zeros(obs,lag_r) zeros(obs,i)];
+            xb_i = xb(:,i);
+            yb_i = yb(:,i);
+            tmp_i = tmp(:,i);
 
-        for j = 1:lag_r
-            x_star(:,j + 1) = xb_i((fob - j):((fob - j) + obs - 1));
+            y_star = tmp_i(fob:t) ;
+            x_star = [ones(obs,1) zeros(obs,lag_r) zeros(obs,i)];
+
+            for j = 1:lag_r
+                x_star(:,j + 1) = xb_i((fob - j):((fob - j) + obs - 1));
+            end
+
+            for j = 1:i
+                x_star(:,j + lag_r + 1) = yb_i((fob - j):((fob - j) + obs - 1));
+            end
+
+            [~,~,e] = regress(y_star,x_star);
+            e(isnan(e)) = [];
+
+            y_valid = y_star;
+            y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
+
+            d = i + lag_r + 1;
+            k = numel(y_valid);
+            sse = e.' * e;
+
+            switch (lag_sel)
+                case 'AIC'
+                    crit_u(i) = (k * log(sse / k)) + (2 * d);
+                case 'BIC'
+                    crit_u(i) = (k * log(sse / k)) + (log(k) * d);
+                case 'FPE'
+                    crit_u(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
+                otherwise
+                    crit_u(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
+            end
+
+            k_u(i) = k;
+            rss_u(i) = sse;
         end
+    else
+        for i = 1:lag_max
+            lag_e = max(i,lag_r);
+            fob = lag_e + 1;
+            obs = t - lag_e;
 
-        for j = 1:i
-            x_star(:,j + lag_r + 1) = yb_i((fob - j):((fob - j) + obs - 1));
+            xb_i = xb(:,i);
+            yb_i = yb(:,i);
+            tmp_i = tmp(:,i);
+
+            y_star = tmp_i(fob:t) ;
+            x_star = [ones(obs,1) zeros(obs,lag_r) zeros(obs,i)];
+
+            for j = 1:lag_r
+                x_star(:,j + 1) = xb_i((fob - j):((fob - j) + obs - 1));
+            end
+
+            for j = 1:i
+                x_star(:,j + lag_r + 1) = yb_i((fob - j):((fob - j) + obs - 1));
+            end
+
+            [~,~,e] = regress(y_star,x_star);
+            e(isnan(e)) = [];
+
+            y_valid = y_star;
+            y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
+
+            d = i + lag_r + 1;
+            k = numel(y_valid);
+            sse = e.' * e;
+
+            switch (lag_sel)
+                case 'AIC'
+                    crit_u(i) = (k * log(sse / k)) + (2 * d);
+                case 'BIC'
+                    crit_u(i) = (k * log(sse / k)) + (log(k) * d);
+                case 'FPE'
+                    crit_u(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
+                otherwise
+                    crit_u(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
+            end
+
+            k_u(i) = k;
+            rss_u(i) = sse;
         end
-
-        [~,~,e] = regress(y_star,x_star);
-        e(isnan(e)) = [];
-
-        y_valid = y_star;
-        y_valid(isnan(y_star) | any(isnan(x_star),2)) = [];
-
-        d = i + lag_r + 1;
-        k = numel(y_valid);
-        sse = e.' * e;
-
-        switch (lag_sel)
-            case 'AIC'
-                crit_u(i) = (k * log(sse / k)) + (2 * d);
-            case 'BIC'
-                crit_u(i) = (k * log(sse / k)) + (log(k) * d);
-            case 'FPE'
-                crit_u(i) = (k * log(sse / k)) + log((k + d + 1) / (k - d - 1));
-            otherwise
-                crit_u(i) = (k * log(sse / k)) + (2 * log(log(k)) * d);
-        end
-        
-        k_u(i) = k;
-        rss_u(i) = sse;
     end
 
     [~,lag_u] = min(crit_u);
@@ -184,7 +271,7 @@ function [data,lag_max] = validate_input(data,lag_max)
     b = (lag_max * 2) + 1;
     
     if (t < 5)
-        error('The value of ''data'' is invalid. Expected input to contain at least 5 observations.');
+        error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end
 
     if (b >= (t - b))

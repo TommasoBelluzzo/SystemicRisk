@@ -145,7 +145,7 @@ function [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,a
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,bw,sst,rp,k)
 
@@ -203,6 +203,31 @@ function ds = initialize(ds,bw,sst,rp,k)
 
 end
 
+function window_results = main_loop(r,sst,rp,gd)
+
+    window_results = struct();
+
+    am = causal_adjacency(r,sst,rp);
+    window_results.AdjacencyMatrix = am;
+
+    [dci,cio,cioo] = connectedness_metrics(am,gd);
+    window_results.DCI = dci;
+    window_results.ConnectionsInOut = cio;
+    window_results.ConnectionsInOutOther = cioo;
+
+    [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(am);
+    window_results.BetweennessCentralities = bc;
+    window_results.ClosenessCentralities = cc;
+    window_results.DegreeCentralities = dc;
+    window_results.EigenvectorCentralities = ec;
+    window_results.KatzCentralities = kc;
+    window_results.ClusteringCoefficients = clc;
+    window_results.Degrees = deg;
+    window_results.DegreesIn = deg_in;
+    window_results.DegreesOut = deg_out;
+
+end
+
 function ds = finalize(ds,results)
 
     t = ds.T;
@@ -240,62 +265,6 @@ function ds = finalize(ds,results)
     ds.AverageDegrees = deg;
     ds.AverageDegreesIn = deg_in;
     ds.AverageDegreesOut = deg_out;
-
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
-    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures'};
-
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -364,88 +333,6 @@ function write_results(ds,temp,out)
         end
     end
     
-end
-
-%% MEASURES
-
-function window_results = main_loop(r,sst,rp,gd)
-
-    window_results = struct();
-
-    am = causal_adjacency(r,sst,rp);
-    window_results.AdjacencyMatrix = am;
-
-    [dci,cio,cioo] = calculate_connectedness_indicators(am,gd);
-    window_results.DCI = dci;
-    window_results.ConnectionsInOut = cio;
-    window_results.ConnectionsInOutOther = cioo;
-
-    [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(am);
-    window_results.BetweennessCentralities = bc;
-    window_results.ClosenessCentralities = cc;
-    window_results.DegreeCentralities = dc;
-    window_results.EigenvectorCentralities = ec;
-    window_results.KatzCentralities = kc;
-    window_results.ClusteringCoefficients = clc;
-    window_results.Degrees = deg;
-    window_results.DegreesIn = deg_in;
-    window_results.DegreesOut = deg_out;
-
-end
-
-function [dci,cio,cioo] = calculate_connectedness_indicators(am,gd)
-
-    n = size(am,1);
-
-    dci = sum(sum(am)) / ((n ^ 2) - n);
-
-    ni = zeros(n,1);
-    no = zeros(n,1);
-    
-    for i = 1:n     
-        ni(i) = sum(am(:,i));
-        no(i) = sum(am(i,:));
-    end
-
-    cio = (sum(ni) + sum(no)) / (2 * (n - 1));
-    
-    if (isempty(gd))
-        cioo = NaN;
-    else
-        gd_len = length(gd);
-
-        nifo = zeros(n,1);
-        noto = zeros(n,1);
-        
-        for i = 1:n
-            group_1 = gd(1);
-            group_n = gd(gd_len);
-            
-            if (i <= group_1)
-                g_beg = 1;
-                g_end = group_1;
-            elseif (i > group_n)
-                g_beg = group_n + 1;
-                g_end = n;
-            else
-                for j = 1:gd_len-1
-                    g_j0 = gd(j);
-                    g_j1 = gd(j+1);
-
-                    if ((i > g_j0) && (i <= g_j1))
-                        g_beg = g_j0 + 1;
-                        g_end = g_j1;
-                    end
-                end
-            end
-
-            nifo(i) = ni(i) - sum(am(g_beg:g_end,i));
-            noto(i) = no(i) - sum(am(i,g_beg:g_end));
-        end
-
-        cioo = (sum(nifo) + sum(noto)) / (2 * gd_len * (n / gd_len));
-    end
-
 end
 
 %% PLOTTING
@@ -688,5 +575,63 @@ function plot_centralities(ds,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
+
+end
+
+%% VALIDATION
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    sheets = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures'};
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
+    end
 
 end

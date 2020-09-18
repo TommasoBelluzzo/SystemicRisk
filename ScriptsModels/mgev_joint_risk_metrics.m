@@ -40,6 +40,8 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     if (isempty(q))
         q = [(0.900:0.025:0.975) 0.99];
     end
+    
+    up = isempty(getCurrentTask());
 
     [t,n] = size(l);
     l_sorted = sort(l,1);
@@ -66,12 +68,22 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     mu = zeros(n,1);
     sigma = zeros(n,1);
     
-    for j = 1:n
-        y = (ms_q.^-xi(j) - 1) ./ xi(j);
-        b = regress(l_sorted(ms_s,j),[ones(numel(ms_s),1) y(ms_s)]);
-        
-        mu(j) = b(1);
-        sigma(j) = b(2);
+    if (up)
+        parfor j = 1:n
+            y = (ms_q.^-xi(j) - 1) ./ xi(j);
+            b = regress(l_sorted(ms_s,j),[ones(numel(ms_s),1) y(ms_s)]);
+
+            mu(j) = b(1);
+            sigma(j) = b(2);
+        end
+    else
+        for j = 1:n
+            y = (ms_q.^-xi(j) - 1) ./ xi(j);
+            b = regress(l_sorted(ms_s,j),[ones(numel(ms_s),1) y(ms_s)]);
+
+            mu(j) = b(1);
+            sigma(j) = b(2);
+        end
     end
     
     d_p = tiedrank(l) ./ (t + 1);
@@ -85,18 +97,35 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     
     jvars = zeros(1,numel(q_fin));
 
-    for j = 1:numel(q_fin)
-        lhs = -log(q_fin(j)) / d;
+    if (up)
+        parfor j = 1:numel(q_fin)
+            lhs = -log(q_fin(j)) / d;
 
-        x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
-        v0 = (1 + (x0_xi .* ((x0 - x0_mu) ./ x0_sigma))) .^ -(1 ./ x0_xi);
+            x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
+            v0 = (1 + (x0_xi .* ((x0 - x0_mu) ./ x0_sigma))) .^ -(1 ./ x0_xi);
 
-        [jvar,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],0,Inf,[],options);
+            [jvar,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],0,Inf,[],options);
 
-        if (ef <= 0)
-            jvars(j) = 0;
-        else
-            jvars(j) = jvar;
+            if (ef <= 0)
+                jvars(j) = 0;
+            else
+                jvars(j) = jvar;
+            end
+        end
+    else
+        for j = 1:numel(q_fin)
+            lhs = -log(q_fin(j)) / d;
+
+            x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
+            v0 = (1 + (x0_xi .* ((x0 - x0_mu) ./ x0_sigma))) .^ -(1 ./ x0_xi);
+
+            [jvar,~,ef] = fmincon(@(x)objective(x,v0,lhs,n,mu,sigma,xi),x0,[],[],[],[],0,Inf,[],options);
+
+            if (ef <= 0)
+                jvars(j) = 0;
+            else
+                jvars(j) = jvar;
+            end
         end
     end
 

@@ -1,7 +1,7 @@
 % [INPUT]
 % m = A variable representing the target measures, with two possible types:
-%   - A cell array of length k, where k is the number of measures, of t-by-n matrices.
-%   - A t-by-n-by-k matrix, where k is the number of measures.
+%   - A cell array of length k, where k is the number of measures, of t-by-n matrices of numerical values (-Inf,Inf).
+%   - A t-by-n-by-k matrix of numerical values (-Inf,Inf), where k is the number of measures.
 %
 % [OUTPUT]
 % rc = A column vector of floats of length n representing the value of assets.
@@ -114,7 +114,7 @@ function m_final = validate_input(m)
             [t,n] = size(m_i);
             
             if ((t < 5) || (n < 2))
-                error('The value of ''m'' is invalid. Expected input to contain matrices whose size is greater than or equal to 5x2.');
+                error('The value of ''m'' is invalid. Expected input to contain matrices with a minimum size of 5x2.');
             end
             
             ts(i) = t;
@@ -149,7 +149,7 @@ function m_final = validate_input(m)
         end
         
         if ((t < 5) || (n < 2))
-            error('The value of ''m'' is invalid. Expected input to have 2-dimensional size greater than or equal to 5x2.');
+            error('The value of ''m'' is invalid. Expected input to have a minimum 2-dimensional size of 5x2.');
         end
         
         m_final = m;

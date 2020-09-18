@@ -1,34 +1,34 @@
 % [INPUT]
-% ts = A float t-by-n matrix containing the time series.
-% offsets = A vector of length n containing the numeric date of the distress begin of each firm; offsets are equal to NaN in absence of distress.
+% data = A float t-by-n matrix containing the time series to be distressed.
+% offsets = A vector of length n containing the distress begin offsets of each firm; offsets must be equal to NaN in absence of distress.
 %
 % [OUTPUT]
 % ts = A float t-by-n matrix containing the original time series in which distressed observations are replaced with NaNs.
 
-function ts = distress_data(varargin)
+function data = distress_data(varargin)
 
     persistent ip;
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('ts',@(x)validateattributes(x,{'double'},{'real' '2d'}));
+        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' '2d'}));
         ip.addRequired('offsets',@(x)validateattributes(x,{'double'},{'real' 'vector' 'nonempty'}));
     end
 
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    [ts,offsets] = validate_input(ipr.ts,ipr.offsets);
+    [data,offsets] = validate_input(ipr.data,ipr.offsets);
 
     nargoutchk(1,1);
 
-    ts = distress_data_internal(ts,offsets);
+    data = distress_data_internal(data,offsets);
 
 end
 
-function ts = distress_data_internal(ts,offsets)
+function data = distress_data_internal(data,offsets)
 
-    if (isempty(ts))
+    if (isempty(data))
         return;
     end
 
@@ -39,18 +39,20 @@ function ts = distress_data_internal(ts,offsets)
             continue;
         end
 
-        ts(offset:end,i) = NaN;
+        data(offset:end,i) = NaN;
     end
 
 end
 
-function [ts,offsets] = validate_input(ts,offsets)
+function [data,offsets] = validate_input(data,offsets)
 
-    n = size(ts,2);
-    k = numel(offsets);
-    
-    if ((n ~= 0) && (n ~= numel(offsets)))
-        error(['The number of columns in the time series (' num2str(n) ') must be equal to the number of offsets (' num2str(k) ').']);
+    if (~isempty(data))
+        n = size(data,2);
+        k = numel(offsets);
+
+        if (n ~= k)
+            error(['The number of columns in the time series (' num2str(n) ') must be equal to the number of offsets (' num2str(k) ').']);
+        end
     end
     
 end

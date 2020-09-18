@@ -152,7 +152,7 @@ function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
 
@@ -187,6 +187,21 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
 
 end
 
+function window_results = main_loop(r,lags,h,fevd)
+
+    window_results = struct();
+
+    vd = variance_decomposition(r,lags,h,fevd);
+    window_results.VarianceDecomposition = vd;
+
+    [sf,st,sn,si] = spillover_metrics(vd);
+    window_results.SpilloversFrom = sf;
+    window_results.SpilloversTo = st;
+    window_results.SpilloversNet = sn;
+    window_results.SI = si;
+
+end
+
 function ds = finalize(ds,results)
 
     window_indices = ds.WindowsIndices;
@@ -205,81 +220,50 @@ function ds = finalize(ds,results)
     end
     
     if (ds.BWS > 1)
-        [step_indices,step_results] = steps_interpolation(ds);
-        
-        for i = 1:numel(step_results)
-            step_result = step_results{i};
-            step_index = step_indices(i);
+        n = ds.N;
+        t = ds.T;
+        x = ds.DatesNum;
 
-            ds.VarianceDecompositions{step_index} = step_result.VarianceDecomposition;
+        nan_indices = ~ismember((1:t).',window_indices);
+        step_indices = find(nan_indices);
+        step_indices_len = numel(step_indices);
+
+        vd = ds.VarianceDecompositions;
+        vd(cellfun(@isempty,vd)) = {NaN(n,n)};
+
+        for i = 1:n
+            for j = 1:n
+                vd_ij = cellfun(@(vdf)vdf(i,j),vd);
+                vd_ij(nan_indices) = spline(x(~nan_indices),vd_ij(~nan_indices),x(nan_indices));
+
+                for k = 1:step_indices_len
+                    step_index = step_indices(k);
+
+                    vd_k = vd{step_index};
+                    vd_k(i,j) = vd_ij(step_index);
+                    vd{step_index} = vd_k;
+                end
+            end   
+        end
+
+        for i = 1:step_indices_len
+            step_index = step_indices(i);
             
-            ds.SpilloversFrom(step_index,:) = step_result.SpilloversFrom;
-            ds.SpilloversTo(step_index,:) = step_result.SpilloversTo;
-            ds.SpilloversNet(step_index,:) = step_result.SpilloversNet;
-            
-            ds.Indicators(step_index,1) = step_result.SI;
+            vd_i = vd{step_index};
+            vd_i = bsxfun(@rdivide,vd_i,sum(vd_i,2));
+            ds.VarianceDecompositions{step_index} = vd_i;
+
+            [sf,st,sn,si] = spillover_metrics(vd_i);
+            ds.SpilloversFrom(step_index,:) = sf;
+            ds.SpilloversTo(step_index,:) = st;
+            ds.SpilloversNet(step_index,:) = sn;
+            ds.Indicators(step_index,1) = si;
         end
     end
 
     ds.SpilloversFrom = distress_data(ds.SpilloversFrom,ds.Defaults);
     ds.SpilloversTo = distress_data(ds.SpilloversTo,ds.Defaults);
     ds.SpilloversNet = distress_data(ds.SpilloversNet,ds.Defaults);
-
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
-    sheets = {'From' 'To' 'Net' 'Indicators'};
-
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -344,87 +328,6 @@ function write_results(ds,temp,out)
         end
     end
     
-end
-
-%% MEASURES
-
-function window_results = main_loop(r,lags,h,fevd)
-
-    window_results = struct();
-
-    vd = variance_decomposition(r,lags,h,fevd);
-    window_results.VarianceDecomposition = vd;
-
-    [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd);
-    window_results.SpilloversFrom = spillovers_from;
-    window_results.SpilloversTo = spillovers_to;
-    window_results.SpilloversNet = spillovers_net;
-    window_results.SI = si;
-
-end
-
-function [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd)
-
-    vd_diag = diag(vd);
-    
-    spillovers_from = min(max(sum(vd,2) - vd_diag,0),1);
-    spillovers_to = sum(vd,1).' - vd_diag;
-    spillovers_net = spillovers_to - spillovers_from;
-
-    si = sum(spillovers_from,1) / (sum(vd_diag) + sum(spillovers_from,1));
-    
-    spillovers_from = spillovers_from.';
-    spillovers_to = spillovers_to.';
-    spillovers_net = spillovers_net.';
-
-end
-
-function [step_indices,step_results] = steps_interpolation(data)
-
-    n = data.N;
-    t = data.T;
-    x = data.DatesNum;
-
-    nan_indices = ~ismember((1:t).',data.WindowsIndices);
-    step_indices = find(nan_indices);
-    step_indices_len = numel(step_indices);
-
-    vd = data.VarianceDecompositions;
-    vd(cellfun(@isempty,vd)) = {NaN(n,n)};
-
-    for i = 1:n
-        for j = 1:n
-            vd_ij = cellfun(@(vdf)vdf(i,j),vd);
-            vd_ij(nan_indices) = spline(x(~nan_indices),vd_ij(~nan_indices),x(nan_indices));
-
-            for k = 1:step_indices_len
-                step_index = step_indices(k);
-                
-                vd_k = vd{step_index};
-                vd_k(i,j) = vd_ij(step_index);
-                vd{step_index} = vd_k;
-            end
-        end   
-    end
-    
-    step_results = cell(step_indices_len,1);
-
-    for i = 1:step_indices_len
-        vd_k = vd{step_indices(i)};
-        vd_k = bsxfun(@rdivide,vd_k,sum(vd_k,2));
-
-        [spillovers_from,spillovers_to,spillovers_net,si] = calculate_spillover_measures(vd_k);
-
-        step_result = struct();
-        step_result.VarianceDecomposition = vd_k;
-        step_result.SpilloversFrom = spillovers_from;
-        step_result.SpilloversTo = spillovers_to;
-        step_result.SpilloversNet = spillovers_net;
-        step_result.SI = si;
-        
-        step_results{i} = step_result;
-    end
-
 end
 
 %% PLOTTING
@@ -608,6 +511,64 @@ function plot_sequence(ds,id)
             end
         hold(subs(3),'off');
 
+    end
+
+end
+
+%% VALIDATION
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    sheets = {'From' 'To' 'Net' 'Indicators'};
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

@@ -176,7 +176,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,bw,a,lags,cim,cis,cip)
 
@@ -190,26 +190,85 @@ function ds = initialize(ds,bw,a,lags,cim,cis,cip)
     ds.Lags = lags;
     ds.PI = ~isempty(ds.StateVariables);
     
-    label = [' (' ds.CIM ' ' num2str(ds.CIS) ', P=' num2str(ds.CIP) ')'];
-    
-    ds.CQFullFrom = NaN(lags,n,3);
-    ds.CQFullTo = NaN(lags,n,3);
-    
+    label = [' (' ds.CIM ', ' num2str(ds.CIS) ', P=' num2str(ds.CIP) ')'];
+
     ds.LabelsMeasuresSimple = {'Full From' 'Full To'};
     ds.LabelsMeasures = {['Full From' label] ['Full To' label]};
-
-    if (ds.PI)
-        ds.CQPartialFrom = NaN(lags,n,3);
-        ds.CQPartialTo = NaN(lags,n,3);
-        
-        ds.LabelsMeasuresSimple = [ds.LabelsMeasuresSimple {'Partial From' 'Partial To'}];
-        ds.LabelsMeasures = [ds.LabelsMeasures {['Partial From' label] ['Partial To' label]}];
-    end
-
+    
     ds.LabelsSheetsSimple = ds.LabelsMeasuresSimple;
     ds.LabelsSheets = ds.LabelsMeasures;
     
+    ds.CQFullFrom = NaN(lags,n,3);
+    ds.CQFullTo = NaN(lags,n,3);
+
+    if (ds.PI)
+        ds.LabelsMeasuresSimple = [ds.LabelsMeasuresSimple {'Partial From' 'Partial To'}];
+        ds.LabelsMeasures = [ds.LabelsMeasures {['Partial From' label] ['Partial To' label]}];
+        
+        ds.LabelsSheetsSimple = ds.LabelsMeasuresSimple;
+        ds.LabelsSheets = ds.LabelsMeasures;
+        
+        ds.CQPartialFrom = NaN(lags,n,3);
+        ds.CQPartialTo = NaN(lags,n,3);
+    end
+    
     ds.ComparisonReferences = {};
+
+end
+
+function window_results = main_loop(idx,r,sv,a,lags,cim,cis,cip)
+
+    window_results = struct();
+
+    from = [r idx];
+    to = [idx r];
+    cq_full = zeros(lags,2,3);
+
+    if (strcmp(cim,'SB'))
+        for k = 1:lags
+            [cq,ci] = cross_quantilograms_sb(from,a,k,cis,cip);
+            cq_full(k,1,:) = [cq ci];
+
+            [cq,ci] = cross_quantilograms_sb(to,a,k,cis,cip);
+            cq_full(k,2,:) = [cq ci];
+        end
+    else
+        for k = 1:lags
+            [cq,ci] = cross_quantilograms_sn(from,a,k,cis,cip);
+            cq_full(k,1,:) = [cq ci];
+
+            [cq,ci] = cross_quantilograms_sn(to,a,k,cis,cip);
+            cq_full(k,2,:) = [cq ci];
+        end
+    end
+    
+    window_results.CQFull = cq_full;
+    
+    if (~isempty(sv))
+        from = [r idx sv];
+        to = [idx r sv];
+        cq_partial = zeros(lags,2,3);
+
+        if (strcmp(cim,'SB'))
+            for k = 1:lags
+                [cq,ci] = cross_quantilograms_sb(from,a,k,cis,cip);
+                cq_partial(k,1,:) = [cq ci];
+
+                [cq,ci] = cross_quantilograms_sb(to,a,k,cis,cip);
+                cq_partial(k,2,:) = [cq ci];
+            end
+        else
+            for k = 1:lags
+                [cq,ci] = cross_quantilograms_sn(from,a,k,cis,cip);
+                cq_partial(k,1,:) = [cq ci];
+
+                [cq,ci] = cross_quantilograms_sn(to,a,k,cis,cip);
+                cq_partial(k,2,:) = [cq ci];
+            end
+        end
+        
+        window_results.CQPartial = cq_partial;
+    end
 
 end
 
@@ -234,96 +293,6 @@ function ds = finalize(ds,results)
                 ds.CQPartialFrom(:,i,j) = result.CQPartial(:,1,j);
                 ds.CQPartialTo(:,i,j) = result.CQPartial(:,2,j);
             end
-        end
-    end
-
-end
-
-function [cim,cis,cip] = validate_ci(cim,cis,cip)
-
-    if (strcmp(cim,'SB'))
-        validateattributes(cis,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'});
-        
-        if (isempty(cip))
-            cip = 100;
-        else
-            validateattributes(cip,{'double'},{'real' 'finite' 'integer' '>=' 10 '<=' 1000 'scalar'});
-        end
-    else
-        validateattributes(cis,{'double'},{'real' 'finite' 'scalar'});
-        cis_allowed = [0.005 0.010 0.025 0.050 0.100];
-
-        if (~ismember(cis,cis_allowed))
-            cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
-            error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
-        end
-        
-        if (isempty(cip))
-            cip = 0.10;
-        else
-            validateattributes(cip,{'double'},{'real' 'finite' 'scalar'});
-            cip_allowed = [0.00 0.01 0.03 0.05 0.10 0.15 0.20 0.30];
-
-            if (~ismember(cip,cip_allowed))
-                cip_allowed_text = [sprintf('%.2f',cip_allowed(1)) sprintf(', %.2f',cip_allowed(2:end))];
-                error(['The value of ''cip'' is invalid. Expected input to have one of the following values: ' cip_allowed_text '.']);
-            end
-        end
-    end
-  
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
-    sheets = {'Full From' 'Full To' 'Partial From' 'Partial To'};
-    
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
         end
     end
 
@@ -432,64 +401,6 @@ function write_results(ds,temp,out)
 
 end
 
-%% MEASURES
-
-function window_results = main_loop(idx,r,sv,a,lags,cim,cis,cip)
-
-    window_results = struct();
-
-    from = [r idx];
-    to = [idx r];
-    cq_full = zeros(lags,2,3);
-
-    if (strcmp(cim,'SB'))
-        for k = 1:lags
-            [cq,ci] = cross_quantilograms_sb(from,a,k,cis,cip);
-            cq_full(k,1,:) = [cq ci];
-
-            [cq,ci] = cross_quantilograms_sb(to,a,k,cis,cip);
-            cq_full(k,2,:) = [cq ci];
-        end
-    else
-        for k = 1:lags
-            [cq,ci] = cross_quantilograms_sn(from,a,k,cis,cip);
-            cq_full(k,1,:) = [cq ci];
-
-            [cq,ci] = cross_quantilograms_sn(to,a,k,cis,cip);
-            cq_full(k,2,:) = [cq ci];
-        end
-    end
-    
-    window_results.CQFull = cq_full;
-    
-    if (~isempty(sv))
-        from = [r idx sv];
-        to = [idx r sv];
-        cq_partial = zeros(lags,2,3);
-
-        if (strcmp(cim,'SB'))
-            for k = 1:lags
-                [cq,ci] = cross_quantilograms_sb(from,a,k,cis,cip);
-                cq_partial(k,1,:) = [cq ci];
-
-                [cq,ci] = cross_quantilograms_sb(to,a,k,cis,cip);
-                cq_partial(k,2,:) = [cq ci];
-            end
-        else
-            for k = 1:lags
-                [cq,ci] = cross_quantilograms_sn(from,a,k,cis,cip);
-                cq_partial(k,1,:) = [cq ci];
-
-                [cq,ci] = cross_quantilograms_sn(to,a,k,cis,cip);
-                cq_partial(k,2,:) = [cq ci];
-            end
-        end
-        
-        window_results.CQPartial = cq_partial;
-    end
-
-end
-
 %% PLOTTING
 
 function plot_sequence(ds,target,id)
@@ -499,7 +410,7 @@ function plot_sequence(ds,target,id)
     cq_from_all = ds.(['CQ' target 'From']);
     cq_to_all = ds.(['CQ' target 'To']);
     
-    data = [repmat({(1:lags).'},1,n); cell(6,20)];
+    data = [repmat({(1:lags).'},1,n); cell(6,n)];
 	
     if (strcmp(target,'Full'))
         plots_title = [repmat(ds.LabelsMeasures(1),1,n); repmat(ds.LabelsMeasures(2),1,n)];
@@ -519,8 +430,10 @@ function plot_sequence(ds,target,id)
 
     x_limits = [0.3 (lags + 0.7)];
     
-    if (lags <= 20)
+    if (lags <= 10)
         x_tick = 1:lags;
+    elseif (lags <= 20)
+        x_tick = [1 5:5:lags];
     else
         x_tick = [1 10:10:lags];
     end
@@ -586,6 +499,98 @@ function plot_sequence(ds,target,id)
             plot(subs(2),x,cq_to_ch,'Color',[1 0.4 0.4],'LineWidth',1);
         hold(subs(2),'off');
         
+    end
+
+end
+
+%% VALIDATION
+
+function [cim,cis,cip] = validate_ci(cim,cis,cip)
+
+    if (strcmp(cim,'SB'))
+        validateattributes(cis,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'});
+        
+        if (isempty(cip))
+            cip = 100;
+        else
+            validateattributes(cip,{'double'},{'real' 'finite' 'integer' '>=' 10 '<=' 1000 'scalar'});
+        end
+    else
+        validateattributes(cis,{'double'},{'real' 'finite' 'scalar'});
+        cis_allowed = [0.005 0.010 0.025 0.050 0.100];
+
+        if (~ismember(cis,cis_allowed))
+            cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
+            error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
+        end
+        
+        if (isempty(cip))
+            cip = 0.10;
+        else
+            validateattributes(cip,{'double'},{'real' 'finite' 'scalar'});
+            cip_allowed = [0.00 0.01 0.03 0.05 0.10 0.15 0.20 0.30];
+
+            if (~ismember(cip,cip_allowed))
+                cip_allowed_text = [sprintf('%.2f',cip_allowed(1)) sprintf(', %.2f',cip_allowed(2:end))];
+                error(['The value of ''cip'' is invalid. Expected input to have one of the following values: ' cip_allowed_text '.']);
+            end
+        end
+    end
+  
+end
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The template file is not a valid Excel spreadsheet.');
+        end
+    end
+
+    sheets = {'Full From' 'Full To' 'Partial From' 'Partial To'};
+    
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(temp,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

@@ -1,7 +1,7 @@
 % [INPUT]
-% data = A float t-by-n matrix containing the time series.
+% data = A float t-by-n matrix containing the time series to be converted into rolling windows.
 % bw = An integer [2,252] representing the dimension of each rolling window.
-% truncate = A boolean that indicates whether to exclude all the rolling windows with a dimension less than the bandwidth (optional, default=true).
+% truncate = A boolean that indicates whether to exclude all the rolling windows with a dimension less than the bandwidth (optional, default=false).
 %
 % [OUTPUT]
 % windows = A column cell array of bw-by-n float matrices representing the rolling windows.

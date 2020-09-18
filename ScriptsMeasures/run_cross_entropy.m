@@ -167,7 +167,7 @@ function [result,stopped] = run_cross_entropy_internal(ds,temp,out,bw,sel,rr,pw,
 
 end
 
-%% DATA
+%% PROCESS
 
 function ds = initialize(ds,bw,sel,rr,pw,md)
 
@@ -350,7 +350,7 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
     ds.PortfolioComponents = pfc;
     ds.Portfolios = pf;
 
-    all_label = [' (RR=' num2str(ds.RR * 100) ', ' ds.PW ', ' ds.MD ')'];
+    all_label = [' (RR=' num2str(ds.RR * 100) '%, ' ds.PW ', ' ds.MD ')'];
 
     ds.LabelsMeasuresSimple = {'SI' 'SV' 'CoJPoDs'};
     ds.LabelsMeasures = {['SI' all_label] ['SV' all_label] ['CoJPoDs' all_label]};
@@ -371,6 +371,51 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
     ds.CoJPoDs = NaN(t,nc);
     
     ds.ComparisonReferences = {'Indicators' [] strcat({'CE-'},ds.LabelsIndicatorsSimple)};
+
+end
+
+function window_results = main_loop(r,pods,pw,md)
+
+    window_results = struct();
+
+    nan_indices = any(isnan(r),1);
+    n = numel(nan_indices);
+    
+    r(:,nan_indices) = [];
+    pods(:,nan_indices) = [];
+
+    if (strcmp(pw,'A'))
+        pods = mean(pods,1).';
+    else
+        [t,n] = size(pods);
+        w = repmat(fliplr(((1 - 0.98) / (1 - 0.98^t)) .* (0.98 .^ (0:1:t-1))).',1,n);
+        pods = sum(pods .* w,1).';
+    end
+
+	[g,p] = cimdo(r,pods,md);
+
+    if (any(isnan(p)))
+        window_results.JPoD = NaN;
+        window_results.FSI = NaN;
+        window_results.PCE = NaN;
+        window_results.DiDe = NaN(n);
+        window_results.SI = NaN(1,n);
+        window_results.SV = NaN(1,n);
+        window_results.CoJPoDs = NaN(1,n);
+    else
+        opods = pods;
+        pods = NaN(n,1);
+        pods(~nan_indices) = opods;
+
+        [jpod,fsi,pce,dide,si,sv,cojpods] = cross_entropy_metrics(pods,g,p);
+        window_results.JPoD = jpod;
+        window_results.FSI = fsi;
+        window_results.PCE = pce;
+        window_results.DiDe = dide;
+        window_results.SI = si;
+        window_results.SV = sv;
+        window_results.CoJPoDs = cojpods;
+    end
 
 end
 
@@ -423,70 +468,6 @@ function ds = finalize(ds,results)
     sv_max = max(sv_vec,[],'omitnan');
     sv_min = min(sv_vec,[],'omitnan');
     ds.SV = (ds.SV - sv_min) ./ (sv_max - sv_min);
-
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function sel = validate_selection(sel,groups)
-
-    if (strcmp(sel,'G') && (groups == 0))
-        error('The selection cannot be set to groups because their are not defined in the dataset.');
-    end
-
-end
-
-function temp = validate_template(temp)
-
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
-    sheets = {'Indicators' 'Average DiDe' 'SI' 'SV' 'CoJPoDs'};
-
-    if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
 
 end
 
@@ -568,96 +549,6 @@ function write_results(ds,temp,out)
         catch
         end
     end
-    
-end
-
-%% MEASURES
-
-function window_results = main_loop(r,pods,pw,md)
-
-    window_results = struct();
-
-    nan_indices = any(isnan(r),1);
-    n = numel(nan_indices);
-    
-    r(:,nan_indices) = [];
-    pods(:,nan_indices) = [];
-
-    if (strcmp(pw,'A'))
-        pods = mean(pods,1).';
-    else
-        [t,n] = size(pods);
-        w = repmat(fliplr(((1 - 0.98) / (1 - 0.98^t)) .* (0.98 .^ (0:1:t-1))).',1,n);
-        pods = sum(pods .* w,1).';
-    end
-
-	[g,p] = cimdo(r,pods,md);
-
-    if (any(isnan(p)))
-        window_results.JPoD = NaN;
-        window_results.FSI = NaN;
-        window_results.PCE = NaN;
-        
-        window_results.DiDe = NaN(n);
-        window_results.SI = NaN(1,n);
-        window_results.SV = NaN(1,n);
-        
-        window_results.CoJPoDs = NaN(1,n);
-    else
-        opods = pods;
-        pods = NaN(n,1);
-        pods(~nan_indices) = opods;
-        
-        g_refs = sum(g,2);
-        
-        [jpod,fsi,pce] = calculate_indicators(n,pods,g_refs,p);
-        window_results.JPoD = jpod;
-        window_results.FSI = fsi;
-        window_results.PCE = pce;
-
-        [dide,si,sv] = calculate_dide(n,pods,g,g_refs,p);
-        window_results.DiDe = dide;
-        window_results.SI = si;
-        window_results.SV = sv;
-        
-        cojpods = calculate_cojpods(n,pods,jpod);
-        window_results.CoJPoDs = cojpods;
-    end
-
-end
-
-function cojpods = calculate_cojpods(n,pods,jpod)
-
-    jpods = ones(n,1) .* jpod;
-    cojpods = (jpods ./ pods).';
-    
-end
-
-function [dide,si,sv] = calculate_dide(n,pods,g,g_refs,p)
-
-    dide = eye(n);
-    
-    for i = 1:n
-        for j = 1:n
-            if (isnan(pods(j)))
-                dide(i,j) = NaN;
-            elseif (i ~= j)
-                dide(i,j) = p((g_refs == 2) & (g(:,i) == 1) & (g(:,j) == 1),:) / pods(j);
-            end
-        end
-    end
-
-    dide_pods = ((dide - eye(n)) .* repmat(pods,1,n));
-    si = sum(dide_pods,2);
-    sv = sum(dide_pods,1).';
-    
-end
-
-function [jpod,fsi,pce] = calculate_indicators(n,pods,g_refs,p)
-
-    jpod = p(g_refs == n,:);
-    fsi = min(max(sum(pods,'omitnan') / (1 - p(g_refs == 0,:)),1),n);
-    pce = sum(p(g_refs >= 2,:)) / sum(p(g_refs >= 1,:));
     
 end
 
@@ -780,7 +671,7 @@ function plot_indicators(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Indicators (RR=' num2str(ds.RR * 100) ', ' ds.PW ', ' ds.MD ')']);
+    figure_title(['Indicators (RR=' num2str(ds.RR * 100) '%, ' ds.PW ', ' ds.MD ')']);
 
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -1013,6 +904,72 @@ function plot_sequence_cojpods(ds,id)
             hold(subs(1),'off');
         end
 
+    end
+
+end
+
+%% VALIDATION
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmp(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function sel = validate_selection(sel,groups)
+
+    if (strcmp(sel,'G') && (groups == 0))
+        error('The selection cannot be set to groups because their are not defined in the dataset.');
+    end
+
+end
+
+function temp = validate_template(temp)
+
+    if (exist(temp,'file') == 0)
+        error('The template file could not be found.');
+    end
+    
+    if (ispc())
+        [file_status,file_sheets,file_format] = xlsfinfo(temp);
+        
+        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    else
+        [file_status,file_sheets] = xlsfinfo(temp);
+        
+        if (isempty(file_status))
+            error('The dataset file is not a valid Excel spreadsheet.');
+        end
+    end
+    
+    sheets = {'Indicators' 'Average DiDe' 'SI' 'SV' 'CoJPoDs'};
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+    end
+    
+    if (ispc())
+        try
+            excel = actxserver('Excel.Application');
+            excel_wb = excel.Workbooks.Open(res,0,false);
+
+            for i = 1:numel(sheets)
+                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
+            end
+            
+            excel_wb.Save();
+            excel_wb.Close();
+            excel.Quit();
+
+            delete(excel);
+        catch
+        end
     end
 
 end

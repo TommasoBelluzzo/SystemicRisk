@@ -451,7 +451,7 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         p0 = repmat(0.1,k,k) + (eye(k) * (1 - (k * 0.1)));
     else
         if (any(size(tmm) ~= k))
-            error(['The value of ''tmm'' is invalid. Expected input to be of size ' num2str(k) 'x' num2str(k) '.']);
+            error(['The value of ''tmm'' is invalid. Expected input to be a matrix of size ' num2str(k) 'x' num2str(k) '.']);
         end
         
         tmm_nans = isnan(tmm);

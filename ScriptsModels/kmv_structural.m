@@ -1,12 +1,12 @@
 % [INPUT]
-% eq = A vector of floats [0,Inf) of length n representing the market values of equity.
-% db = A float or a vector of floats [0,Inf) of length n representing the default barrier.
-% r = A float or a vector of floats (-Inf,Inf) of length n representing the annualized risk-free interest rate.
-% t = A float or a vector of floats (0,Inf) of length n representing the time to maturity of default barrier.
+% eq = A vector of floats [0,Inf) of length k representing the market value of equity.
+% db = A float or a vector of floats [0,Inf) of length k representing the default barrier.
+% r = A float or a vector of floats (-Inf,Inf) of length k representing the annualized risk-free interest rate.
+% t = A float or a vector of floats (0,Inf) of length k representing the time to maturity of default barrier.
 % op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model used by the Systemic CCA framework (optional, default='BSM').
 %
 % [OUTPUT]
-% va = A column vector of floats of length n representing the value of assets.
+% va = A column vector of floats of length k representing the value of assets.
 % vap = Output argument representing the distributional parameters of assets whose type depends on the chosen option pricing model:
 %   - for Black-Scholes-Merton, a float [0,Inf) representing the annualized volatility of assets;
 %   - for Gram-Charlier, a row vector of floats (-Inf,Inf) of length 3 whose values represent respectively the annualized volatility, skewness and excess kurtosis of assets.
@@ -92,7 +92,7 @@ function [eq,db,r,t] = validate_input(eq,db,r,t)
     eq_len = numel(eq);
     
     if (eq_len < 5)
-        error('The value of ''eq'' is invalid. Expected input to be a vector with at least 5 elements.');
+        error('The value of ''eq'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
 
     data = {db(:) r(:) t(:)};

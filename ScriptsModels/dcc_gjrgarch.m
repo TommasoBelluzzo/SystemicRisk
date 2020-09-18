@@ -10,11 +10,11 @@
 %   - A vector of integers [1,Inf) of length n representing the lag of each innovation term in the GARCH estimator.
 %
 % [OUTPUT]
-% p = An n-by-n-by-t matrix of floats representing the conditional correlations.
-% h = A t-by-n matrix of floats representing the conditional variances.
-% e = A t-by-n matrix of floats representing the standardized residuals.
-% dcc_params = A row vector of floats of length 2 representing the DCC parameters.
-% gjr_params = An n-by-1 cell array of float vectors containing the GARCH parameters.
+% p = A float n-by-n-by-t matrix [-1,1] representing the conditional correlations.
+% h = A float t-by-n matrix [0,Inf) representing the conditional variances.
+% e = A float t-by-n matrix (-Inf,Inf) representing the standardized residuals.
+% dcc_params = A row vector of floats (-Inf,Inf) of length 2 representing the DCC parameters.
+% gjr_params = An n-by-1 cell array of float vectors (-Inf,Inf) containing the GARCH parameters.
 %
 % [NOTES]
 % Credit goes to Kevin Sheppard, the author of the original code.
@@ -59,8 +59,15 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,
     if (isempty(gjr_options))
         gjr_options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off','MaxSQPIter',1000,'TolFun',1e-6);
     end
+    
+    up = isempty(getCurrentTask());
 
     [t,n] = size(data);
+    
+    for i = 1:n
+        data_i = data(:,i);
+        data(:,i) = data_i - mean(data_i);
+    end
 
     if (numel(arch_q) == 1)
         arch_q = ones(1,n) .* arch_q;
@@ -73,62 +80,105 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,
     options_lim = 1000 * max(arch_q + garch_p + 1);
     options = optimset(gjr_options,'MaxFunEvals',options_lim,'MaxIter',options_lim);
 
+    gjr_params = cell(n,1);
     h = zeros(t,n);
     e = zeros(t,n);
-    
-    gjr_params = cell(n,1);
 
-    parfor i = 1:n
-        data_i = data(:,i);
+    if (up)
+        parfor i = 1:n
+            data_i = data(:,i);
 
-        [gjr_p,gjr_h] = gjrgarch(data_i,arch_q(i),garch_p(i),options);
-        gjr_params{i} = gjr_p;
+            [gjr_p,gjr_h] = gjrgarch(data_i,arch_q(i),garch_p(i),options);
+            gjr_params{i} = gjr_p;
 
-        h(:,i) = gjr_h;
-        e(:,i) = data_i ./ sqrt(gjr_h);
+            h(:,i) = gjr_h;
+            e(:,i) = data_i ./ sqrt(gjr_h);
+        end
+    else
+        for i = 1:n
+            data_i = data(:,i);
+
+            [gjr_p,gjr_h] = gjrgarch(data_i,arch_q(i),garch_p(i),options);
+            gjr_params{i} = gjr_p;
+
+            h(:,i) = gjr_h;
+            e(:,i) = data_i ./ sqrt(gjr_h);
+        end
     end
 
     dcc_params = dcc(e,dcc_q,dcc_p,dcc_options);
 
-    p = dcc_gjrgarch_core(data,dcc_q,dcc_p,arch_q,garch_p,gjr_params,dcc_params);
+    p = dcc_gjrgarch_core(data,dcc_q,dcc_p,arch_q,garch_p,gjr_params,dcc_params,up);
 
 end
 
-function p = dcc_gjrgarch_core(data,dcc_q,dcc_p,arch_q,garch_p,gjr_params,dcc_params)
+function p = dcc_gjrgarch_core(data,dcc_q,dcc_p,arch_q,garch_p,gjr_params,dcc_params,up)
 
     [t,k] = size(data);
     data_s2 = var(data(:,1));
 
     s = zeros(t,k);
 
-    parfor i = 1:k
-        p_i = garch_p(i);
-        q_i = arch_q(i);
+    if (up)
+        parfor i = 1:k
+            p_i = garch_p(i);
+            q_i = arch_q(i);
 
-        q2_i = q_i * 2;
+            q2_i = q_i * 2;
 
-        m_i = max(q_i,p_i);
+            m_i = max(q_i,p_i);
 
-        gjr_p = gjr_params{i};
-        a_i = gjr_p(1:q_i);
-        g_i = gjr_p(q_i+1:q2_i);
-        b_i = gjr_p(q2_i+1:end);
+            gjr_p = gjr_params{i};
+            a_i = gjr_p(1:q_i);
+            g_i = gjr_p(q_i+1:q2_i);
+            b_i = gjr_p(q2_i+1:end);
 
-        s_i = zeros(size(data,1),1);
-        s_i(1:m_i,1) = std(data(:,i)) ^ 2;
+            s_i = zeros(size(data,1),1);
+            s_i(1:m_i,1) = std(data(:,i)) ^ 2;
 
-        for j = m_i+1:t
-            data_l = data(j-q_i:j-1,i);
-            data_l2 = data_l.^2;
+            for j = m_i+1:t
+                data_l = data(j-q_i:j-1,i);
+                data_l2 = data_l.^2;
 
-            s1 = (1 - (sum(a_i) + (0.5 * sum(g_i)) + sum(b_i))) * data_s2;
-            s2 = data_l2.' * a_i;
-            s3 = (data_l2 .* (data_l < 0)).' * g_i;
-            s4 = s_i(j-p_i:j-1,1).' * b_i;
-            s_i(j,1) = s1 + s2 + s3 + s4;
+                s1 = (1 - (sum(a_i) + (0.5 * sum(g_i)) + sum(b_i))) * data_s2;
+                s2 = data_l2.' * a_i;
+                s3 = (data_l2 .* (data_l < 0)).' * g_i;
+                s4 = s_i(j-p_i:j-1,1).' * b_i;
+                s_i(j,1) = s1 + s2 + s3 + s4;
+            end
+
+            s(:,i) = s_i;
         end
+    else
+        for i = 1:k
+            p_i = garch_p(i);
+            q_i = arch_q(i);
 
-        s(:,i) = s_i;
+            q2_i = q_i * 2;
+
+            m_i = max(q_i,p_i);
+
+            gjr_p = gjr_params{i};
+            a_i = gjr_p(1:q_i);
+            g_i = gjr_p(q_i+1:q2_i);
+            b_i = gjr_p(q2_i+1:end);
+
+            s_i = zeros(size(data,1),1);
+            s_i(1:m_i,1) = std(data(:,i)) ^ 2;
+
+            for j = m_i+1:t
+                data_l = data(j-q_i:j-1,i);
+                data_l2 = data_l.^2;
+
+                s1 = (1 - (sum(a_i) + (0.5 * sum(g_i)) + sum(b_i))) * data_s2;
+                s2 = data_l2.' * a_i;
+                s3 = (data_l2 .* (data_l < 0)).' * g_i;
+                s4 = s_i(j-p_i:j-1,1).' * b_i;
+                s_i(j,1) = s1 + s2 + s3 + s4;
+            end
+
+            s(:,i) = s_i;
+        end
     end
     
     e = data ./ sqrt(s);

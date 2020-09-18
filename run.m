@@ -17,7 +17,11 @@ delete(gcp('nocreate'));
 
 %% INITIALIZATION
 
-parpool('local','SpmdEnabled',false);
+pdprofile = parallel.defaultClusterProfile;
+pcluster = parcluster(pdprofile);
+delete(pcluster.Jobs);
+
+parpool(pcluster,'SpmdEnabled',false);
 pctRunOnAll warning('off','all');
 pctRunOnAll warning('on','MATLAB:SystemicRisk');
 
@@ -126,8 +130,8 @@ measures_setup = {
     'Connectedness'      true     true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,bw,0.05,false,0.06,analyze);
     'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'G',0.4,'W','N',analyze);
     'CrossQuantilogram'  true     true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,bw,0.05,60,'SB',0.05,100,analyze);
-    'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.08,0.40,0.40,3,analyze);
-    'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,0.95,analyze);
+    'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.40,0.08,0.40,3,analyze);
+    'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,5,0.95,analyze);
     'Liquidity'          true     true     true     @(ds,temp,file,analyze)run_liquidity(ds,temp,file,bw,21,5,'B',500,0.01,0.0004,analyze);
     'RegimeSwitching'    true     true     true     @(ds,temp,file,analyze)run_regime_switching(ds,temp,file,true,true,true,analyze);
     'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);

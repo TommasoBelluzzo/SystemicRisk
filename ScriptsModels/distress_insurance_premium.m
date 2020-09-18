@@ -6,9 +6,10 @@
 % f = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors.
 % l = A float [0.05,0.20] representing the importance sampling threshold.
 % c = An integer [50,1000] representing the number of simulated samples.
+% it = An integer [5,100] representing the number of iterations to perform.
 %
 % [OUTPUT]
-% dip = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.
+% dip = A float [0,Inf) representing the Distress Insurance Premium.
 
 function dip = distress_insurance_premium(varargin)
 
@@ -23,6 +24,7 @@ function dip = distress_insurance_premium(varargin)
         ip.addRequired('f',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
         ip.addRequired('l',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
         ip.addRequired('c',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
+        ip.addRequired('it',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 5 '<=' 100 'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -33,14 +35,17 @@ function dip = distress_insurance_premium(varargin)
     f = min(ipr.f,n);
     l = ipr.l;
     c = ipr.c;
+    it = ipr.it;
 
     nargoutchk(1,1);
 
-    dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c);
+    dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c,it);
 
 end
 
-function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c)
+function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c,it)
+
+    up = isempty(getCurrentTask());
 
     [dt,dw,ead,ead_volume,lgd] = estimate_default_parameters(cds(indices),lb(indices),n,lgd);
     b = estimate_factor_loadings(r(:,indices),f);
@@ -50,25 +55,45 @@ function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,lgd,f,l,c)
 
     a = zeros(5,1);
     
-    for iter = 1:5 
-        mcmc_p = slicesample(rand(1,f),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
-        [mu,sigma,weights] = gmm_fit(mcmc_p,2);  
-        [z,g] = gmm_evaluate(mu,sigma,weights,c);
+    if (up)
+        parfor i = 1:it 
+            mcmc_p = slicesample(rand(1,f),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
+            [mu,sigma,weights] = gmm_fit(mcmc_p,2);  
+            [z,g] = gmm_evaluate(mu,sigma,weights,c);
 
-        phi = normcdf((repmat(dt.',c,1) - (z * b.')) ./ (1 - repmat(sum(b.^2,2).',c,1)).^0.5);
-        [theta,theta_p] = exponential_twist(phi,dw,l);
+            phi = normcdf((repmat(dt.',c,1) - (z * b.')) ./ (1 - repmat(sum(b.^2,2).',c,1)).^0.5);
+            [theta,theta_p] = exponential_twist(phi,dw,l);
 
-        losses = sum(repelem(dw.',c2,1) .* ((repelem(theta_p,c,1) >= rand(c2,n)) == 1),2);
-        psi = sum(log((phi .* exp(repmat(theta,1,n) .* repmat(dw.',c,1))) + (1 - phi)),2);
+            losses = sum(repelem(dw.',c2,1) .* ((repelem(theta_p,c,1) >= rand(c2,n)) == 1),2);
+            psi = sum(log((phi .* exp(repmat(theta,1,n) .* repmat(dw.',c,1))) + (1 - phi)),2);
 
-        lr_z = repelem(mvnpdf(z) ./ g,c,1);
-        lr_e = exp(-(repelem(theta,c,1) .* losses) + repelem(psi,c,1));
-        lr = lr_z .* lr_e;
+            lr_z = repelem(mvnpdf(z) ./ g,c,1);
+            lr_e = exp(-(repelem(theta,c,1) .* losses) + repelem(psi,c,1));
+            lr = lr_z .* lr_e;
 
-        a(iter) = mean((losses > l) .* lr);
+            a(i) = mean((losses > l) .* lr);
+        end
+    else
+        for i = 1:it
+            mcmc_p = slicesample(rand(1,f),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
+            [mu,sigma,weights] = gmm_fit(mcmc_p,2);  
+            [z,g] = gmm_evaluate(mu,sigma,weights,c);
+
+            phi = normcdf((repmat(dt.',c,1) - (z * b.')) ./ (1 - repmat(sum(b.^2,2).',c,1)).^0.5);
+            [theta,theta_p] = exponential_twist(phi,dw,l);
+
+            losses = sum(repelem(dw.',c2,1) .* ((repelem(theta_p,c,1) >= rand(c2,n)) == 1),2);
+            psi = sum(log((phi .* exp(repmat(theta,1,n) .* repmat(dw.',c,1))) + (1 - phi)),2);
+
+            lr_z = repelem(mvnpdf(z) ./ g,c,1);
+            lr_e = exp(-(repelem(theta,c,1) .* losses) + repelem(psi,c,1));
+            lr = lr_z .* lr_e;
+
+            a(i) = mean((losses > l) .* lr);
+        end
     end
     
-    dip = mean(a) * ead_volume;
+    dip = max(mean(a) * ead_volume,0);
 
 end
 
@@ -275,7 +300,7 @@ function [n,indices,r,cds,lb] = validate_input(r,cds,lb)
     [t,n_tot] = size(r);
 
     if ((t < 5) || (n_tot < 2))
-        error('The value of ''r'' is invalid. Expected input to have a minimum size of 5x2.');
+        error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2.');
     end
     
     cds = cds(:).';

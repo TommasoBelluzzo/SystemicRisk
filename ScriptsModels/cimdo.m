@@ -47,6 +47,8 @@ function [g,p] = cimdo_internal(r,pods,md)
     if (isempty(options_objective))
         options_objective = optimset(optimset(@fsolve),'Display','none','TolFun',1e-6,'TolX',1e-6);
     end
+    
+    up = isempty(getCurrentTask());
 
     [t,n] = size(r);
     k = 2^n;
@@ -59,26 +61,46 @@ function [g,p] = cimdo_internal(r,pods,md)
     
     if (strcmp(md,'N'))
         dts = norminv(1 - pods);
-        
-        for i = 1:k
-            g_i = g(i,:).';
-            lb = min([(-Inf * ~g_i) dts],[],2);
-            ub = max([(Inf * g_i) dts],[],2);
 
-            q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
+        if (up)
+            parfor i = 1:k
+                g_i = g(i,:).';
+                lb = min([(-Inf * ~g_i) dts],[],2);
+                ub = max([(Inf * g_i) dts],[],2);
+
+                q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
+            end
+        else
+            for i = 1:k
+                g_i = g(i,:).';
+                lb = min([(-Inf * ~g_i) dts],[],2);
+                ub = max([(Inf * g_i) dts],[],2);
+
+                q(i) = mvncdf_fast(c,lb,ub,options_mvncdf);
+            end
         end
     else
         params = mle(rn(:),'Distribution','tLocationScale');
         df = max(1,min(params(3),6));
         
         dts = tinv(1 - pods,df);
-        
-        for i = 1:k
-            g_i = g(i,:).';
-            lb = min([(-Inf * ~g_i) dts],[],2);
-            ub = max([(Inf * g_i) dts],[],2);
 
-            q(i) = mvtcdf_fast(c,df,lb,ub,options_mvtcdf);
+        if (up)
+            parfor i = 1:k
+                g_i = g(i,:).';
+                lb = min([(-Inf * ~g_i) dts],[],2);
+                ub = max([(Inf * g_i) dts],[],2);
+
+                q(i) = mvtcdf_fast(c,df,lb,ub,options_mvtcdf);
+            end
+        else
+            for i = 1:k
+                g_i = g(i,:).';
+                lb = min([(-Inf * ~g_i) dts],[],2);
+                ub = max([(Inf * g_i) dts],[],2);
+
+                q(i) = mvtcdf_fast(c,df,lb,ub,options_mvtcdf);
+            end
         end
     end
 
@@ -392,7 +414,7 @@ function [r,pods] = validate_input(r,pods)
     [t,n] = size(r);
 
     if ((t < 5) || (n < 2))
-        error('The value of ''r'' is invalid. Expected input to have a minimum size of 5x2.');
+        error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2.');
     end
     
     pods = pods(:);

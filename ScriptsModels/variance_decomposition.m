@@ -5,7 +5,7 @@
 % fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type (optional, default='G').
 %
 % [OUTPUT]
-% vd = A float n-by-n matrix representing the variance decomposition.
+% vd = A float n-by-n matrix (-Inf,Inf) representing the variance decomposition.
 
 function vd = variance_decomposition(varargin)
 
@@ -160,6 +160,7 @@ function vd = variance_decomposition_internal(data,lags,h,fevd)
     end
 
     vd = squeeze(vds(h,:,:));
+    vd = vd ./ repmat(sum(vd,2),1,n);
 
 end
 

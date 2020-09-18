@@ -81,7 +81,7 @@ function [va,vap,cds,db,r,t] = validate_input(va,vap,cds,db,r,t)
     va_len = numel(va);
     
     if (va_len < 5)
-        error('The value of ''va'' is invalid. Expected input to be a vector with at least 5 elements.');
+        error('The value of ''va'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
 
     vap_len = numel(vap);
