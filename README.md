@@ -29,6 +29,7 @@ This framework calculates, analyses and compares the following systemic risk mea
   * *References*: [Han et al. (2016)](https://doi.org/10.1016/j.jeconom.2016.03.001)
 * **CROSS-SECTIONAL MEASURES**
   * `Idiosyncratic Metrics: Beta, Value-at-Risk & Expected Shortfall`
+  * `CAViaR (Conditional Autoregressive Value-at-Risk)` by [White et al. (2015)](https://doi.org/10.1016/j.jeconom.2015.02.004)
   * `CoVaR & Delta CoVaR (Conditional Value-at-Risk)` by [Adrian & Brunnermeier (2008)](https://doi.org/10.2139/ssrn.1269446)
   * `MES (Marginal Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
   * `SES (Systemic Expected Shortfall)` by [Acharya et al. (2010)](https://doi.org/10.2139/ssrn.1573171)
