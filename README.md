@@ -199,7 +199,7 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
     * *Required:* shares (any).
     * *Optional:* none.
   
-* Firms whose time series value is constantly equal to `0` in the tail, for a span that includes a customizable percentage of total observations, are considered to be `defaulted`. Firms whose `Equity` value is constantly negative in the tail, for a span that includes a customizable percentage of total observations, are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain point in time onward; defaulted firms are excluded by all the measures, insolvent firms are excluded only by `SCCA` default measures.
+* Firms whose time series value is constantly equal to `0` in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `defaulted`. Firms whose `Equity` value is constantly negative in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain point in time onward; defaulted firms are excluded by all the measures, insolvent firms are excluded only by `SCCA` default measures.
 
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
 
