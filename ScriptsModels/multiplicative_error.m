@@ -5,9 +5,13 @@
 %     * other columns: exogenous variables [0,Inf), optional;
 %   - for Asymmetric MEM and Asymmetric Power MEM:
 %     * first column: endogenous variable [0,Inf), mandatory;
-%     * second column: returns (-Inf,Inf), mandatory;
+%     * second column: logarithmic returns (-Inf,Inf), mandatory;
 %     * other columns: exogenous variables [0,Inf), optional;
-% type = A string ('B' for Baseline MEM, 'A' for Asymmetric MEM, 'P' for Asymmetric Power MEM, 'S' for Spline MEM) representing the model type.
+% type = A string representing the model type:
+%   - 'B' for Baseline MEM.
+%   - 'A' for Asymmetric MEM.
+%   - 'P' for Asymmetric Power MEM.
+%   - 'S' for Spline MEM.
 % q = An integer [1,Inf) representing the first order of the model (optional, default=1).
 % p = An integer [1,Inf) representing the second order of the model (optional, default=1).
 %
@@ -392,10 +396,6 @@ function [v,d,z,type] = validate_input(data,type)
             d = data(:,2) < 0;
         else
             d = sign(data);
-        end
-        
-        if (~any(d))
-            error('The value of ''data'' is invalid. Expected input to contain negative values in the second column.');
         end
 
         zn = n - 2;

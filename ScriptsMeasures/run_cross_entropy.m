@@ -3,10 +3,16 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% sel = A string (either 'F' for firms or 'G' for groups) representing the time series selection method (optional, default='F').
+% sel = A string representing the time series selection method (optional, default='F'):
+%   - 'F' for firms.
+%   - 'G' for groups.
 % rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
-% pw = A string (either 'A' for plain average or 'W' for progressive average) representing the probabilities of default weighting method (optional, default='W').
-% md = A string (either 'N' for normal or 'T' for Student's T) representing the multivariate distribution used by the CIMDO model (optional, default='N').
+% pw = A string representing the probabilities of default weighting method (optional, default='W'):
+%   - 'A' for plain average.
+%   - 'W' for progressive average.
+% md = A string representing the multivariate distribution used by the CIMDO model (optional, default='N'):
+%   - 'N' for normal distribution.
+%   - 'T' for Student's T distribution.
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -930,25 +936,8 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
     sheets = {'Indicators' 'Average DiDe' 'SI' 'SV' 'CoJPoDs'};
+    file_sheets = validate_xls(temp,'T');
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);

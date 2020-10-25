@@ -108,6 +108,11 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,
             ds.SES(1:offset,i) = ses;
             ds.SRISK(1:offset,i) = srisk;
             
+            [caviar,~,ir_fm,ir_mf] = bivariate_caviar(r_i,ds.A);
+            ds.CAViaR(1:offset,i) = caviar;
+            ds.CAViaRIRFM{i} = ir_fm;
+            ds.CAViaRIRMF{i} = ir_mf;
+            
             if (getappdata(bar,'Stop'))
                 stopped = true;
                 break;
@@ -154,15 +159,16 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,
     
     if (analyze)
         safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'Beta',id));
-        safe_plot(@(id)plot_sequence(ds,'VaR',id));
-        safe_plot(@(id)plot_sequence(ds,'ES',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Beta',id));
+        safe_plot(@(id)plot_sequence_other(ds,'VaR',id));
+        safe_plot(@(id)plot_sequence_other(ds,'ES',id));
         safe_plot(@(id)plot_systemic_averages(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'CoVaR',id));
-        safe_plot(@(id)plot_sequence(ds,'Delta CoVaR',id));
-        safe_plot(@(id)plot_sequence(ds,'MES',id));
-        safe_plot(@(id)plot_sequence(ds,'SES',id));
-        safe_plot(@(id)plot_sequence(ds,'SRISK',id));
+        safe_plot(@(id)plot_sequence_caviar(ds,id));
+        safe_plot(@(id)plot_sequence_other(ds,'CoVaR',id));
+        safe_plot(@(id)plot_sequence_other(ds,'Delta CoVaR',id));
+        safe_plot(@(id)plot_sequence_other(ds,'MES',id));
+        safe_plot(@(id)plot_sequence_other(ds,'SES',id));
+        safe_plot(@(id)plot_sequence_other(ds,'SRISK',id));
         safe_plot(@(id)plot_correlations(ds,id));
         safe_plot(@(id)plot_rankings(ds,id));
     end
@@ -201,29 +207,35 @@ function ds = initialize(ds,k,d,car,sf,fr)
     ses_label =  [' (CAR=' num2str(ds.CAR * 100) '%)'];
     srisk_label = [' (D=' num2str(ds.D * 100) '%, CAR=' num2str(ds.CAR * 100) '%)'];
 
-    ds.LabelsMeasuresSimple = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK'};
-    ds.LabelsMeasures = {'Beta' ['VaR' k_all_label] ['ES' k_all_label] ['CoVaR' k_all_label] ['Delta CoVaR' k_all_label] ['MES' k_all_label] ['SES' ses_label] ['SRISK' srisk_label]};
+    ds.LabelsMeasuresSimple = {'Beta' 'VaR' 'ES' 'CAViaR' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK'};
+    ds.LabelsMeasures = {'Beta' ['VaR' k_all_label] ['ES' k_all_label] ['CAViaR' k_all_label] ['CoVaR' k_all_label] ['Delta CoVaR' k_all_label] ['MES' k_all_label] ['SES' ses_label] ['SRISK' srisk_label]};
 
     ds.LabelsSheetsSimple = [ds.LabelsMeasuresSimple {'Averages'}];
     ds.LabelsSheets = [ds.LabelsMeasures {'Averages'}];
     
     ds.TargetLiabilities = lb;
     ds.TargetLiabilitiesRolled = lbr;
+    
+    m = numel(ds.LabelsMeasuresSimple);
 
+    ds.CAViaRIRFM = cell(m,1);
+    ds.CAViaRIRMF = cell(m,1);
+    
     ds.Beta = NaN(t,n);
     ds.VaR = NaN(t,n);
     ds.ES = NaN(t,n);
+    ds.CAViaR = NaN(t,n);
     ds.CoVaR = NaN(t,n);
     ds.DeltaCoVaR = NaN(t,n);
     ds.MES = NaN(t,n);
     ds.SES = NaN(t,n);
     ds.SRISK = NaN(t,n);
-    ds.Averages = NaN(t,8);
+    ds.Averages = NaN(t,m);
 
-    ds.RankingConcordance = NaN(8,8);
-    ds.RankingStability = NaN(1,8);
+    ds.RankingConcordance = NaN(m);
+    ds.RankingStability = NaN(1,m);
     
-    ds.ComparisonReferences = {'Averages' 4:8 strcat({'CS-'},strrep(ds.LabelsMeasuresSimple(4:end),'Delta ','D'))};
+    ds.ComparisonReferences = {'Averages' 4:9 strcat({'CS-'},strrep(ds.LabelsMeasuresSimple(4:end),'Delta ','D'))};
 
 end
 
@@ -236,12 +248,13 @@ function ds = finalize(ds)
     beta_avg = sum(ds.Beta .* weights,2,'omitnan');
     var_avg = sum(ds.VaR .* weights,2,'omitnan');
     es_avg = sum(ds.ES .* weights,2,'omitnan');
+    caviar_avg = sum(ds.CAViaR .* weights,2,'omitnan');
     covar_avg = sum(ds.CoVaR .* weights,2,'omitnan');
     dcovar_avg = sum(ds.DeltaCoVaR .* weights,2,'omitnan');
     mes_avg = sum(ds.MES .* weights,2,'omitnan');
     ses_avg = sum(ds.SES .* weights,2,'omitnan');
     srisk_avg = sum(ds.SRISK .* weights,2,'omitnan');
-    ds.Averages = [beta_avg var_avg es_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
+    ds.Averages = [beta_avg var_avg es_avg caviar_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
 
 	measures_len = numel(ds.LabelsMeasuresSimple);
 	measures = cell(measures_len,1);
@@ -470,43 +483,25 @@ end
 
 function plot_systemic_averages(ds,id)
 
-    y_limits = zeros(5,2);
+    y_limits = zeros(6,2);
 
-    averages_quantile = ds.Averages(:,4:6);
-    y_limits(1:3,:) = repmat(plot_limits(averages_quantile,0.1),3,1);
+    averages_quantile = ds.Averages(:,4:7);
+    y_limits(1:4,:) = repmat(plot_limits(averages_quantile,0.1),4,1);
     
-    averages_volume = ds.Averages(:,7:8);
-    y_limits(4:5,:) = repmat(plot_limits(averages_volume,0.1),2,1);
+    averages_volume = ds.Averages(:,8:9);
+    y_limits(5:6,:) = repmat(plot_limits(averages_volume,0.1),2,1);
     
-    subplot_offsets = cell(5,1);
-    subplot_offsets{1} = [1 3 5];
-    subplot_offsets{2} = [7 9 11];
-    subplot_offsets{3} = [13 15 17];
-    subplot_offsets{4} = [2 4 6 8];
-    subplot_offsets{5} = [12 14 16 18];
+    subplot_offsets = [1; 3; 5; 2; 4; 6];
 
     f = figure('Name','Cross-Sectional Measures > Systemic Averages','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
     
-    subs = gobjects(5,1);
-    height_delta = NaN;
+    subs = gobjects(6,1);
     
-    for i = 1:5
-        sub = subplot(9,2,subplot_offsets{i});
+    for i = 1:6
+        sub = subplot(3,2,subplot_offsets(i));
         plot(sub,ds.DatesNum,smooth_data(ds.Averages(:,i+3)),'Color',[0.000 0.447 0.741]);
         set(sub,'YLim',y_limits(i,:));
         title(sub,ds.LabelsMeasures{i+3});
-
-        if (i == 1)
-            sub_position = get(sub,'Position');
-            height_old = sub_position(4);
-            height_new = height_old * 0.8;
-            height_delta = height_old - height_new;
-            
-            set(sub,'Position',[sub_position(1) (sub_position(2) + height_delta) sub_position(3) (sub_position(4) - height_delta)]);
-        else
-            sub_position = get(sub,'Position');
-            set(sub,'Position',[sub_position(1) (sub_position(2) + height_delta) sub_position(3) (sub_position(4) - height_delta)]);
-        end
         
         subs(i) = sub;
     end
@@ -522,11 +517,11 @@ function plot_systemic_averages(ds,id)
     
     y_ticks = get(subs(1),'YTick');
     y_tick_labels = arrayfun(@(x)sprintf('%.2f',x),y_ticks,'UniformOutput',false);
-    set(subs(1:3),'YTick',y_ticks,'YTickLabel',y_tick_labels);
+    set(subs(1:4),'YTick',y_ticks,'YTickLabel',y_tick_labels);
     
-    y_ticks = get(subs(4),'YTick');
+    y_ticks = get(subs(5),'YTick');
     y_tick_labels = arrayfun(@(x)sprintf('%.0f',x),y_ticks,'UniformOutput',false);
-    set(subs(4:5),'YTick',y_ticks,'YTickLabel',y_tick_labels);
+    set(subs(5:6),'YTick',y_ticks,'YTickLabel',y_tick_labels);
     
     figure_title('Systemic Averages');
 
@@ -695,7 +690,99 @@ function plot_rankings(ds,id)
 
 end
 
-function plot_sequence(ds,target,id)
+function plot_sequence_caviar(ds,id)
+
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+
+    ts = smooth_data(ds.CAViaR);
+
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n)); repmat({1:200},1,n); ds.CAViaRIRFM.'; ds.CAViaRIRMF.'];
+    
+    [~,index] = ismember('CAViaR',ds.LabelsMeasuresSimple);
+    plots_title = cell(3,20);
+    plots_title(1,:) = repmat(ds.LabelsMeasures(index),1,n);
+    plots_title(2,:) = repmat({'Impulse Response - Firm on Market Shock'},1,n);
+    plots_title(3,:) = repmat({'Impulse Response - Market on Firm Shock'},1,n);
+
+    x_limits = {[dn(1) dn(end)] [1 200] [1 200]};
+    y_limits = {plot_limits(ts,0.1) [] []};
+
+    core = struct();
+
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = 'Cross-Sectional Measures > CAViaR Time Series';
+    core.InnerTitle = 'CAViaR Time Series';
+    core.SequenceTitles = ds.FirmNames;
+
+    core.PlotsAllocation = [2 2];
+    core.PlotsSpan = {[1 2] 3 4};
+    core.PlotsTitle = plots_title;
+
+    core.XDates = {mt [] []};
+    core.XGrid = {true true true};
+    core.XLabel = {[] [] []};
+    core.XLimits = x_limits;
+    core.XRotation = {45 [] []};
+    core.XTick = {[] [] []};
+    core.XTickLabels = {[] [] []};
+
+    core.YGrid = {true true true};
+    core.YLabel = {[] [] []};
+    core.YLimits = y_limits;
+    core.YRotation = {[] [] []};
+    core.YTick = {[] [] []};
+    core.YTickLabels = {[] [] []};
+
+    sequential_plot(core,id);
+    
+    function plot_function(subs,data)
+
+        x_caviar = data{1};
+        caviar = data{2};
+        
+        x_ir = data{3};
+        ir_fm = data{4};
+        ir_mf = data{5};
+        
+        d = find(isnan(caviar),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x_caviar(d) - 1;
+        end
+        
+        plot(subs(1),x_caviar,caviar,'Color',[0.000 0.447 0.741]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
+        
+        plot(subs(2),x_ir,ir_fm(:,1),'Color',[0.000 0.447 0.741]);
+        hold(subs(2),'on');
+            plot(subs(2),x_ir,ir_fm(:,2),'Color',[1 0.4 0.4],'LineStyle','--');
+            plot(subs(2),x_ir,ir_fm(:,3),'Color',[1 0.4 0.4],'LineStyle','--');
+        hold(subs(2),'off');
+        
+        plot(subs(3),x_ir,ir_mf(:,1),'Color',[0.000 0.447 0.741]);
+        hold(subs(3),'on');
+            plot(subs(3),x_ir,ir_mf(:,2),'Color',[1 0.4 0.4],'LineStyle','--');
+            plot(subs(3),x_ir,ir_mf(:,3),'Color',[1 0.4 0.4],'LineStyle','--');
+        hold(subs(3),'off');
+
+    end
+
+end
+
+function plot_sequence_other(ds,target,id)
 
     n = ds.N;
     t = ds.T;
@@ -782,26 +869,9 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
+    sheets = {'Beta' 'VaR' 'ES' 'CAViaR' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
+    file_sheets = validate_xls(temp,'T');
 
-    sheets = {'Beta' 'VaR' 'ES' 'CoVaR' 'Delta CoVaR' 'MES' 'SES' 'SRISK' 'Averages'};
-    
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end

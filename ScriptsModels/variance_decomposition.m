@@ -2,7 +2,9 @@
 % data = A float t-by-n matrix representing the model input.
 % lags = An integer [1,3] representing the number of lags of the VAR model (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon (optional, default=4).
-% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type (optional, default='G').
+% fevd = A string representing the FEVD type (optional, default='G'):
+%   - 'G' for generalized FEVD.
+%   - 'O' for orthogonal FEVD.
 %
 % [OUTPUT]
 % vd = A float n-by-n matrix (-Inf,Inf) representing the variance decomposition.
@@ -140,14 +142,14 @@ function vd = variance_decomposition_internal(data,lags,h,fevd)
         end
     else
         c = nearest_spd(c);
-        covariance_dec = chol(c,'lower');
+        cl = chol(c,'lower');
 
         for i = 1:n
             indices = zeros(n,1);
             indices(i,1) = 1;
 
             for j = 1:h
-                irf(j,:,i) = ma{j} * covariance_dec * indices; 
+                irf(j,:,i) = ma{j} * cl * indices; 
             end
         end
     end

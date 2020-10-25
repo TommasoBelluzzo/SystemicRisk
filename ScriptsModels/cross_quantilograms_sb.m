@@ -10,7 +10,7 @@
 % ci = A row vector of floats (-Inf,Inf) of length 2 representing the lower and upper confidence intervals.
 %
 % [NOTES]
-% The model computes partial cross-quantilograms when n is greater than 2 using exogenous variables from 2+1 to n.
+% The model computes partial cross-quantilograms when n is greater than 2 using exogenous variables from 3 to n.
 
 function [cq,ci] = cross_quantilograms_sb(varargin)
 

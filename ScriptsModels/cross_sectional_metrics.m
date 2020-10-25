@@ -1,5 +1,5 @@
 % [INPUT]
-% r = A float t-by-2 matrix representing the logarithmic returns, in which the first column represents the market returns and the second column represents the firm returns.
+% r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which the first column represents the market returns and the second column represents the firm returns.
 % cp = A vector of floats [0,Inf) of length t representing the market capitalization.
 % lb = A vector of floats [0,Inf) of length t representing the liabilities.
 % lbr = A vector of floats [0,Inf) of length t representing the forward-rolled liabilities.
@@ -64,8 +64,8 @@ function [beta,var,es,covar,dcovar,mes,ses,srisk] = cross_sectional_metrics_inte
     beta = rho .* (sf ./ sm);
     
     c = quantile((rf_0 ./ sf),a);
-    var = -1 * min(sf * c,0);
-    es = -1 * min(sf * -(normpdf(c) / a),0);
+    var = -1 .* min(sf * c,0);
+    es = -1 .* min(sf * -(normpdf(c) / a),0);
 
     [covar,dcovar] = calculate_covar(rm_0,rf_0,-var,sv,a);
     [mes,lrmes] = calculate_mes(rm_0,sm,rf_0,sf,rho,beta,a,d);
@@ -92,8 +92,8 @@ function [covar,dcovar] = calculate_covar(rm_0,rf_0,var,sv,a)
 
     dcovar = b(2) .* (var - repmat(median(rf_0),length(rm_0),1));
     
-    covar = -1 * min(covar,0);
-    dcovar = -1 * min(dcovar,0);
+    covar = -1 .* min(covar,0);
+    dcovar = -1 .* min(dcovar,0);
 
 end
 
@@ -115,7 +115,7 @@ function [mes,lrmes] = calculate_mes(rm_0,sm,rf_0,sf,rho,beta,a,d)
     k1 = sum(u .* f) ./ f_sum;
     k2 = sum(x .* f) ./ f_sum;
 
-    mes = -1 * min((sf .* rho .* k1) + (sf .* z .* k2),0);
+    mes = -1 .* min((sf .* rho .* k1) + (sf .* z .* k2),0);
     lrmes = 1 - exp(log(1 - d) .* beta);
 
 end

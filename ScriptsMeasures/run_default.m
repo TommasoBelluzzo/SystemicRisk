@@ -3,7 +3,9 @@
 % temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
-% op = A string (either 'BSM' for Black-Scholes-Merton or 'GC' for Gram-Charlier) representing the option pricing model (optional, default='BSM').
+% op = A string representing the option pricing model (optional, default='BSM'):
+%   - 'BSM' for Black-Scholes-Merton.
+%   - 'GC' for Gram-Charlier.
 % lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used to calculate D2C and D2D (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
 % rr = A float [0,1] representing the recovery rate in case of default used to calculate the DIP (optional, default=0.45).
@@ -235,12 +237,12 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
     
     if (analyze)
         safe_plot(@(id)plot_distances(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'D2D',true,id));
-        safe_plot(@(id)plot_sequence(ds,'D2C',true,id));
+        safe_plot(@(id)plot_sequence(ds,'D2D',id));
+        safe_plot(@(id)plot_sequence(ds,'D2C',id));
         safe_plot(@(id)plot_dip(ds,id));
         safe_plot(@(id)plot_scca(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA EL',false,id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA CL',false,id));
+        safe_plot(@(id)plot_sequence(ds,'SCCA EL',id));
+        safe_plot(@(id)plot_sequence(ds,'SCCA CL',id));
         safe_plot(@(id)plot_rankings(ds,id));
     end
     
@@ -672,18 +674,16 @@ function plot_scca(ds,id)
 
 end
 
-function plot_sequence(ds,target,distance,id)
+function plot_sequence(ds,target,id)
+
+    is_distance = any(strcmp(target,{'D2C' 'D2D'}));
 
     n = ds.N;
     t = ds.T;
     dn = ds.DatesNum;
     mt = ds.MonthlyTicks;
     
-    if (distance)
-        ts = smooth_data(ds.(strrep(target,' ','')));
-    else
-        ts = smooth_data(ds.(strrep(target,' ','')));
-    end
+    ts = smooth_data(ds.(strrep(target,' ','')));
     
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
@@ -692,7 +692,7 @@ function plot_sequence(ds,target,distance,id)
     
     x_limits = [dn(1) dn(end)];
 
-    if (distance)
+    if (is_distance)
         y_limits = plot_limits(ts,0.1,[],[],-1);
     else
         y_limits = plot_limits(ts,0.1);
@@ -702,7 +702,7 @@ function plot_sequence(ds,target,distance,id)
 
     core.N = n;
     core.Data = data;
-    core.Function = @(subs,data)plot_function(subs,data,distance);
+    core.Function = @(subs,data)plot_function(subs,data,is_distance);
 
     core.OuterTitle = ['Default Measures > ' target ' Time Series'];
     core.InnerTitle = [target ' Time Series'];
@@ -729,7 +729,7 @@ function plot_sequence(ds,target,distance,id)
 
     sequential_plot(core,id);
     
-    function plot_function(subs,data,distance)
+    function plot_function(subs,data,is_distance)
 
         x = data{1};
         y = data{2};
@@ -744,7 +744,7 @@ function plot_sequence(ds,target,distance,id)
         
         plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
         
-        if (distance)
+        if (is_distance)
             hold(subs(1),'on');
                 plot(subs(1),x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
             hold(subs(1),'off');
@@ -794,27 +794,10 @@ function f = validate_f(f,n)
     
 end
 
-function out_temp = validate_template(out_temp)
-
-    if (exist(out_temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(out_temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(out_temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
+function temp = validate_template(temp)
 
     sheets = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL' 'Indicators'};
+    file_sheets = validate_xls(temp,'T');
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);

@@ -241,10 +241,10 @@ function [mu,sigma,weights] = gmm_fit(x,gm)
             h = ((o.' * o) ./ rs(j)) + (eye(s) .* 1e-6);
             sigma(:,:,j) = h;
 
-            v = chol(h,'upper');
-            q0 = v.' \ x0.';
+            cu = chol(h,'upper');
+            q0 = cu.' \ x0.';
             q1 = dot(q0,q0,1);
-            nc = (s * log(2 * pi())) + (2 * sum(log(diag(v))));
+            nc = (s * log(2 * pi())) + (2 * sum(log(diag(cu))));
             rho(:,j) = (-(nc + q1) / 2) + log(weights(j));
         end
 

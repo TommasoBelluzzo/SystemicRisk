@@ -5,7 +5,9 @@
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % a = A float [0.01,0.10] representing the target quantile (optional, default=0.05).
 % lags = An integer [10,60] representing the maximum number of lags (optional, default=60).
-% cim = A string (either 'SB' for stationary bootstrap or 'SN' for self-normalization) representing the computational approach of confidence intervals (optional, default='SB').
+% cim = A string representing the computational approach of confidence intervals (optional, default='SB'):
+%   - 'SB' for stationary bootstrap.
+%   - 'SN' for self-normalization.
 % cis = Optional argument representing the significance level of confidence intervals and whose value depends on the the chosen computational approach:
 %   - for stationary bootstrap cross-quantilograms, a float (0.0,0.1] (default=0.050);
 %   - for self-normalization cross-quantilograms, a float {0.005;0.010;0.025;0.050;0.100} (default=0.050).
@@ -551,26 +553,9 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
     sheets = {'Full From' 'Full To' 'Partial From' 'Partial To'};
-    
+    file_sheets = validate_xls(temp,'T');
+
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end

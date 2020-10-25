@@ -1,7 +1,9 @@
 % [INPUT]
 % r = A float t-by-n matrix representing the logarithmic returns.
 % pods = A vector of floats [0,1] of length n representing the probabilities of default.
-% md = A string (either 'N' for normal or 'T' for Student's T) representing the multivariate distribution used by the model.
+% md = A string representing the multivariate distribution used by the model:
+%   - 'N' for normal distribution.
+%   - 'T' for Student's T distribution.
 %
 % [OUTPUT]
 % g = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.

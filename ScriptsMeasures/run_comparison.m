@@ -8,10 +8,16 @@
 % sc = Optional argument specified as a vector of floats [0,Inf) of length 3 representing the score coefficient of each comparison model (Granger-causality, Logistic, Price Discovery).
 %      When defined, comparison models with a coefficient equal to 0 are not computed. When left undefined, all the comparison models are computed and their scores are equally weighted.  
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for Granger-causality and Price Discovery models (optional, default=10).
-% lag_sel = A string ('AIC', 'BIC', 'FPE' or 'HQIC') representing the lag order selection criteria for Granger-causality and Price Discovery models (optional, default='AIC').
+% lag_sel = A string representing the lag order selection criteria for Granger-causality and Price Discovery models (optional, default='AIC'):
+%   - 'AIC' for Akaike's Information Criterion.
+%   - 'BIC' for Bayesian Information Criterion.
+%   - 'FPE' for Final Prediction Error.
+%   - 'HQIC' for Hannan-Quinn Information Criterion.
 % gca = A float [0.01,0.10] representing the probability level of the F test critical value for the Granger-causality model (optional, default=0.01).
 % lma = A boolean that indicates whether to use the adjusted McFadden R2 for the Logistic model (optional, default=false).
-% pdt = A string (either 'GG' for the Gonzalo-Granger component share or 'H' for the Hasbrouck information share) representing the type of metric to calculate for the Price Discovery model (optional, default='GG').
+% pdt = A string representing the type of metric to calculate for the Price Discovery model (optional, default='GG'):
+%   - 'GG' for Gonzalo-Granger Component Metric.
+%   - 'H' for Hasbrouck Information Metric.
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
 % [OUTPUT]
@@ -297,23 +303,7 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
+    file_sheets = validate_xls(temp,'T');
 
     if ((numel(file_sheets) ~= 1) || ~strcmp(file_sheets{1},'Scores'))
         error('The template must contain only one sheet named ''Scores''.');

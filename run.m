@@ -115,7 +115,7 @@ else
 end
 
 if (ds_process)
-    ds = parse_dataset(file,ds_version,'dd/mm/yyyy','QQ yyyy','P','R');
+    ds = parse_dataset(file,ds_version,'dd/mm/yyyy','QQ yyyy','P','R',0.05);
     analyze_dataset(ds);
     save(mat,'ds');
 end

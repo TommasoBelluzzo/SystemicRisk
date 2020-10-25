@@ -574,25 +574,8 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
     sheets = {'CATFIN VaRs' 'Indicators' 'PCA Overall Explained' 'PCA Overall Coefficients' 'PCA Overall Scores'};
+    file_sheets = validate_xls(temp,'T');
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);

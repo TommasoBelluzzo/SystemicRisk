@@ -5,7 +5,11 @@
 % bwl = An integer [90,252] representing the dimension of the long bandwidth (optional, default=252).
 % bwm = An integer [21,90) representing the dimension of the medium bandwidth (optional, default=21).
 % bws = An integer [5,21) representing the dimension of the short bandwidth (optional, default=5).
-% mem = A string ('B' for Baseline MEM, 'A' for Asymmetric MEM, 'P' for Asymmetric Power MEM, 'S' for Spline MEM) representing the MEM type used to calculate the ILLIQ (optional, default='B').
+% mem = A string representing the MEM type used to calculate the ILLIQ (optional, default='B'):
+%   - 'B' for Baseline MEM.
+%   - 'A' for Asymmetric MEM.
+%   - 'P' for Asymmetric Power MEM.
+%   - 'S' for Spline MEM.
 % w = An integer [500,Inf) representing the number of sweeps used to calculate the RIS (optional, default=500).
 % c = A float (0,Inf) representing the starting coefficient value used to calculate the RIS (optional, default=0.01).
 % s2 = A float (0,Inf) representing the starting variance of innovations used to calculate the RIS (optional, default=0.0004).
@@ -654,26 +658,9 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The template file is not a valid Excel spreadsheet.');
-        end
-    end
-
     sheets = {'HHLR' 'ILLIQ' 'ILLIQC' 'RIS' 'TR' 'VR' 'Averages'};
-    
+    file_sheets = validate_xls(temp,'T');
+
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end

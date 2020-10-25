@@ -4,7 +4,9 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % bws = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
-% fevd = A string (either 'G' for generalized or 'O' for orthogonal) representing the FEVD type used by the variance decomposition (optional, default='G').
+% fevd = A string representing the FEVD type used by the variance decomposition (optional, default='G'):
+%   - 'G' for generalized FEVD.
+%   - 'O' for orthogonal FEVD.
 % lags = An integer [1,3] representing the number of lags of the VAR model used by the variance decomposition (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon used by the variance decomposition (optional, default=4).
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
@@ -529,25 +531,8 @@ end
 
 function temp = validate_template(temp)
 
-    if (exist(temp,'file') == 0)
-        error('The template file could not be found.');
-    end
-    
-    if (ispc())
-        [file_status,file_sheets,file_format] = xlsfinfo(temp);
-        
-        if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    else
-        [file_status,file_sheets] = xlsfinfo(temp);
-        
-        if (isempty(file_status))
-            error('The dataset file is not a valid Excel spreadsheet.');
-        end
-    end
-    
     sheets = {'From' 'To' 'Net' 'Indicators'};
+    file_sheets = validate_xls(temp,'T');
 
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);

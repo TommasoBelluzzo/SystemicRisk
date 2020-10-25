@@ -1,8 +1,14 @@
 % [INPUT]
 % data = A float t-by-n matrix representing the model input.
-% type = A string (either 'GG' for the Gonzalo-Granger component metric or 'H' for the Hasbrouck information metric) representing the type of metric to calculate.
+% type = A string representing the type of metric to calculate:
+%   - 'GG' for Gonzalo-Granger Component Metric.
+%   - 'H' for Hasbrouck Information Metric.
 % lag_max = An integer [2,t-2] representing the maximum lag order to be evaluated (optional, default=10).
-% lag_sel = A string ('AIC', 'BIC', 'FPE' or 'HQIC') representing the lag order selection criteria (optional, default='AIC').
+% lag_sel = A string representing the lag order selection criteria (optional, default='AIC'):
+%   - 'AIC' for Akaike's Information Criterion.
+%   - 'BIC' for Bayesian Information Criterion.
+%   - 'FPE' for Final Prediction Error.
+%   - 'HQIC' for Hannan-Quinn Information Criterion.
 %
 % [OUTPUT]
 % m1 = A float [0,1] representing the first value of the metric.

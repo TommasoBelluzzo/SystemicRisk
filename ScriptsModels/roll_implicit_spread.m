@@ -1,5 +1,5 @@
 % [INPUT]
-% p = A vector of floats (-Inf,Inf) of length t representing the log prices.
+% p = A vector of floats (-Inf,Inf) of length t representing the prices.
 % bw = An integer [21,252] representing the dimension of each rolling window.
 % w = An integer [500,Inf) representing the number of sweeps (optional, default=1000).
 % c = A float (0,Inf) representing the starting coefficient value (optional, default=0.01).

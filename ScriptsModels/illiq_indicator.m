@@ -3,7 +3,11 @@
 % v = A vector of floats [0,Inf) of length t representing the trading volumes.
 % sv = A float t-by-k matrix (-Inf,Inf) representing the state variables.
 % bw = An integer [21,252] representing the dimension of each rolling window.
-% mem = A string ('B' for Baseline MEM, 'A' for Asymmetric MEM, 'P' for Asymmetric Power MEM, 'S' for Spline MEM) representing the MEM type.
+% mem = A string representing the MEM type:
+%   - 'B' for Baseline MEM.
+%   - 'A' for Asymmetric MEM.
+%   - 'P' for Asymmetric Power MEM.
+%   - 'S' for Spline MEM.
 % mag = An integer [1,Inf) obtained as 10^x representing the magnitude of logarithmic returns and trading volumes (optional, default=[]).
 %
 % [OUTPUT]
@@ -22,7 +26,7 @@ function [illiq,illiqc,knots] = illiq_indicator(varargin)
         ip.addRequired('sv',@(x)validateattributes(x,{'double'},{'real' 'finite'}));
         ip.addRequired('bw',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addRequired('mem',@(x)any(validatestring(x,{'A' 'B' 'P' 'S'})));
-        ip.addRequired('mag',@(x)validateattributes([],{'double'},{'real' 'finite' 'integer'}));
+        ip.addOptional('mag',[],@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer'}));
     end
 
     ip.parse(varargin{:});
