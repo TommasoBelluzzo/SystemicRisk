@@ -3,8 +3,13 @@
 % version = A string representing the version of the dataset.
 % date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except balance sheet ones (optional, default='dd/mm/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
-% shares_type = A string (either 'P' for prices or 'R' for returns) representing the type of data included in the Shares sheet (optional, default='P').
-% crises_type = A string (either 'E' for events or 'R' for time ranges) representing the type of data included in the Crises sheet (optional, default='R').
+% shares_type = A string representing the type of data included in the Shares sheet (optional, default='P'):
+%   - 'P' for prices.
+%   - 'R' for returns.
+% crises_type = A string representing the type of data included in the Crises sheet (optional, default='R'):
+%   - 'E' for events.
+%   - 'R' for time ranges.
+% distress_threshold = A float [0.05,0.75] representing the threshold at which distress statuses are detected (optional, default=0.05).
 %
 % [OUTPUT]
 % ds = A structure containing the parsed dataset.
@@ -21,25 +26,29 @@ function ds = parse_dataset(varargin)
         ip.addOptional('date_format_balance','QQ yyyy',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('shares_type','P',@(x)any(validatestring(x,{'P' 'R'})));
         ip.addOptional('crises_type','R',@(x)any(validatestring(x,{'E' 'R'})));
+        ip.addOptional('distress_threshold',0.05,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.75 'scalar'}));
     end
 
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    [file,file_sheets] = validate_file(ipr.file);
+	file = ipr.file;
     version = validate_version(ipr.version);
     date_format_base = validate_date_format(ipr.date_format_base,true);
     date_format_balance = validate_date_format(ipr.date_format_balance,false);
     shares_type = ipr.shares_type;
     crises_type = ipr.crises_type;
+    distress_threshold = ipr.distress_threshold;
+    
+    file_sheets = validate_xls(ipr.file,'D');
     
     nargoutchk(1,1);
 
-    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type);
+    ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type,distress_threshold);
 
 end
 
-function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type)
+function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,date_format_balance,shares_type,crises_type,distress_threshold)
 
     [~,file_name,file_ext] = fileparts(file);
     file_name = [file_name file_ext];
@@ -112,8 +121,8 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         returns = tab_shares{:,2:end};
     end
     
-    if (any(cellfun(@isempty,regexpi(firm_names,'^[A-Z][A-Z0-9]{0,4}$'))))
-        error(['Error in dataset ''' file_name ''': the ''Shares'' sheet contains invalid firm names (containing invalid characters, not starting with a letter and/or greater than 5 characters).']);
+    if (any(cellfun(@isempty,regexpi(firm_names,'^[A-Z][A-Z0-9]{0,11}$'))))
+        error(['Error in dataset ''' file_name ''': the ''Shares'' sheet contains invalid firm names (containing invalid characters, not starting with a letter and/or greater than 12 characters).']);
     end
 
     volumes = [];
@@ -245,12 +254,12 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     end
     
     if (isempty(prices))
-        [defaults,insolvencies] = detect_distress(returns,volumes,capitalizations,cds,equity);
+        [defaults,insolvencies] = detect_distress(distress_threshold,returns,volumes,capitalizations,cds,equity);
     else
-        [defaults,insolvencies] = detect_distress(prices,volumes,capitalizations,cds,equity);
+        [defaults,insolvencies] = detect_distress(distress_threshold,prices,volumes,capitalizations,cds,equity);
     end
     
-    dd_limit = ceil(n * 0.1);
+    dd_limit = ceil(n * 0.25);
     defaults_cnt = sum(~isnan(defaults));
     insolvencies_cnt = sum(~isnan(insolvencies));
     
@@ -415,42 +424,6 @@ function date_format = validate_date_format(date_format,base)
 
 end
 
-function [file,file_sheets] = validate_file(file)
-
-    if (exist(file,'file') == 0)
-        error(['The dataset file ''' file ''' could not be found.']);
-    end
-
-    [~,~,extension] = fileparts(file);
-
-    if (~strcmp(extension,'.xlsx'))
-        error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
-    end
-
-    if (verLessThan('MATLAB','9.7'))
-        if (ispc())
-            [file_status,file_sheets,file_format] = xlsfinfo(file);
-
-            if (isempty(file_status) || ~strcmp(file_format,'xlOpenXMLWorkbook'))
-                error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
-            end
-        else
-            [file_status,file_sheets] = xlsfinfo(file);
-
-            if (isempty(file_status))
-                error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
-            end
-        end
-    else
-        try
-            file_sheets = sheetnames(file);
-        catch
-            error(['The dataset file ''' file ''' is not a valid Excel spreadsheet.']);
-        end
-    end
-
-end
-
 function version = validate_version(version)
 
     if (~any(regexp(version,'v\d+\.\d+')))
@@ -461,69 +434,86 @@ end
 
 %% PARSING
 
+function tab = ensure_field_consistency(name,tab,index,output_type,target_type,date_format_dt)
+
+    switch (target_type)
+        
+        case 'char'
+
+            if (strcmp(output_type,'cell'))
+                if (iscell(tab{1,index}))
+                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
+                end
+
+                if (~ischar(field{1}))
+                    error(['The ''' name ''' sheet contains invalid column types.']);
+                end
+
+                tab.(tab.Properties.VariableNames{index}) = field;
+            elseif (strcmp(output_type,'char'))
+                tab.(tab.Properties.VariableNames{index}) = cellstr(tab{:,index});
+            else
+                error(['The ''' name ''' sheet contains invalid column types.']);
+            end
+        
+        case 'datetime'
+
+            if (strcmp(output_type,'cell'))
+                if (iscell(tab{1,index}))
+                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
+                end
+
+                if (ischar(field{1}))
+                    field = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),field);
+                elseif (isdatetime(field{1}))
+                    field = [field{:}].';
+                else
+                    error(['The ''' name ''' sheet contains invalid column types.']);
+                end
+
+                tab.(tab.Properties.VariableNames{index}) = field;
+            elseif (strcmp(output_type,'char'))
+                field = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),cellstr(tab{:,index}));
+                tab.(tab.Properties.VariableNames{1}) = field;
+            elseif (~strcmp(output_type,'datetime'))
+                error(['The ''' name ''' sheet contains invalid column types.']);
+            end
+            
+        case 'double'
+
+            if (strcmp(output_type,'cell'))
+                if (iscell(tab{1,index}))
+                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
+                end
+
+                if (isa(field{1},'double'))
+                    error(['The ''' name ''' sheet contains invalid column types.']);
+                end
+
+                tab.(tab.Properties.VariableNames{index}) = [field{:}].';
+            elseif (~strcmp(output_type,'double'))
+                error(['The ''' name ''' sheet contains invalid column types.']);
+            end
+            
+        otherwise
+
+            error(['Invalid target type specified: ' target_type '.']);
+            
+    end
+
+end
+
 function tab = parse_table_balance(file,file_name,index,name,date_format,dates_num,firm_names,check_negatives)
 
-    date_format_dt = date_format;
-    date_format_dt = strrep(date_format_dt,'m','M');
-    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
-
-    if (verLessThan('MATLAB','9.1'))
-        if (ispc())
-            try
-                tab_partial = readtable(file,'Sheet',index,'Basic',true);
-            catch
-                tab_partial = readtable(file,'Sheet',index);
-            end
-        else
-            tab_partial = readtable(file,'Sheet',index);
-        end
-
-        if (~all(cellfun(@isempty,regexp(tab_partial.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~strcmp(tab_partial.Properties.VariableNames(1),'Date'))
-            error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
-        end
-
-        output_vars = varfun(@class,tab_partial,'OutputFormat','cell');
-        
-        tab_partial = ensure_field_consistency(name,tab_partial,1,output_vars{1},'datetime',date_format_dt);
-        
-        for i = 2:numel(output_vars)
-            tab_partial = ensure_field_consistency(name,tab_partial,i,output_vars{i},'double',[]);
-        end
-    else
-        if (ispc())
-            options = detectImportOptions(file,'Sheet',index);
-        else
-            options = detectImportOptions(file,'Sheet',name);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~strcmp(options.VariableNames(1),'Date'))
-            error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
-        end
-
-        options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames)-1)]);
-        options = setvaropts(options,'Date','InputFormat',date_format_dt);
-
-        if (ispc())
-            try
-                tab_partial = readtable(file,options,'Basic',true);
-            catch
-                tab_partial = readtable(file,options);
-            end
-        else
-            tab_partial = readtable(file,options);
-        end
-    end
+    data_types = [{'datetime'} repmat({'double'},1,numel(firm_names))];
+    tab_partial = read_table(file,file_name,index,name,date_format,data_types);
     
-    if (any(any(ismissing(tab_partial))) || any(any(~isfinite(tab_partial{:,2:end}))))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+    if (~strcmp(tab_partial.Properties.VariableNames(1),'Date'))
+        error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
+    end
+
+    if (any(any(~isfinite(tab_partial{:,2:end}))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid values.']);
     end
 
     if (check_negatives && any(any(tab_partial{:,2:end} < 0)))
@@ -571,79 +561,11 @@ end
 
 function [tab,crises_dummy] = parse_table_crises_dates(file,file_name,index,name,date_format,dates_num)
 
-    date_format_dt = date_format;
-    date_format_dt = strrep(date_format_dt,'m','M');
-    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
+    data_types = {'datetime' 'char'};
+    tab = read_table(file,file_name,index,name,date_format,data_types);
 
-    if (verLessThan('MATLAB','9.1'))
-        if (ispc())
-            try
-                tab = readtable(file,'Sheet',index,'Basic',true);
-            catch
-                tab = readtable(file,'Sheet',index);
-            end
-        else
-            tab = readtable(file,'Sheet',index);
-        end
-        
-        if (height(tab) == 0)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
-        end
-
-        if (width(tab) ~= 2)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 2 columns.']);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~isequal(tab.Properties.VariableNames,{'Date' 'Name'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-        
-        output_vars = varfun(@class,tab,'OutputFormat','cell');
-        
-        tab = ensure_field_consistency(name,tab,1,output_vars{1},'datetime',date_format_dt);
-        tab = ensure_field_consistency(name,tab,2,output_vars{2},'string',[]);
-    else
-        if (ispc())
-            options = detectImportOptions(file,'Sheet',index);
-        else
-            options = detectImportOptions(file,'Sheet',name);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~isequal(options.VariableNames,{'Date' 'Name'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-
-        options = setvartype(options,{'datetime' 'char'});
-        
-        if (ispc())
-            try
-                tab = readtable(file,options,'Basic',true);
-            catch
-                tab = readtable(file,options);
-            end
-        else
-            tab = readtable(file,options);
-        end
-        
-        if (height(tab) == 0)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
-        end
-
-        if (width(tab) ~= 2)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 2 columns.']);
-        end
-    end
-    
-    if (any(any(ismissing(tab))))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+    if (~isequal(tab.Properties.VariableNames,{'Date' 'Name'}))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
     end
 
     dates_num_min = min(dates_num);
@@ -676,82 +598,11 @@ end
 
 function [tab,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file_name,index,name,date_format,dates_num)
 
-    date_format_dt = date_format;
-    date_format_dt = strrep(date_format_dt,'m','M');
-    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
-
-    if (verLessThan('MATLAB','9.1'))
-        if (ispc())
-            try
-                tab = readtable(file,'Sheet',index,'Basic',true);
-            catch
-                tab = readtable(file,'Sheet',index);
-            end
-        else
-            tab = readtable(file,'Sheet',index);
-        end
-        
-        if (height(tab) == 0)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
-        end
-
-        if (width(tab) ~= 3)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 3 columns.']);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~isequal(tab.Properties.VariableNames,{'Name' 'StartDate' 'EndDate'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-        
-        output_vars = varfun(@class,tab,'OutputFormat','cell');
-        
-        tab = ensure_field_consistency(name,tab,1,output_vars{1},'string',[]);
-        
-        for i = 2:3
-            tab = ensure_field_consistency(name,tab,i,output_vars{i},'datetime',date_format_dt);
-        end
-    else
-        if (ispc())
-            options = detectImportOptions(file,'Sheet',index);
-        else
-            options = detectImportOptions(file,'Sheet',name);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~isequal(options.VariableNames,{'Name' 'StartDate' 'EndDate'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-
-        options = setvartype(options,{'char' 'datetime' 'datetime'});
-        
-        if (ispc())
-            try
-                tab = readtable(file,options,'Basic',true);
-            catch
-                tab = readtable(file,options);
-            end
-        else
-            tab = readtable(file,options);
-        end
-        
-        if (height(tab) == 0)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
-        end
-
-        if (width(tab) ~= 3)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 3 columns.']);
-        end
-    end
+    data_types = {'char' 'datetime' 'datetime'};
+    tab = read_table(file,file_name,index,name,date_format,data_types);
     
-    if (any(any(ismissing(tab))))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+    if (~isequal(tab.Properties.VariableNames,{'Name' 'StartDate' 'EndDate'}))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
     end
     
     if (any(cellfun(@length,tab.Name) > 30))
@@ -790,78 +641,15 @@ end
 
 function [tab,group_counts] = parse_table_groups(file,file_name,index,name,firm_names)
 
-    if (verLessThan('MATLAB','9.1'))
-        if (ispc())
-            try
-                tab = readtable(file,'Sheet',index,'Basic',true);
-            catch
-                tab = readtable(file,'Sheet',index);
-            end
-        else
-            tab = readtable(file,'Sheet',index);
-        end
-        
-        if (height(tab) < 2)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 2 rows.']);
-        end
-        
-        if (width(tab) ~= 3)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 3 columns.']);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
+    data_types = {'char' 'char' 'double'};
+    tab = read_table(file,file_name,index,name,[],data_types);
 
-        if (~isequal(tab.Properties.VariableNames,{'Name' 'ShortName' 'Count'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-
-        output_vars = varfun(@class,tab,'OutputFormat','cell');
-        
-        for i = 1:2
-            tab = ensure_field_consistency(name,tab,i,output_vars{i},'string',[]);
-        end
-
-        tab = ensure_field_consistency(name,tab,3,output_vars{3},'double',[]);
-    else
-        if (ispc())
-            options = detectImportOptions(file,'Sheet',index);
-        else
-            options = detectImportOptions(file,'Sheet',name);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~isequal(options.VariableNames,{'Name' 'ShortName' 'Count'}))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
-        end
-
-        options = setvartype(options,{'char' 'char' 'double'});
-        
-        if (ispc())
-            try
-                tab = readtable(file,options,'Basic',true);
-            catch
-                tab = readtable(file,options);
-            end
-        else
-            tab = readtable(file,options);
-        end
-        
-        if (height(tab) < 2)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 2 rows.']);
-        end
-        
-        if (width(tab) ~= 3)
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly 3 columns.']);
-        end
+    if (~isequal(tab.Properties.VariableNames,{'Name' 'ShortName' 'Count'}))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid (wrong name) or misplaced (wrong order) columns.']);
     end
-    
-    if (any(any(ismissing(tab))) || any(~isfinite(tab{:,end})))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+
+    if (any(~isfinite(tab{:,end})))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid values.']);
     end
 
     group_counts = tab.Count;
@@ -885,67 +673,20 @@ end
 
 function tab = parse_table_standard(file,file_name,index,name,date_format,dates_num,firm_names,check_negatives)
 
-    date_format_dt = date_format;
-    date_format_dt = strrep(date_format_dt,'m','M');
-    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
-
-    if (verLessThan('MATLAB','9.1'))
-        if (ispc())
-            try
-                tab = readtable(file,'Sheet',index,'Basic',true);
-            catch
-                tab = readtable(file,'Sheet',index);
-            end
-        else
-            tab = readtable(file,'Sheet',index);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
-
-        if (~strcmp(tab.Properties.VariableNames(1),'Date'))
-            error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
-        end
-        
-        output_vars = varfun(@class,tab,'OutputFormat','cell');
-        
-        tab = ensure_field_consistency(name,tab,1,output_vars{1},'datetime',date_format_dt);
-        
-        for i = 2:numel(output_vars)
-            tab = ensure_field_consistency(name,tab,i,output_vars{i},'double',[]);
-        end
+    if (isempty(firm_names))
+        data_types = [];
     else
-        if (ispc())
-            options = detectImportOptions(file,'Sheet',index);
-        else
-            options = detectImportOptions(file,'Sheet',name);
-        end
-        
-        if (~all(cellfun(@isempty,regexp(options.VariableNames,'^Var\d+$','once'))))
-            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
-        end
+        data_types = [{'datetime'} repmat({'double'},1,numel(firm_names))];
+    end
 
-        if (~strcmp(options.VariableNames(1),'Date'))
-            error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
-        end
+    tab = read_table(file,file_name,index,name,date_format,data_types);
 
-        options = setvartype(options,[{'datetime'} repmat({'double'},1,numel(options.VariableNames) - 1)]);
-        options = setvaropts(options,'Date','InputFormat',date_format_dt);
-
-        if (ispc())
-            try
-                tab = readtable(file,options,'Basic',true);
-            catch
-                tab = readtable(file,options);
-            end
-        else
-            tab = readtable(file,options);
-        end
+    if (~strcmp(tab.Properties.VariableNames(1),'Date'))
+        error(['Error in dataset ''' file_name ''': the first column of the ''' name ''' sheet must be called ''Date'' and must contain the observation dates.']);
     end
     
-    if (any(any(ismissing(tab))) || any(any(~isfinite(tab{:,2:end}))))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid or missing values.']);
+    if (any(any(~isfinite(tab{:,2:end}))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid values.']);
     end
     
     if (check_negatives)
@@ -985,12 +726,138 @@ function tab = parse_table_standard(file,file_name,index,name,date_format,dates_
 
 end
 
+function tab = read_table(file,file_name,index,name,date_format,data_types)
+
+    date_format_dt = date_format;
+    date_format_dt = strrep(date_format_dt,'m','M');
+    date_format_dt = strrep(date_format_dt,'QQ','QQQ');
+    
+    data_types_count = numel(data_types);
+
+    if (verLessThan('MATLAB','9.1'))
+        try
+            if (ispc())
+                try
+                    tab = readtable(file,'Sheet',index,'Basic',true);
+                catch
+                    tab = readtable(file,'Sheet',index);
+                end
+            else
+                tab = readtable(file,'Sheet',index);
+            end
+        catch e
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet could not be read.' newline() e.message]);
+        end
+
+        output_vars = varfun(@class,tab,'OutputFormat','cell');
+        
+        if (data_types_count == 0)
+            data_types_count = width(tab);
+            
+            if (data_types_count > 0)
+                data_types = [{'datetime'} repmat({'double'},1,data_types_count - 1)];
+            end
+        end
+        
+        for i = 1:data_types_count
+            tab = ensure_field_consistency(name,tab,i,output_vars{i},data_types{i},date_format_dt);
+        end
+    else
+        if (ispc())
+            options = detectImportOptions(file,'Sheet',index,'NumHeaderLines',0);
+        else
+            options = detectImportOptions(file,'Sheet',name,'NumHeaderLines',0);
+        end
+        
+        if (data_types_count == 0)
+            data_types_count = numel(options.VariableNames);
+            
+            if (data_types_count > 0)
+                data_types = [{'datetime'} repmat({'double'},1,data_types_count - 1)];
+            end
+        end
+        
+        options = setvartype(options,options.VariableNames(1:data_types_count),data_types);
+
+        dt_indices = strcmp(data_types,'datetime');
+        
+        if (any(dt_indices))
+            dt_variables = options.VariableNames(dt_indices);
+            options = setvaropts(options,dt_variables,'InputFormat',date_format_dt);
+        end
+
+        try
+            if (ispc())
+                try
+                    tab = readtable(file,options,'Basic',true);
+                catch
+                    tab = readtable(file,options);
+                end
+            else
+                tab = readtable(file,options);
+            end
+        catch e
+            error(['Error in dataset ''' file_name ''': the ''' name ''' sheet could not be read.' newline() e.message]);
+        end
+    end
+    
+    h = height(tab);
+    w = width(tab);
+    
+    if (h == 0)
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain at least 1 row.']);
+    end
+
+    imr = all(ismissing(tab),2);
+    f = find(diff([false; imr; false] == 0));
+    
+    if (~isempty(f))
+        indices = f(1:2:end-1);
+        counts = f(2:2:end) - indices;
+
+        index_last = indices(end);
+        count_last = counts(end);
+        
+        if ((index_last + count_last - 1) == h)
+            tab(index_last:end,:) = [];
+        end
+    end
+    
+    isc = all(ismissing(tab),1).';
+    f = find(diff([false; isc; false] == 0));
+    
+    if (~isempty(f))
+        indices = f(1:2:end-1);
+        counts = f(2:2:end) - indices;
+
+        index_last = indices(end);
+        count_last = counts(end);
+        
+        if ((index_last + count_last - 1) == w)
+            tab(:,index_last:end) = [];
+        end
+    end
+    
+    if ((data_types_count > 1) && (width(tab) ~= data_types_count))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet must contain exactly ' num2str(data_types_count) ' columns.']);
+    end
+
+    if (~all(cellfun(@isempty,regexp(tab.Properties.VariableNames,'^Var\d+$','once'))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unnamed columns.']);
+    end
+    
+    if (any(any(ismissing(tab))))
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains missing values.']);
+    end
+
+end
+
 %% COMPUTATIONS
 
-function [defaults,insolvencies] = detect_distress(shares,volumes,capitalizations,cds,equity)
+function [defaults,insolvencies] = detect_distress(distress_threshold,shares,volumes,capitalizations,cds,equity)
 
     [t,n] = size(shares);
-    threshold = round(t * 0.05,0);
+    limit = round(t * distress_threshold,0);
     
     data = {shares volumes capitalizations cds};
     k = sum(~cellfun(@isempty,data,'UniformOutput',true));
@@ -1014,7 +881,7 @@ function [defaults,insolvencies] = detect_distress(shares,volumes,capitalization
                 index_last = indices(end);
                 count_last = counts(end);
 
-                if (((index_last + count_last - 1) == t) && (count_last >= threshold))
+                if (((index_last + count_last - 1) == t) && (count_last >= limit))
                     defaults_i(j) = index_last;
                 end
             end
@@ -1038,80 +905,11 @@ function [defaults,insolvencies] = detect_distress(shares,volumes,capitalization
                 index_last = indices(end);
                 count_last = counts(end);
 
-                if (((index_last + count_last - 1) == numel(eq)) && (count_last >= threshold))
+                if (((index_last + count_last - 1) == numel(eq)) && (count_last >= limit))
                     insolvencies(i) = index_last;
                 end
             end   
         end
-    end
-
-end
-
-function tab = ensure_field_consistency(name,tab,index,output_type,target_type,date_format_dt)
-
-    switch (target_type)
-        
-        case 'datetime'
-
-            if (strcmp(output_type,'cell'))
-                if (iscell(tab{1,index}))
-                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
-                end
-
-                if (ischar(field{1}))
-                    field = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),field);
-                elseif (isdatetime(field{1}))
-                    field = [field{:}].';
-                else
-                    error(['The ''' name ''' sheet contains invalid column types.']);
-                end
-
-                tab.(tab.Properties.VariableNames{index}) = field;
-            elseif (strcmp(output_type,'char'))
-                field = cellfun(@(x)datetime(x,'InputFormat',date_format_dt),cellstr(tab{:,index}));
-                tab.(tab.Properties.VariableNames{1}) = field;
-            elseif (~strcmp(output_type,'datetime'))
-                error(['The ''' name ''' sheet contains invalid column types.']);
-            end
-            
-        case 'double'
-
-            if (strcmp(output_type,'cell'))
-                if (iscell(tab{1,index}))
-                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
-                end
-
-                if (isa(field{1},'double'))
-                    error(['The ''' name ''' sheet contains invalid column types.']);
-                end
-
-                tab.(tab.Properties.VariableNames{index}) = [field{:}].';
-            elseif (~strcmp(output_type,'double'))
-                error(['The ''' name ''' sheet contains invalid column types.']);
-            end
-            
-        case 'string'
-
-            if (strcmp(output_type,'cell'))
-                if (iscell(tab{1,index}))
-                    field = cellfun(@(x)x,tab{:,index},'UniformOutput',false);
-                end
-
-                if (~ischar(field{1}))
-                    error(['The ''' name ''' sheet contains invalid column types.']);
-                end
-
-                tab.(tab.Properties.VariableNames{index}) = field;
-            elseif (strcmp(output_type,'char'))
-                tab.(tab.Properties.VariableNames{index}) = cellstr(tab{:,index});
-            else
-                error(['The ''' name ''' sheet contains invalid column types.']);
-            end
-            
-        otherwise
-
-            error(['Invalid target type specified: ' target_type '.']);
-            
     end
 
 end

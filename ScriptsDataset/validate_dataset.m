@@ -1,13 +1,13 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% validation_type = A string representing the type of validation to perform (optional, default='').
+% type = A string representing the type of validation to perform (optional, default='').
 
 function ds = validate_dataset(varargin)
 
-    persistent validation_types;
+    persistent types;
     
-    if (isempty(validation_types))
-        validation_types = {
+    if (isempty(types))
+        types = {
             'component' 'connectedness' 'cross-entropy' 'cross-quantilogram' ...
             'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover'
         };
@@ -18,22 +18,22 @@ function ds = validate_dataset(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addOptional('validation_type','',@(x)any(validatestring(x,validation_types)));
+        ip.addOptional('type','',@(x)any(validatestring(x,types)));
     end
 
     ip.parse(varargin{:});
 
     ipr = ip.Results;
     ds = ipr.ds;
-    validation_type = ipr.validation_type;
+    type = ipr.type;
     
     nargoutchk(1,1);
 
-    ds = validate_dataset_internal(ds,validation_type);
+    ds = validate_dataset_internal(ds,type);
 
 end
 
-function ds = validate_dataset_internal(ds,validation_type)
+function ds = validate_dataset_internal(ds,type)
 
     validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty' 'size' [1 8]});
 
@@ -119,8 +119,8 @@ function ds = validate_dataset_internal(ds,validation_type)
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
     
-    if (~isempty(validation_type))
-		measures = [upper(validation_type(1)) validation_type(2:end)];
+    if (~isempty(type))
+		measures = [upper(type(1)) type(2:end)];
 		measures_underscore = strfind(measures,'-');
 
 		if (~isempty(measures_underscore))
@@ -131,7 +131,7 @@ function ds = validate_dataset_internal(ds,validation_type)
 		supports = ['Supports' measures];
 
 		if (~ds.(supports))
-			error(['The dataset cannot be used for calculating ''' validation_type ''' measures.']);
+			error(['The dataset cannot be used for calculating ''' type ''' measures.']);
 		end
     end
     
