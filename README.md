@@ -208,7 +208,7 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
   * An `Excel` locale other than `English` may cause parsing issues. A locale switch is recommended.
   * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle properly some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
   * If the process is too slow, the best way to speed it up is to provide a standard `Excel` spreadsheet (`.xlsx`) with no filters and styles, or a binary `Excel` spreadsheet (`.xlsb`).
-  * The process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a quick debugging session should be enough to understand what's going on and fix the dataset or the code accordingly.
+  * The process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a quick debugging session should be enough to understand what's going on and fix dataset and/or accordingly. 99% of the effort has already been done here, undertaking the remaining 1% should not be a drama.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
