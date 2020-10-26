@@ -202,11 +202,13 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
 * Firms whose time series value is constantly equal to `0` in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `defaulted`. Firms whose `Equity` value is constantly negative in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain point in time onward; defaulted firms are excluded by all the measures, insolvent firms are excluded only by `SCCA` default measures.
 
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
-* Depending on `OS` (version, regional settings), `Excel` (version, regional settings) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of issues:
-  * If the parsing process is too slow, the best way to speed it up is to provide an unformatted `Excel` spreadsheet (`.xlsx`), with no filters and no styles, or a binary `Excel` spreadsheet (`.xlsb`).
-  * Both `Excel 2019` and `Excel 365` may present compatibility issues with old versions of `MATLAB`. On the top of that, the built-in function `readtable`, even in the most recent versions of the software, might not properly handle some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
-  * Many errors arising during the parsing process are caused by `Excel` language settings. Switching the `Excel` locale to `English` is the safest approach.
-  * The dataset parsing process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a quick debugging session should be enough to understand what's going on.
+
+* Depending on `OS` (version, regional settings, bitness), `Excel` (version, regional settings, bitness) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
+  * A bitness mismatch between the `OS` and `Excel` may cause parsing issues. Using the same bitness for both is recommended.
+  * An `Excel` locale other than `English` may cause parsing issues. A locale switch is recommended.
+  * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle properly some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
+  * If the process is too slow, the best way to speed it up is to provide a standard `Excel` spreadsheet (`.xlsx`) with no filters and styles, or a binary `Excel` spreadsheet (`.xlsb`).
+  * The process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a quick debugging session should be enough to understand what's going on and fix the dataset or the code accordingly.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
