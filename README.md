@@ -203,7 +203,7 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
 
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
 
-* Depending on `OS` (version, regional settings, bitness), `Excel` (version, regional settings, bitness) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
+* Depending on `OS` (version, bitness, regional settings), `Excel` (version, bitness, regional settings) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
   * A bitness mismatch between the `OS` and `Excel` may cause parsing issues. Using the same bitness for both is recommended.
   * An `Excel` locale other than `English` may cause parsing issues. A locale switch is recommended.
   * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle properly some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
