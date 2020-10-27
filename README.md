@@ -204,11 +204,11 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
 
 * Depending on `OS` (version, bitness, regional settings), `Excel` (version, bitness, regional settings) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
-  * A bitness mismatch between the `OS` and `Excel` may cause parsing issues. Using the same bitness for both is recommended.
-  * An `Excel` locale other than `English` may cause parsing issues. A locale switch is recommended.
-  * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle properly some `Excel` spreadsheets. A downgrade to `Excel 2016` is recommended.
-  * If the process is too slow, the best way to speed it up is to provide a standard `Excel` spreadsheet (`.xlsx`) with no filters and styles, or a binary `Excel` spreadsheet (`.xlsb`).
-  * The process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a quick debugging session should be enough to understand what's going on and fix dataset and/or accordingly. 99% of the effort has already been done here, undertaking the remaining 1% should not be a drama.
+  * A bitness mismatch between the `OS` and `Excel` may cause errors that are extremely difficult to detect. Using the same bitness for both is recommended.
+  * An `Excel` locale other than `English` may produce wrong outputs related to date formats, string labels and numerical values with decimals and/or thousands separators. A locale switch is recommended.
+  * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle some `Excel` spreadsheets properly. A downgrade to `Excel 2016` is recommended.
+  * If the  dataset parsing process is too slow, the best way to speed it up is to provide a standard `Excel` spreadsheet (`.xlsx`) with no filters and styles, or a binary `Excel` spreadsheet (`.xlsb`).
+  * The  dataset parsing process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a debugging session should be enough to find the underlying causes and fix the dataset and/or the code accordingly. 99% of the effort has already been done here, undertaking the remaining 1% should not be a drama.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
