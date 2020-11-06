@@ -84,8 +84,8 @@ The minimum required `MATLAB` version is `R2014b`. In addition, the following pr
 1. Create a properly structured database (see the section below).
 1. Edit the `run.m` script following your needs.
 1. Execute one of the following scripts:
-  * `run.m` to perform the computation of systemic risk measures;
-  * `analyze.m` to analyze previously computed systemic risk measures.
+   * `run.m` to perform the computation of systemic risk measures;
+   * `analyze.m` to analyze previously computed systemic risk measures.
 
 ## Dataset
 
