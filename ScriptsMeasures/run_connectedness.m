@@ -151,7 +151,7 @@ function ds = initialize(ds,bw,sst,rp,k)
 
     ds.Result = 'Connectedness';
     ds.ResultDate = now();
-    ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultAnalysis = @(ds)analyse_result(ds);
 
     ds.BW = bw;
     ds.K = k;
