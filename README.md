@@ -82,8 +82,7 @@ The minimum required `MATLAB` version is `R2014b`. In addition, the following pr
 ## Usage
 
 1. Create a properly structured database (see the section below).
-1. Edit the `run.m` script following your needs.
-1. Execute one of the following scripts:
+1. Execute one of the following scripts (they can be edited following your needs):
    * `run.m` to perform the computation of systemic risk measures;
    * `analyze.m` to analyze previously computed systemic risk measures.
 
@@ -118,51 +117,6 @@ Datasets must be built following the structure of default ones included in every
 * **Crises:** crises can be defined using two different approaches:
   * *By Events:* based on two-value tuples where the `Date` field represents the event dates and the `Name` field represents the event names; every dataset observation matching an event date is considered to be associated to a distress occurrence.
   * *By Ranges:* based on three-value tuples where the `Name` field represents the crisis names, the `Start Date` field represents the crisis start dates and the `End Date` field represents the crisis end dates; every dataset observation falling inside a crisis range is considered to be part of a distress period.
-
-## Example Datasets
-
-The `Datasets` folder includes many example datasets. The main dataset (`Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
-
-#### Benchmark Index: S&P 500
-
-#### Financial Institutions (20):
-* **Group 1: Insurance Companies (5)**
-  * American International Group Inc. (AIG)
-  * The Allstate Corp. (ALL)
-  * Berkshire Hathaway Inc. (BRK)
-  * MetLife Inc. (MET)
-  * Prudential Financial Inc. (PRU)
-* **Group 2: Investment Banks (6)**
-  * Bank of America Corp. (BAC)
-  * Citigroup Inc. (C)
-  * The Goldman Sachs Group Inc. (GS)
-  * J.P. Morgan Chase & Co. (JPM)
-  * Lehman Brothers Holdings Inc. (LEH)
-  * Morgan Stanley (MS) 
-* **Group 3: Commercial Banks (7)**
-  * American Express Co. (AXP)
-  * Bank of New York Mellon Corp. (BK)
-  * Capital One Financial Corp. (COF)
-  * PNC Financial Services Inc. (PNC)
-  * State Street Corp. (STT)
-  * US Bancorp (USB)
-  * Wells Fargo & Co. (WFC)
-* **Group 4: Government-sponsored Enterprises (2)**
-  * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
-  * Federal National Mortgage Association / Fannie Mae (FNMA)
-
-#### Risk-Free Rate: 3M Treasury Bill Rate
-
-#### State Variables (8):
-* **FFR:** the effective federal funds rate.
-* **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
-* **CREDIT_SPREAD:** the difference between the BAA corporate bond rate and the 10Y treasury bond rate.
-* **LIQUIDITY_SPREAD:** the difference between the 3M GC repo rate and the 3M treasury bill rate.
-* **TED_SPREAD:** the difference between the 3M USD LIBOR rate and the 3M treasury bill rate.
-* **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
-* **DJ_CA_EXC:** the excess returns of the DJ US Composite Average with respect to the S&P 500.
-* **DJ_RESI_EXC:** the excess returns of the DJ US Select Real Estate Securities Index with respect to the S&P 500.
-* **VIX:** the implied volatility index.
 
 #### Notes
 
@@ -213,6 +167,51 @@ The `Datasets` folder includes many example datasets. The main dataset (`Example
   * The  dataset parsing process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a debugging session should be enough to find the underlying causes and fix datasets and/or internal functions accordingly. 99.9% of the effort has already been made here, undertaking the remaining 0.01% should not be dramatic.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
+
+## Example Datasets
+
+The `Datasets` folder includes many premade datasets. The main one (`Example_Large.xlsx`), based on the US financial sector, defines the following entities and data over a period of time ranging from `2002` to `2019` (both included):
+
+#### Benchmark Index: S&P 500
+
+#### Financial Institutions (20):
+* **Group 1: Insurance Companies (5)**
+  * American International Group Inc. (AIG)
+  * The Allstate Corp. (ALL)
+  * Berkshire Hathaway Inc. (BRK)
+  * MetLife Inc. (MET)
+  * Prudential Financial Inc. (PRU)
+* **Group 2: Investment Banks (6)**
+  * Bank of America Corp. (BAC)
+  * Citigroup Inc. (C)
+  * The Goldman Sachs Group Inc. (GS)
+  * J.P. Morgan Chase & Co. (JPM)
+  * Lehman Brothers Holdings Inc. (LEH)
+  * Morgan Stanley (MS) 
+* **Group 3: Commercial Banks (7)**
+  * American Express Co. (AXP)
+  * Bank of New York Mellon Corp. (BK)
+  * Capital One Financial Corp. (COF)
+  * PNC Financial Services Inc. (PNC)
+  * State Street Corp. (STT)
+  * US Bancorp (USB)
+  * Wells Fargo & Co. (WFC)
+* **Group 4: Government-sponsored Enterprises (2)**
+  * Federal Home Loan Mortgage Corp / Freddie Mac (FMCC)
+  * Federal National Mortgage Association / Fannie Mae (FNMA)
+
+#### Risk-Free Rate: 3M Treasury Bill Rate
+
+#### State Variables (8):
+* **FFR:** the effective federal funds rate.
+* **TBILL_DELTA:** the percent change in the 3M treasury bill rate.
+* **CREDIT_SPREAD:** the difference between the BAA corporate bond rate and the 10Y treasury bond rate.
+* **LIQUIDITY_SPREAD:** the difference between the 3M GC repo rate and the 3M treasury bill rate.
+* **TED_SPREAD:** the difference between the 3M USD LIBOR rate and the 3M treasury bill rate.
+* **YIELD_SPREAD:** the difference between the 10Y treasury bond rate and the 3M treasury bond rate.
+* **DJ_CA_EXC:** the excess returns of the DJ US Composite Average with respect to the S&P 500.
+* **DJ_RESI_EXC:** the excess returns of the DJ US Select Real Estate Securities Index with respect to the S&P 500.
+* **VIX:** the implied volatility index.
 
 ## Screenshots
 
