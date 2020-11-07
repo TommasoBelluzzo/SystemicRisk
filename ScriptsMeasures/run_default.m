@@ -45,7 +45,7 @@ function [result,stopped] = run_default(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'default');
+    ds = validate_dataset(ipr.ds,'Default');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -236,14 +236,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
     end
     
     if (analyze)
-        safe_plot(@(id)plot_distances(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'D2D',id));
-        safe_plot(@(id)plot_sequence(ds,'D2C',id));
-        safe_plot(@(id)plot_dip(ds,id));
-        safe_plot(@(id)plot_scca(ds,id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA EL',id));
-        safe_plot(@(id)plot_sequence(ds,'SCCA CL',id));
-        safe_plot(@(id)plot_rankings(ds,id));
+        analyze_result(ds);
     end
     
     result = ds;
@@ -259,6 +252,10 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k)
 
     n = ds.N;
     t = ds.T;
+    
+    ds.Result = 'Default';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.A = 1 - k;
     ds.BW = bw;
@@ -386,14 +383,14 @@ function ds = finalize_1(ds,results)
     ds.Indicators(:,2) = d2c_avg;
     ds.Indicators(:,3) = d2d_por;
     ds.Indicators(:,4) = d2c_por;
-	
-	measures_len = numel(ds.LabelsMeasuresSimple);
-	measures = cell(measures_len,1);
-	
+
+    measures_len = numel(ds.LabelsMeasuresSimple);
+    measures = cell(measures_len,1);
+
     for i = 1:measures_len
         measures{i} = ds.(strrep(ds.LabelsMeasuresSimple{i},' ',''));
     end
-	
+
     [rc,rs] = kendall_rankings(measures);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
@@ -482,6 +479,19 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_distances(ds,id));
+    safe_plot(@(id)plot_sequence(ds,'D2D',id));
+    safe_plot(@(id)plot_sequence(ds,'D2C',id));
+    safe_plot(@(id)plot_dip(ds,id));
+    safe_plot(@(id)plot_scca(ds,id));
+    safe_plot(@(id)plot_sequence(ds,'SCCA EL',id));
+    safe_plot(@(id)plot_sequence(ds,'SCCA CL',id));
+    safe_plot(@(id)plot_rankings(ds,id));
+
+end
 
 function plot_distances(ds,id)
 

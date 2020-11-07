@@ -47,7 +47,7 @@ function [result,stopped] = run_cross_entropy(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'cross-entropy');
+    ds = validate_dataset(ipr.ds,'CrossEntropy');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -159,14 +159,7 @@ function [result,stopped] = run_cross_entropy_internal(ds,temp,out,bw,sel,rr,pw,
     end
 
     if (analyze)
-        if (size(ds.Portfolios,1) > 1)
-            safe_plot(@(id)plot_portfolios_coverage(ds,id));
-        end
-
-        safe_plot(@(id)plot_indicators(ds,id));
-        safe_plot(@(id)plot_dide(ds,id));
-        safe_plot(@(id)plot_sequence_dide(ds,id));
-        safe_plot(@(id)plot_sequence_cojpods(ds,id));
+        analyze_result(ds)
     end
     
     result = ds;
@@ -345,6 +338,10 @@ function ds = initialize(ds,bw,sel,rr,pw,md)
         
         pf(:,offset:end) = [];
     end
+    
+    ds.Result = 'CrossEntropy';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.BW = bw;
     ds.LGD = 1 - rr;
@@ -398,7 +395,7 @@ function window_results = main_loop(r,pods,pw,md)
         pods = sum(pods .* w,1).';
     end
 
-	[g,p] = cimdo(r,pods,md);
+    [g,p] = cimdo(r,pods,md);
 
     if (any(isnan(p)))
         window_results.JPoD = NaN;
@@ -513,7 +510,7 @@ function write_results(ds,temp,out)
         header = {'Components'};
     end
 
-	labels = ds.LabelsIndicatorsSimple;
+    labels = ds.LabelsIndicatorsSimple;
     tab = [dates_str array2table(ds.Indicators,'VariableNames',labels)];
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
 
@@ -559,6 +556,19 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    if (size(ds.Portfolios,1) > 1)
+        safe_plot(@(id)plot_portfolios_coverage(ds,id));
+    end
+
+    safe_plot(@(id)plot_indicators(ds,id));
+    safe_plot(@(id)plot_dide(ds,id));
+    safe_plot(@(id)plot_sequence_dide(ds,id));
+    safe_plot(@(id)plot_sequence_cojpods(ds,id));
+
+end
 
 function plot_portfolios_coverage(ds,id)
 
@@ -762,9 +772,9 @@ function plot_sequence_dide(ds,id)
     ts_sv = ds.SV;
 
     data = [repmat({dn},1,nc); mat2cell(ts_si,t,ones(1,nc)); mat2cell(ts_sv,t,ones(1,nc))];
-    
+
     sequence_titles = ds.PortfolioComponents;
-	
+
 	plots_title = [repmat(ds.LabelsMeasures(1),1,nc); repmat(ds.LabelsMeasures(2),1,nc)];
 
     x_limits = [dn(1) dn(end)];
@@ -854,8 +864,8 @@ function plot_sequence_cojpods(ds,id)
     plots_title = repmat(ds.LabelsMeasures(3),1,nc);
     
     x_limits = [dn(1) dn(end)];
-	y_limits = plot_limits(ts,0.1,0);
-    
+    y_limits = plot_limits(ts,0.1,0);
+
     y_tick_labels = @(x)sprintf('%.2f%%',x .* 100);
 
     core = struct();

@@ -35,7 +35,7 @@ function [result,stopped] = run_component(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'component');
+    ds = validate_dataset(ipr.ds,'Component');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -145,9 +145,7 @@ function [result,stopped] = run_component_internal(ds,temp,out,bw,k,g,u,f,q,anal
     end
 
     if (analyze)
-        safe_plot(@(id)plot_catfin(ds,id));
-        safe_plot(@(id)plot_indicators_other(ds,id));
-        safe_plot(@(id)plot_pca(ds,id));
+        analyze_result(ds);
     end
     
     result = ds;
@@ -164,6 +162,10 @@ function ds = initialize(ds,bw,k,g,u,f,q)
     r = ds.Returns;
     rw = 1 ./ (repmat(n,t,1) - sum(isnan(r),2));
     rp = sum(r .* repmat(rw,1,n),2,'omitnan');
+    
+    ds.Result = 'Component';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.A = 1 - k;
     ds.BW = bw;
@@ -341,6 +343,14 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_catfin(ds,id));
+    safe_plot(@(id)plot_indicators_other(ds,id));
+    safe_plot(@(id)plot_pca(ds,id));
+
+end
 
 function plot_catfin(ds,id)
 

@@ -403,7 +403,7 @@ end
 
 function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep_s,indep_ns,k,finit,tmm,fnlcon)
     
-	dep = dep(:);
+    dep = dep(:);
     t = numel(dep);
 
     if (~isempty(indep_s))

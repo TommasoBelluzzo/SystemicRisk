@@ -41,7 +41,7 @@ function [result,stopped] = run_liquidity(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'cross-sectional');
+    ds = validate_dataset(ipr.ds,'Liquidity');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [bwl,bwm,bws] = validate_bandwidths(ipr.bwl,ipr.bwm,ipr.bws);
@@ -177,12 +177,7 @@ function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w
     end
     
     if (analyze)
-        safe_plot(@(id)plot_averages(ds,id));
-        safe_plot(@(id)plot_sequence_other(ds,'HHLR',id));
-        safe_plot(@(id)plot_sequence_illiq(ds,id));
-        safe_plot(@(id)plot_sequence_other(ds,'RIS',id));
-        safe_plot(@(id)plot_sequence_other(ds,'TR',id));
-        safe_plot(@(id)plot_sequence_other(ds,'VR',id));
+        analyze_result(ds);
     end
     
     result = ds;
@@ -195,6 +190,10 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
 
     n = ds.N;
     t = ds.T;
+    
+    ds.Result = 'Liquidity';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.CI = ~isempty(ds.StateVariables);
     ds.BWL = bwl;
@@ -342,6 +341,17 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_averages(ds,id));
+    safe_plot(@(id)plot_sequence_other(ds,'HHLR',id));
+    safe_plot(@(id)plot_sequence_illiq(ds,id));
+    safe_plot(@(id)plot_sequence_other(ds,'RIS',id));
+    safe_plot(@(id)plot_sequence_other(ds,'TR',id));
+    safe_plot(@(id)plot_sequence_other(ds,'VR',id));
+
+end
 
 function plot_averages(ds,id)
 

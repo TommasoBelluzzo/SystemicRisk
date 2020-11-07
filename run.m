@@ -1,88 +1,14 @@
-%% VERSION CHECK
-
-if (verLessThan('MATLAB','8.4'))
-    error('The minimum required Matlab version is R2014b.');
-end
-
-%% CLEANUP
-
-warning('off','all');
-warning('on','MATLAB:SystemicRisk');
-
-close('all');
-clearvars();
-clc();
-delete(allchild(0));
-delete(gcp('nocreate'));
-
 %% INITIALIZATION
 
-pdprofile = parallel.defaultClusterProfile;
-pcluster = parcluster(pdprofile);
-delete(pcluster.Jobs);
+up = true;
+initialize;
 
-parpool(pcluster,'SpmdEnabled',false);
-pctRunOnAll warning('off','all');
-pctRunOnAll warning('on','MATLAB:SystemicRisk');
-
-[path_base,~,~] = fileparts(mfilename('fullpath'));
-
-if (~strcmpi(path_base(end),filesep()))
-    path_base = [path_base filesep()];
+if ((exist('ds_version','var') == 0) || (exist('path_base','var') == 0))
+    error('The initialization process failed.');
 end
-
-if (~isempty(regexpi(path_base,'Editor')))
-    path_base_fs = dir(path_base);
-    is_live = ~all(cellfun(@isempty,regexpi({path_base_fs.name},'LiveEditorEvaluationHelper')));
-
-    if (is_live)
-        pwd_current = pwd();
-
-        if (~strcmpi(pwd_current(end),filesep()))
-            pwd_current = [pwd_current filesep()];
-        end
-        
-        while (true) 
-            answer = inputdlg('The script is being executed in live mode. Please, confirm or change its root folder:','Manual Input Required',1,{pwd_current});
-    
-            if (isempty(answer))
-                return;
-            end
-            
-            path_base_new = answer{:};
-
-            if (isempty(path_base_new) || strcmp(path_base_new,path_base) || strcmp(path_base_new(1:end-1),path_base) || ~exist(path_base_new,'dir'))
-               continue;
-            end
-            
-            path_base = path_base_new;
-            
-            break;
-        end
-    end
-end
-
-if (~strcmpi(path_base(end),filesep()))
-    path_base = [path_base filesep()];
-end
-
-paths_base = genpath(path_base);
-paths_base = strsplit(paths_base,';');
-
-for i = numel(paths_base):-1:1
-    path_current = paths_base{i};
-
-    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'])))
-        paths_base(i) = [];
-    end
-end
-
-paths_base = [strjoin(paths_base,';') ';'];
-addpath(paths_base);
 
 %% DATASET PARSING
 
-ds_version = 'v3.1';
 ds_process = false;
 
 file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
@@ -123,6 +49,8 @@ end
 %% EXECUTION
 
 bw = 252;
+comparison_co = bw + 1;
+comparison_analyze = true;
 
 measures_setup = {
 %   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
@@ -137,6 +65,12 @@ measures_setup = {
     'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);
 };
 
+enabled_all = [measures_setup{:,2}];
+    
+if (~any(enabled_all))
+    warning('MATLAB:SystemicRisk','The computation of systemic risk measures cannot be performed because all the functions are disabled.');
+end
+
 ml = repmat({''},1,100);
 md = NaN(ds.T,100);
 moff = 1;
@@ -149,6 +83,7 @@ for i = 1:size(measures_setup,1)
     end
     
     if (~ds.(['Supports' category]))
+	    enabled_all(i) = false;
         continue;
     end
 
@@ -192,25 +127,23 @@ ml(moff:end) = [];
 md(:,moff:end) = [];
 
 if (numel(ml) <= 1)
-    enabled_all = [measures_setup{:,2}];
-    
-    if (any(enabled_all))
-        compare_all = [measures_setup{:,4}];
-        compare_all = compare_all(enabled_all);
-        
-        if (any(compare_all))
-            warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
-        end
+    compare_all = [measures_setup{:,4}];
+
+    if (any(enabled_all) && any(compare_all(enabled_all)))
+        warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
     end
 else
     pause(2);
     
     temp = fullfile(path_base,['Templates' filesep() 'TemplateComparison.xlsx']);
     out = fullfile(path_base,['Results' filesep() 'ResultsComparison.xlsx']);
-    co = bw + 1;
-    analyze = true;
 
-    result_comparison = run_comparison(ds,temp,out,ml,md,co,[],21,'AIC',0.01,false,'GG',analyze);
+    result_comparison = run_comparison(ds,temp,out,ml,md,comparison_co,[],21,'AIC',0.01,false,4,'GG',comparison_analyze);
+    
+    mat = fullfile(path_base,['Results' filesep() 'ResultsComparison.mat']);
+    save(mat,'result_comparison');
 end
+
+%% CLEANUP
 
 clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');

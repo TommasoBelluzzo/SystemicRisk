@@ -1,15 +1,15 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% type = A string representing the type of validation to perform (optional, default='').
+% category = A string representing the type of validation to perform (optional, default='').
 
 function ds = validate_dataset(varargin)
 
-    persistent types;
+    persistent categories;
     
-    if (isempty(types))
-        types = {
-            'component' 'connectedness' 'cross-entropy' 'cross-quantilogram' ...
-            'cross-sectional' 'default' 'liquidity' 'regime-switching' 'spillover'
+    if (isempty(categories))
+        categories = {
+            'Comparison' 'Component' 'Connectedness' 'CrossEntropy' 'CrossQuantilogram' ...
+            'CrossSectional' 'Default' 'Liquidity' 'RegimeSwitching' 'Spillover'
         };
     end
     
@@ -18,27 +18,54 @@ function ds = validate_dataset(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
-        ip.addOptional('type','',@(x)any(validatestring(x,types)));
+        ip.addOptional('category','',@(x)any(validatestring(x,categories)));
     end
 
     ip.parse(varargin{:});
 
     ipr = ip.Results;
     ds = ipr.ds;
-    type = ipr.type;
+    category = ipr.category;
     
     nargoutchk(1,1);
 
-    ds = validate_dataset_internal(ds,type);
+    ds = validate_dataset_internal(ds,category,categories);
 
 end
 
-function ds = validate_dataset_internal(ds,type)
-
-    validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty' 'size' [1 8]});
+function ds = validate_dataset_internal(ds,category,categories)
 
     validate_field(ds,'File',{'char'},{'nonempty' 'size' [1 NaN]});
     validate_field(ds,'Version',{'char'},{'nonempty' 'size' [1 NaN]});
+    creation_date = validate_field(ds,'CreationDate',{'double'},{'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
+    
+    result = validate_field(ds,'Result',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
+    result_date = validate_field(ds,'ResultDate',{'double'},{'optional' 'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
+    result_analysis = validate_field(ds,'ResultAnalysis',{'function_handle'},{'optional' 'scalar'});
+    
+    if (isempty(result))
+        if (~isempty(result_date))
+            error(['The dataset field ''ResultDate'' is invalid.' newline() 'Expected value to be empty.']);
+        end
+
+        if (~isempty(result_analysis))
+            error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be empty.']);
+        end
+    else
+        if (~ismember(result,categories))
+            error(['The dataset field ''Result'' is invalid.' newline() 'Expected value to be a string containing a valid result category.']);
+        end
+        
+        if (isempty(result_date) || (result_date < creation_date))
+            error(['The dataset field ''ResultDate'' is invalid.' newline() 'Expected value to be a numeric date greater than or equal to ' datestr(creation_date,'dd/mm/yyyy') '.']);
+        end
+        
+        if (isempty(result_analysis))
+            error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be a function handle.']);
+        end
+    end
+
+    validate_field(ds,'TimeSeries',{'cellstr'},{'nonempty' 'size' [1 8]});
 
     n = validate_field(ds,'N',{'double'},{'real' 'finite' 'integer' '>=' 3 'scalar'});
     t = validate_field(ds,'T',{'double'},{'real' 'finite' 'integer' '>=' 252 'scalar'});
@@ -84,7 +111,7 @@ function ds = validate_dataset_internal(ds,type)
     crises_type = validate_field(ds,'CrisesType',{'char'},{'nonempty' 'size' [1 1]});
     
     if (~strcmp(crises_type,'E') && ~strcmp(crises_type,'R'))
-        error(['The dataset field ''crises_type'' is invalid.' newline() 'Expected value to be either ''E'' or ''R''.']);
+        error(['The dataset field ''CrisesType'' is invalid.' newline() 'Expected value to be either ''E'' or ''R''.']);
     end
     
     if (crises == 0)
@@ -111,7 +138,7 @@ function ds = validate_dataset_internal(ds,type)
 
     validate_field(ds,'SupportsComponent',{'logical'},{'scalar'});
     validate_field(ds,'SupportsConnectedness',{'logical'},{'scalar'});
-	validate_field(ds,'SupportsCrossEntropy',{'logical'},{'scalar'});
+    validate_field(ds,'SupportsCrossEntropy',{'logical'},{'scalar'});
     validate_field(ds,'SupportsCrossSectional',{'logical'},{'scalar'});
     validate_field(ds,'SupportsDefault',{'logical'},{'scalar'});
     validate_field(ds,'SupportsLiquidity',{'logical'},{'scalar'});
@@ -119,20 +146,26 @@ function ds = validate_dataset_internal(ds,type)
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
     
-    if (~isempty(type))
-		measures = [upper(type(1)) type(2:end)];
-		measures_underscore = strfind(measures,'-');
+    if (~isempty(category) && ~strcmp(category,'Comparison'))
+        supports = ['Supports' category];
 
-		if (~isempty(measures_underscore))
-			measures(measures_underscore) = [];
-			measures(measures_underscore) = upper(measures(measures_underscore));
-		end
+        if (~ds.(supports))
+            category_e = category;
+            indices = find(isstrprop(category,'upper'));
 
-		supports = ['Supports' measures];
+            for i = 1:numel(indices)
+                index = indices(i);
 
-		if (~ds.(supports))
-			error(['The dataset cannot be used for calculating ''' type ''' measures.']);
-		end
+                if (index == 1)
+                    category_e(i) = lower(category(index));
+                else
+                    category_e = [category_e(1:index-1) '-' lower(category_e(index)) category_e(index+1:end)];
+                    indices(i+1:end) = indices(i+1:end) + 1;
+                end
+            end
+            
+            error(['The dataset cannot be used for calculating ''' category_e ''' measures.']);
+        end
     end
     
 end

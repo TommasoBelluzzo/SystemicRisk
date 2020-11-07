@@ -33,7 +33,7 @@ function [result,stopped] = run_cross_sectional(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'cross-sectional');
+    ds = validate_dataset(ipr.ds,'CrossSectional');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     k = ipr.k;
@@ -158,19 +158,7 @@ function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,
     end
     
     if (analyze)
-        safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
-        safe_plot(@(id)plot_sequence_other(ds,'Beta',id));
-        safe_plot(@(id)plot_sequence_other(ds,'VaR',id));
-        safe_plot(@(id)plot_sequence_other(ds,'ES',id));
-        safe_plot(@(id)plot_systemic_averages(ds,id));
-        safe_plot(@(id)plot_sequence_caviar(ds,id));
-        safe_plot(@(id)plot_sequence_other(ds,'CoVaR',id));
-        safe_plot(@(id)plot_sequence_other(ds,'Delta CoVaR',id));
-        safe_plot(@(id)plot_sequence_other(ds,'MES',id));
-        safe_plot(@(id)plot_sequence_other(ds,'SES',id));
-        safe_plot(@(id)plot_sequence_other(ds,'SRISK',id));
-        safe_plot(@(id)plot_correlations(ds,id));
-        safe_plot(@(id)plot_rankings(ds,id));
+        analyze_result(ds);
     end
     
     result = ds;
@@ -195,6 +183,10 @@ function ds = initialize(ds,k,d,car,sf,fr)
 
     n = ds.N;
     t = ds.T;
+    
+    ds.Result = 'CrossSectional';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.A = 1 - k;
     ds.CAR = car;
@@ -256,13 +248,13 @@ function ds = finalize(ds)
     srisk_avg = sum(ds.SRISK .* weights,2,'omitnan');
     ds.Averages = [beta_avg var_avg es_avg caviar_avg covar_avg dcovar_avg mes_avg ses_avg srisk_avg];
 
-	measures_len = numel(ds.LabelsMeasuresSimple);
-	measures = cell(measures_len,1);
+    measures_len = numel(ds.LabelsMeasuresSimple);
+    measures = cell(measures_len,1);
 
     for i = 1:measures_len
         measures{i} = ds.(strrep(ds.LabelsMeasuresSimple{i},' ',''));
     end
-	
+
     [rc,rs] = kendall_rankings(measures);
     ds.RankingConcordance = rc;
     ds.RankingStability = rs;
@@ -333,6 +325,24 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
+    safe_plot(@(id)plot_sequence_other(ds,'Beta',id));
+    safe_plot(@(id)plot_sequence_other(ds,'VaR',id));
+    safe_plot(@(id)plot_sequence_other(ds,'ES',id));
+    safe_plot(@(id)plot_systemic_averages(ds,id));
+    safe_plot(@(id)plot_sequence_caviar(ds,id));
+    safe_plot(@(id)plot_sequence_other(ds,'CoVaR',id));
+    safe_plot(@(id)plot_sequence_other(ds,'Delta CoVaR',id));
+    safe_plot(@(id)plot_sequence_other(ds,'MES',id));
+    safe_plot(@(id)plot_sequence_other(ds,'SES',id));
+    safe_plot(@(id)plot_sequence_other(ds,'SRISK',id));
+    safe_plot(@(id)plot_correlations(ds,id));
+    safe_plot(@(id)plot_rankings(ds,id));
+
+end
 
 function [ax,big_ax] = gplotmatrix_stable(f,x,labels)
 

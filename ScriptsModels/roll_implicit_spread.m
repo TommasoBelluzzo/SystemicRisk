@@ -54,7 +54,7 @@ function ris = roll_implicit_spread_internal(p,bw,w,c,s2)
     end
 
     alpha = 2 / (bw + 1);
-	
+
     ris = [ris(1); filter(alpha,[1 (alpha - 1)],ris(2:end),(1 - alpha) * ris(1))];
 
 end

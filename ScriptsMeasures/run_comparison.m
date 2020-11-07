@@ -5,7 +5,7 @@
 % ml = A cell array of strings representing the measures labels.
 % md = A float t-by-n matrix containing the measures time series.
 % co = An integer representing the comparison cut-off, a limit before which all the observations are discarded (optional, default=1).
-% sc = Optional argument specified as a vector of floats [0,Inf) of length 3 representing the score coefficient of each comparison model (Granger-causality, Logistic, Price Discovery).
+% sc = Optional argument specified as a vector of floats [0,Inf) of length 4 representing the score coefficient of each comparison model (Granger-causality, Logistic, Predictive Power Score, Price Discovery).
 %      When defined, comparison models with a coefficient equal to 0 are not computed. When left undefined, all the comparison models are computed and their scores are equally weighted.  
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for Granger-causality and Price Discovery models (optional, default=10).
 % lag_sel = A string representing the lag order selection criteria for Granger-causality and Price Discovery models (optional, default='AIC'):
@@ -15,6 +15,7 @@
 %   - 'HQIC' for Hannan-Quinn Information Criterion.
 % gca = A float [0.01,0.10] representing the probability level of the F test critical value for the Granger-causality model (optional, default=0.01).
 % lma = A boolean that indicates whether to use the adjusted McFadden R2 for the Logistic model (optional, default=false).
+% ppsk = An integer [2,10] representing the number of cross-validation folds to use in the Predictive Power Score model (optional, default=4).
 % pdt = A string representing the type of metric to calculate for the Price Discovery model (optional, default='GG'):
 %   - 'GG' for Gonzalo-Granger Component Metric.
 %   - 'H' for Hasbrouck Information Metric.
@@ -41,6 +42,7 @@ function [result,stopped] = run_comparison(varargin)
         ip.addOptional('lag_sel','AIC',@(x)any(validatestring(x,{'AIC' 'BIC' 'FPE' 'HQIC'})));
         ip.addOptional('gca',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
         ip.addOptional('lma',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('ppsk',4,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 '<=' 10 'scalar'}));
         ip.addOptional('pdt','GG',@(x)any(validatestring(x,{'GG' 'H'})));
         ip.addOptional('analyze',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
@@ -48,7 +50,7 @@ function [result,stopped] = run_comparison(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds);
+    ds = validate_dataset(ipr.ds,'Comparison');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [ml,md,co] = validate_measures(ipr.ml,ipr.md,ipr.co);
@@ -57,22 +59,23 @@ function [result,stopped] = run_comparison(varargin)
     lag_sel = ipr.lag_sel;
     gca = ipr.gca;
     lma = ipr.lma;
+    ppsk = ipr.ppsk;
     pdt = ipr.pdt;
     analyze = ipr.analyze;
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt,analyze);
+    [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze);
 
 end
 
-function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt,analyze)
+function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt);
+    ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt);
     k = numel(ds.SM);
 
     bar = waitbar(0,'Initializing measures comparison...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
@@ -140,15 +143,7 @@ function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_
     end
     
     if (analyze)
-        safe_plot(@(id)plot_measures(ds,id));
-        
-        for i = 1:k
-            eval(['safe_plot(@(id)plot_scores_' lower(ds.SM{i}) '(ds,id));']);
-        end
-        
-        if (k > 1)
-            safe_plot(@(id)plot_scores_overall(ds,id));
-        end
+        analyze_result(ds);
     end
     
     result = ds;
@@ -157,7 +152,7 @@ end
 
 %% DATA
 
-function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt)
+function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
 
     cd = ds.CrisesDummy;
     
@@ -169,6 +164,10 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt)
 
     md = (md - repmat(mean(md,1),mt,1)) ./ repmat(std(md,1),mt,1);
     md(isnan(md)) = 0;
+    
+    ds.Result = 'Comparison';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.MN = mn;
     ds.MT = mt;
@@ -182,7 +181,7 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt)
     end
 
     ds.SC = sc;
-    ds.SM = {'GC' 'LM' 'PD'};
+    ds.SM = {'GC' 'LM' 'PPS' 'PD'};
 
     ds.CO = co;
     ds.LagMax = lag_max;
@@ -204,6 +203,16 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,pdt)
         ds.LMA = lma;
         ds.LMData = NaN(1,mn);
         ds.LMScores = NaN(1,mn);
+        off = off + 1;
+    else
+        ds.SC(off) = [];
+        ds.SM(off) = [];
+    end
+    
+    if ((ds.SC(off) > 0) && ~isempty(ds.MDummy))
+        ds.PPSK = ppsk;
+        ds.PPSData = NaN(1,mn);
+        ds.PPSScores = NaN(1,mn);
         off = off + 1;
     else
         ds.SC(off) = [];
@@ -286,16 +295,16 @@ end
 function sc = validate_sc(sc)
 
     if (isempty(sc))
-        sc = ones(1,3);
+        sc = ones(1,4);
     else
-        if (numel(sc) ~= 3)
-            error('The ''sc'' parameter, when specified as a vector of floats, must contain exactly 3 values.');
+        if (numel(sc) ~= 4)
+            error('The ''sc'' parameter, when specified as a vector of floats, must contain exactly 4 elements.');
         end
         
         sc_sum = sum(sc);
         
         if (sc_sum == 0)
-            error('The ''sc'' parameter, when specified as a vector of floats, must contain at least one positive value.');
+            error('The ''sc'' parameter, when specified as a vector of floats, must contain at least one positive element.');
         end
     end
 
@@ -436,7 +445,7 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
     y = ds.MDummy;
     a = zeros(mt,1);
 
-	mfr2 = zeros(1,mn);
+    mfr2 = zeros(1,mn);
     scores = zeros(1,mn);
 
     parfor i = 1:mn
@@ -482,6 +491,74 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
 
     ds.LMData = mfr2;
     ds.LMScores = scores;
+
+end
+
+function ds = perform_comparison_pps(ds) %#ok<DEFNU>
+
+    m = ds.MData;
+    mn = size(m,2);
+    
+    ppsk = ds.PPSK;
+    y = ds.MDummy;
+
+    pps = zeros(1,mn);
+    scores = zeros(1,mn);
+
+    parfor i = 1:mn
+        x = m(:,i);
+        ts = [x y];
+
+        if (size(ts,1) > 5000)
+            ts = datasample(ts,5000,'Replace',false);
+        end
+
+        ts = ts(randperm(size(ts,1)),:);
+
+        weight = 1 / size(ts,1);
+        feature = ts(:,1);
+        target = ts(:,2);
+        
+        baseline_loss = sum(weight .* (target - median(target)).^2);
+        
+        cvm = fitrtree(feature,target,'CrossVal','on','KFold',ppsk);
+        loss = abs(kfoldLoss(cvm,'Mode','average','LossFun','mse'));
+
+        if (loss > baseline_loss)
+            pps(i) = 0;
+        else
+            pps(i) = 1 - (loss / baseline_loss);
+        end
+    end
+
+    for i = 1:mn
+        a = pps(i);
+
+        for j = 1:mn
+            if (i == j)
+                continue;
+            end
+
+            b = pps(j);
+
+            tol = 1e4 * eps(min(abs([a b])));
+
+            if (a > (b + tol))
+                scores(i) = scores(i) + 1;
+                scores(j) = scores(j) - 1;
+            elseif (b > (a + tol))
+                scores(i) = scores(i) - 1;
+                scores(j) = scores(j) + 1;
+            end
+        end
+    end
+    
+    if (~all(scores == 0))
+        scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
+    end
+
+    ds.PPSData = pps;
+    ds.PPSScores = scores;
 
 end
 
@@ -536,6 +613,22 @@ function ds = perform_comparison_pd(ds) %#ok<DEFNU>
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    k = numel(ds.SM);
+
+    safe_plot(@(id)plot_measures(ds,id));
+
+    for i = 1:k
+        eval(['safe_plot(@(id)plot_scores_' lower(ds.SM{i}) '(ds,id));']);
+    end
+
+    if (k > 1)
+        safe_plot(@(id)plot_scores_overall(ds,id));
+    end
+
+end
 
 function plot_measures(ds,id)
 
@@ -750,6 +843,48 @@ function plot_scores_lm(ds,id) %#ok<DEFNU>
 
         index = get(evtd,'DataIndex');
         tooltip = sprintf('MFR2: %.4f',mfr2(index));
+
+    end
+
+end
+
+function plot_scores_pps(ds,id) %#ok<DEFNU>
+
+    mn = ds.MN;
+    seq = 1:mn;
+
+    [scores,order] = sort(ds.PPSScores);
+    labels = ds.MLabels(order);
+    pps = ds.PPSData(order);
+
+    f = figure('Name','Measures Comparison > Predictive Power Score Model','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+
+    b = bar(seq,scores,'FaceColor',[0.749 0.862 0.933]);
+    t = title('Scores');
+    set(t,'Units','normalized');
+    t_position = get(t,'Position');
+    set(t,'Position',[0.4783 t_position(2) t_position(3)]);
+    
+    ax = gca();
+    set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
+    set(ax,'YGrid','on','YLim',[0 100]);
+
+    figure_title(['Predictive Power Score Model (K=' num2str(ds.PPSK) ')']);
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
+
+    drawnow();
+
+    dcm = datacursormode(f);
+    set(dcm,'Enable','on','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,pps));
+    createDatatip(dcm,b,[1 1]);
+
+    function tooltip = create_tooltip(~,evtd,mfr2)
+
+        index = get(evtd,'DataIndex');
+        tooltip = sprintf('PPS: %.4f',mfr2(index));
 
     end
 

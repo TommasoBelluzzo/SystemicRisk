@@ -77,7 +77,7 @@ function cc = concordance_coefficient(rank_1,rank_2)
 
     for i = 1:f
         x_i = m(:,i);
-        [~,b] = sortrows(x_i,'ascend');
+        [~,b] = sort(x_i);
         rm(b,i) = 1:g;
     end
 

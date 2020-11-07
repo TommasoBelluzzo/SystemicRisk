@@ -32,7 +32,7 @@ function ds = parse_dataset(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-	file = ipr.file;
+    file = ipr.file;
     version = validate_version(ipr.version);
     date_format_base = validate_date_format(ipr.date_format_base,true);
     date_format_balance = validate_date_format(ipr.date_format_balance,false);
@@ -297,35 +297,40 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         supports_cross_entropy = true;
     else
         supports_cross_entropy = false;
-        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the computation of cross-entropy measures (the ''CDS'' sheet must be included).']);
+        file_name_w = strrep(file_name,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name_w ''' does not meet all the requirements for the computation of cross-entropy measures (the ''CDS'' sheet must be included).']);
     end
 
     if (includes_capitalizations && includes_balance_sheet)
         supports_cross_sectional = true;
     else
         supports_cross_sectional = false;
-        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the computation of cross-sectional measures (''Assets'', ''Capitalizations'' and ''Equity'' sheets must be included).']);
+        file_name_w = strrep(file_name,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name_w ''' does not meet all the requirements for the computation of cross-sectional measures (''Assets'', ''Capitalizations'' and ''Equity'' sheets must be included).']);
     end
     
     if (includes_capitalizations && includes_cds && includes_balance_sheet)
         supports_default = true;
     else
         supports_default = false;
-        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the computation of default measures (''Assets'', ''Capitalizations'', ''CDS'' and ''Equity'' sheets must be included).']);
+        file_name_w = strrep(file_name,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name_w ''' does not meet all the requirements for the computation of default measures (''Assets'', ''Capitalizations'', ''CDS'' and ''Equity'' sheets must be included).']);
     end
     
     if (using_prices && includes_volumes && includes_capitalizations)
         supports_liquidity = true;
     else
         supports_liquidity = false;
-        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the computation of liquidity measures (''Shares'' must be expressed as prices, ''Capitalizations'' and ''Volumes'' sheets must be included).']);
+        file_name_w = strrep(file_name,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name_w ''' does not meet all the requirements for the computation of liquidity measures (''Shares'' must be expressed as prices, ''Capitalizations'' and ''Volumes'' sheets must be included).']);
     end
     
     if (includes_crises)
         supports_comparison = true;
     else
         supports_comparison = false;
-        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the comparison of systemic risk measures (the ''Crises'' sheet must be included).']);
+        file_name_w = strrep(file_name,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name_w ''' does not meet all the requirements for the comparison of systemic risk measures (the ''Crises'' sheet must be included).']);
     end
 
     returns = distress_data(returns,defaults);
@@ -342,6 +347,12 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
 
     ds.File = file;
     ds.Version = version;
+    ds.CreationDate = now();
+
+    ds.Result = [];
+    ds.ResultDate = [];
+    ds.ResultAnalysis = [];
+    
     ds.TimeSeries = {'Assets' 'Capitalizations' 'CDS' 'Equity' 'Liabilities' 'Returns' 'SeparateAccounts' 'Volumes'};
     
     ds.N = n;

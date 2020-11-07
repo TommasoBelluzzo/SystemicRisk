@@ -77,7 +77,7 @@ function [caviar,beta,ir_fm,ir_mf,se,stats] = bivariate_caviar_internal(r,a,cir,
 
             parfor i = 1:2
                 r_i = r(:,i);
-                rhs_i = sortrows(r_i(1:100),1,'ascend');
+                rhs_i = sort(r_i(1:100));
                 q_i = rhs_i(qo);
 
                 c(:,i) = univariate_model(r_i,q_i,a,um_beta0,options);
@@ -98,7 +98,7 @@ function [caviar,beta,ir_fm,ir_mf,se,stats] = bivariate_caviar_internal(r,a,cir,
 
             for i = 1:2
                 r_i = r(:,i);
-                rhs_i = sortrows(r_i(1:100),1,'ascend');
+                rhs_i = sort(r_i(1:100));
                 q_i = rhs_i(qo);
 
                 c(:,i) = univariate_model(r_i,q_i,a,um_beta0);
@@ -273,7 +273,7 @@ function [vc,se,stats] = standard_errors(r,a,beta,caviar)
     v = v / t; 
     vc = (q \ v / q) / t;
 
-	r = [zeros(4,3), [e2; zeros(2)], zeros(4,2), [zeros(2); e2], zeros(4,1)];
+    r = [zeros(4,3), [e2; zeros(2)], zeros(4,2), [zeros(2); e2], zeros(4,1)];
     cv = ((r * beta).' / (r * vc * r.')) * (r * beta);
     pval = 1 - chi2cdf(cv,4);
     
@@ -293,6 +293,7 @@ function beta = univariate_model(r,q,a,beta0,options)
     
     m = [rq0 beta0];
     ms = sortrows(m,1);
+
     beta1  = ms(1,2:end).';
     beta2 = fminsearch(@(x)univariate_model_objective(x,r,a,q),beta1,options);
     beta = fminsearch(@(x)univariate_model_objective(x,r,a,q),beta2,options);

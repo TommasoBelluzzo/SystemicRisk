@@ -29,7 +29,7 @@ function [result,stopped] = run_regime_switching(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'regime-switching');
+    ds = validate_dataset(ipr.ds,'RegimeSwitching');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [rs2,rs3,rs4] = validate_booleans(ipr.rs2,ipr.rs3,ipr.rs4);
@@ -165,20 +165,7 @@ function [result,stopped] = run_regime_switching_internal(ds,temp,out,rs2,rs3,rs
     end
     
     if (analyze)
-        if (ds.RS2)
-            safe_plot(@(id)plot_indicators(ds,'RS2',id));
-            safe_plot(@(id)plot_sequence(ds,'RS2',id));
-        end
-        
-        if (ds.RS3)
-            safe_plot(@(id)plot_indicators(ds,'RS3',id));
-            safe_plot(@(id)plot_sequence(ds,'RS3',id));
-        end
-        
-        if (ds.RS4)
-            safe_plot(@(id)plot_indicators(ds,'RS4',id));
-            safe_plot(@(id)plot_sequence(ds,'RS4',id));
-        end
+        analyze_result(ds);
     end
 
     result = ds;
@@ -197,6 +184,10 @@ function ds = initialize(ds,rs2,rs3,rs4)
     rs_seq = arrayfun(@(x)sprintf('RS%d-',x),rs_seq(rs),'UniformOutput',false);
     
     m = sum(rs);
+    
+    ds.Result = 'RegimeSwitching';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
     
     ds.RS2 = rs2;
     ds.RS3 = rs3;
@@ -523,6 +514,25 @@ function [mu_params,s2_params,p,sprob,dur,cmu,cs2,e] = regime_switching_4(r)
 end
 
 %% PLOTTING
+
+function analyze_result(ds)
+
+    if (ds.RS2)
+        safe_plot(@(id)plot_indicators(ds,'RS2',id));
+        safe_plot(@(id)plot_sequence(ds,'RS2',id));
+    end
+
+    if (ds.RS3)
+        safe_plot(@(id)plot_indicators(ds,'RS3',id));
+        safe_plot(@(id)plot_sequence(ds,'RS3',id));
+    end
+
+    if (ds.RS4)
+        safe_plot(@(id)plot_indicators(ds,'RS4',id));
+        safe_plot(@(id)plot_sequence(ds,'RS4',id));
+    end
+
+end
 
 function plot_indicators(ds,target,id)
 

@@ -19,7 +19,7 @@ function sequential_plot(varargin)
     
     nargoutchk(0,0);
 
-	sequential_plot_internal(core,ipr.id);
+    sequential_plot_internal(core,ipr.id);
 
 end
 
@@ -144,12 +144,12 @@ function sequential_plot_internal(core,id)
         end
     end
 
-	figure_title([core.InnerTitle ' - ' core.SequenceTitles{1}]);
-    
+    figure_title([core.InnerTitle ' - ' core.SequenceTitles{1}]);
+
     setappdata(f,'N',core.N);
     setappdata(f,'Data',core.Data);
     setappdata(f,'Function',core.Function);
-	setappdata(f,'InnerTitle',core.InnerTitle);
+    setappdata(f,'InnerTitle',core.InnerTitle);
     setappdata(f,'SequenceTitles',core.SequenceTitles);
     setappdata(f,'PlotsAdjustable',core.PlotsAdjustable);
     setappdata(f,'PlotsTitle',core.PlotsTitle);
@@ -405,8 +405,8 @@ function draw_time_series(f,offset)
         hold(sub,'on');
     end
 
-	fun(subs,data(:,offset));
-    
+    fun(subs,data(:,offset));
+
     for i = 1:subs_len
         sub = subs(i);
         
@@ -420,7 +420,7 @@ function draw_time_series(f,offset)
         end
     end
 
-	figure_title([inner_title ' - ' sequence_titles{offset}]);
+    figure_title([inner_title ' - ' sequence_titles{offset}]);
 
 end
 

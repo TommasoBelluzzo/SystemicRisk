@@ -35,7 +35,7 @@ function [result,stopped] = run_spillover(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'spillover');
+    ds = validate_dataset(ipr.ds,'Spillover');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -145,9 +145,7 @@ function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,
     end
 
     if (analyze)
-        safe_plot(@(id)plot_index(ds,id));
-        safe_plot(@(id)plot_spillovers(ds,id));
-        safe_plot(@(id)plot_sequence(ds,id));
+        analyze_result(ds);
     end
     
     result = ds;
@@ -160,6 +158,10 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
 
     n = ds.N;
     t = ds.T;
+    
+    ds.Result = 'Spillover';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.BW = bw;
     ds.BWS = bws;
@@ -334,6 +336,14 @@ end
 
 %% PLOTTING
 
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_index(ds,id));
+    safe_plot(@(id)plot_spillovers(ds,id));
+    safe_plot(@(id)plot_sequence(ds,id));
+
+end
+
 function plot_index(ds,id)
 
     si = smooth_data(ds.Indicators(:,1));
@@ -358,7 +368,7 @@ function plot_index(ds,id)
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
 
-	figure_title('Spillover Index');
+    figure_title('Spillover Index');
     
     pause(0.01);
     frame = get(f,'JavaFrame');
@@ -428,8 +438,8 @@ function plot_sequence(ds,id)
     net_all = smooth_data(ds.SpilloversNet);
 
     data = [repmat({dn},1,n); mat2cell(from_all,t,ones(1,n)); mat2cell(to_all,t,ones(1,n)); mat2cell(net_all,t,ones(1,n))];
-	
-	plots_title = [repmat({'From'},1,n); repmat({'To'},1,n); repmat({'Net'},1,n)];
+
+    plots_title = [repmat({'From'},1,n); repmat({'To'},1,n); repmat({'Net'},1,n)];
     
     x_limits = [dn(1) dn(end)];
     

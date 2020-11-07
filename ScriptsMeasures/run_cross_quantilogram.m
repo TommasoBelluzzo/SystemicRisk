@@ -41,7 +41,7 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'cross-quantilogram');
+    ds = validate_dataset(ipr.ds,'CrossQuantilogram');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -167,11 +167,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lag
     end
     
     if (analyze)
-        safe_plot(@(id)plot_sequence(ds,'Full',id));
-        
-        if (ds.PI)
-            safe_plot(@(id)plot_sequence(ds,'Partial',id));
-        end
+        analyze_result(ds);
     end
     
     result = ds;
@@ -183,6 +179,10 @@ end
 function ds = initialize(ds,bw,a,lags,cim,cis,cip)
 
     n = ds.N;
+    
+    ds.Result = 'CrossQuantilogram';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.A = a;
     ds.BW = bw;
@@ -405,6 +405,16 @@ end
 
 %% PLOTTING
 
+function analyze_result(ds)
+
+    safe_plot(@(id)plot_sequence(ds,'Full',id));
+
+    if (ds.PI)
+        safe_plot(@(id)plot_sequence(ds,'Partial',id));
+    end
+
+end
+
 function plot_sequence(ds,target,id)
 
     n = ds.N;
@@ -413,7 +423,7 @@ function plot_sequence(ds,target,id)
     cq_to_all = ds.(['CQ' target 'To']);
     
     data = [repmat({(1:lags).'},1,n); cell(6,n)];
-	
+
     if (strcmp(target,'Full'))
         plots_title = [repmat(ds.LabelsMeasures(1),1,n); repmat(ds.LabelsMeasures(2),1,n)];
     else

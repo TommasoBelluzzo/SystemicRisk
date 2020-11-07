@@ -292,76 +292,6 @@ function plot_risk_free_rate(ds,id)
 
 end
 
-function plot_sequence_other(ds,target,id)
-
-    n = ds.N;
-    t = ds.T;
-    dn = ds.DatesNum;
-    mt = ds.MonthlyTicks;
-    
-    ts = ds.(target);
-    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
-    
-    plots_title = repmat({' '},1,n);
-    
-    x_limits = [dn(1) dn(end)];
-
-    core = struct();
-
-    core.N = n;
-    core.Data = data;
-    core.Function = @(subs,data)plot_function(subs,data);
-
-    core.OuterTitle = ['Dataset > ' target ' (Time Series)'];
-    core.InnerTitle = [target ' (Time Series)'];
-    core.SequenceTitles = ds.FirmNames;
-
-    core.PlotsAllocation = [1 1];
-    core.PlotsSpan = {1};
-    core.PlotsTitle = plots_title;
-
-    core.XDates = {mt};
-    core.XGrid = {true};
-    core.XLabel = {[]};
-    core.XLimits = {x_limits};
-    core.XRotation = {45};
-    core.XTick = {[]};
-    core.XTickLabels = {[]};
-
-    core.YGrid = {true};
-    core.YLabel = {[]};
-    core.YLimits = {[]};
-    core.YRotation = {[]};
-    core.YTick = {[]};
-    core.YTickLabels = {[]};
-    
-    sequential_plot(core,id);
-
-    function plot_function(subs,data)
-
-        x = data{1};
-        y = data{2};
-        
-        d = find(isnan(y),1,'first');
-        
-        if (isempty(d))
-            xd = [];
-        else
-            xd = x(d) - 1;
-        end
-        
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
-
-        if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
-            hold(subs(1),'off');
-        end
-
-    end
-
-end
-
 function plot_sequence_returns(ds,id)
 
     n = ds.N;
@@ -371,8 +301,8 @@ function plot_sequence_returns(ds,id)
     
     ts = ds.Returns;
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
-	
-	plots_title = [repmat({'Log Returns'},1,n); repmat({'P&L Distribution'},1,n)];
+
+    plots_title = [repmat({'Log Returns'},1,n); repmat({'P&L Distribution'},1,n)];
     
     x_limits = [dn(1) dn(end)];
 
@@ -446,6 +376,7 @@ function plot_sequence_returns(ds,id)
         edges_max = max(edges);
         edges_min = min(edges);
         [values,points] = ksdensity(y);
+
         hold(subs(2),'on');
             plot(subs(2),points,values,'-b','LineWidth',1.5);
         hold(subs(2),'off');
@@ -453,6 +384,76 @@ function plot_sequence_returns(ds,id)
         
         txt = {sprintf('Observations: %d',y_obs) sprintf('Mean: %.4f',y_avg) sprintf('Median: %.4f',y_med) sprintf('Standard Deviation: %.4f',y_std) sprintf('Skewness: %.4f',y_ske) sprintf('Kurtosis: %.4f',y_kur)};
         annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
+
+    end
+
+end
+
+function plot_sequence_other(ds,target,id)
+
+    n = ds.N;
+    t = ds.T;
+    dn = ds.DatesNum;
+    mt = ds.MonthlyTicks;
+    
+    ts = smooth_data(ds.(target));
+    data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
+    
+    plots_title = repmat({' '},1,n);
+    
+    x_limits = [dn(1) dn(end)];
+
+    core = struct();
+
+    core.N = n;
+    core.Data = data;
+    core.Function = @(subs,data)plot_function(subs,data);
+
+    core.OuterTitle = ['Dataset > ' target ' (Time Series)'];
+    core.InnerTitle = [target ' (Time Series)'];
+    core.SequenceTitles = ds.FirmNames;
+
+    core.PlotsAllocation = [1 1];
+    core.PlotsSpan = {1};
+    core.PlotsTitle = plots_title;
+
+    core.XDates = {mt};
+    core.XGrid = {true};
+    core.XLabel = {[]};
+    core.XLimits = {x_limits};
+    core.XRotation = {45};
+    core.XTick = {[]};
+    core.XTickLabels = {[]};
+
+    core.YGrid = {true};
+    core.YLabel = {[]};
+    core.YLimits = {[]};
+    core.YRotation = {[]};
+    core.YTick = {[]};
+    core.YTickLabels = {[]};
+    
+    sequential_plot(core,id);
+
+    function plot_function(subs,data)
+
+        x = data{1};
+        y = data{2};
+        
+        d = find(isnan(y),1,'first');
+        
+        if (isempty(d))
+            xd = [];
+        else
+            xd = x(d) - 1;
+        end
+        
+        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+
+        if (~isempty(xd))
+            hold(subs(1),'on');
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+            hold(subs(1),'off');
+        end
 
     end
 

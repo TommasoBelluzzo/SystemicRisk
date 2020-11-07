@@ -45,33 +45,33 @@ function file_sheets = validate_xls_internal(file,type)
     end
 
     if (verLessThan('MATLAB','9.7'))
-        if (ispc())
-            check_format = true;
-            
-            try
-                [file_status,file_sheets,file_format] = xlsfinfo(file);
-            catch
+        check_format = false;
+        
+        try
+            if (ispc())
+                try
+                    [file_status,file_sheets,file_format] = xlsfinfo(file);
+                    check_format = true;
+                catch
+                    [file_status,file_sheets] = xlsfinfo(file);
+                    file_format = [];
+                end
+            else
                 [file_status,file_sheets] = xlsfinfo(file);
                 file_format = [];
-                
-                check_format = false;
             end
-
-            if (isempty(file_status) || (check_format && ~strcmp(file_format,'xlOpenXMLWorkbook')))
-                error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
-            end
-        else
-            [file_status,file_sheets] = xlsfinfo(file);
-
-            if (isempty(file_status))
-                error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
-            end
+        catch e
+            error(['The ' label ' file ''' file ''' could not be read.' newline() e.message]);
+        end
+        
+        if (isempty(file_status) || (check_format && ~strcmp(file_format,'xlOpenXMLWorkbook')))
+            error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
         end
     else
         try
             file_sheets = sheetnames(file);
-        catch
-            error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
+        catch e
+            error(['The ' label ' file ''' file ''' could not be read.' newline() e.message]);
         end
     end
 

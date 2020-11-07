@@ -31,7 +31,7 @@ function [result,stopped] = run_connectedness(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    ds = validate_dataset(ipr.ds,'connectedness');
+    ds = validate_dataset(ipr.ds,'Connectedness');
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -135,10 +135,7 @@ function [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,a
     end
 
     if (analyze)
-        safe_plot(@(id)plot_indicators(ds,id));
-        safe_plot(@(id)plot_network(ds,id));
-        safe_plot(@(id)plot_adjacency_matrix(ds,id));
-        safe_plot(@(id)plot_centralities(ds,id));
+        analyse_result(ds);
     end
     
     result = ds;
@@ -151,6 +148,10 @@ function ds = initialize(ds,bw,sst,rp,k)
 
     n = ds.N;
     t = ds.T;
+
+    ds.Result = 'Connectedness';
+    ds.ResultDate = now();
+    ds.ResultAnalysis = @(ds)analyze_result(ds);
 
     ds.BW = bw;
     ds.K = k;
@@ -336,6 +337,15 @@ function write_results(ds,temp,out)
 end
 
 %% PLOTTING
+
+function analyse_result(ds)
+
+    safe_plot(@(id)plot_indicators(ds,id));
+    safe_plot(@(id)plot_network(ds,id));
+    safe_plot(@(id)plot_adjacency_matrix(ds,id));
+    safe_plot(@(id)plot_centralities(ds,id));
+
+end
 
 function plot_indicators(ds,id)
 

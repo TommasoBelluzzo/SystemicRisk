@@ -303,7 +303,7 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
         results(k - 1,2) = sum(log(abs(mu - t))) + (log(vn) * ((k + 2) / vn));
     end
     
-    results = sortrows(results,[2 1],'ascend');
+    results = sortrows(results,[2 1]);
     k = results(1,1);
     
     params = [k; params_list{k - 1}];

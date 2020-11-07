@@ -47,7 +47,7 @@ function [var_np,var_gpd,var_gev,var_sged] = catfin_internal(r,a,g,u)
     t = size(r,1);
 
     w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
-    h = sortrows([r w],1,'ascend');
+    h = sortrows([r w],1);
     csw = cumsum(h(:,2));
     cswa = find(csw >= a);
     var_np = h(cswa(1),1);  

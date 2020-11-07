@@ -244,9 +244,9 @@ function y = mvncdf_fast(c,lb,ub,options)
         return;
     end
 
-	x = sol(1:(n - 1));
+    x = sol(1:(n - 1));
     x(n) = 0;
-    
+
     mu = sol(n:((2 * n) - 2));
     mu(n) = 0;
     
@@ -305,7 +305,7 @@ end
 
 function y = mvtcdf_fast(c,df,lb,ub,options)
 
-	n = size(c,1);
+    n = size(c,1);
 
     [cp,lb,ub] = cholperm(n,c,lb,ub);
     d = diag(cp);
