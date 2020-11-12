@@ -53,20 +53,17 @@ end
 function [caviar,beta,ir_fm,ir_mf,se,stats] = bivariate_caviar_internal(r,a,cir,cse)
 
     persistent options;
-    persistent um_beta0;
 
     if (isempty(options))
         options = optimset(optimset(@fminsearch),'Display','none','MaxFunEvals',1000,'MaxIter',1000,'TolFun',1e-8,'TolX',1e-8);
     end
-    
-    if (isempty(um_beta0))
-        rng_current = rng();
-        rng(double(bitxor(uint16('T'),uint16('B'))));
-        cleanup = onCleanup(@()rng(rng_current));
-        um_beta0 = unifrnd(0,1,[10000 3]);
-    end
-    
+
     up = isempty(getCurrentTask());
+    
+    rng_current = rng();
+    rng(double(bitxor(bitxor(uint16('T'),uint16('B')),bitxor(uint16('B'),uint16('C')))));
+    um_beta0 = unifrnd(0,1,[10000 3]);
+    rng(rng_current);
 
     c = zeros(3,2);
     q = zeros(1,2);
@@ -271,7 +268,7 @@ function [vc,se,stats] = standard_errors(r,a,beta,caviar)
 
     q = q / (2 * c * t);
     v = v / t; 
-    vc = (q \ v / q) / t;
+    vc = (linsolve(q,v) / q) / t;
 
     r = [zeros(4,3), [e2; zeros(2)], zeros(4,2), [zeros(2); e2], zeros(4,1)];
     cv = ((r * beta).' / (r * vc * r.')) * (r * beta);

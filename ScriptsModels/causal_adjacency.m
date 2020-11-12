@@ -1,7 +1,7 @@
 % [INPUT]
-% r = A float t-by-n matrix representing the logarithmic returns.
-% sst = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test.
-% rp = A boolean indicating whether to use robust p-values for the linear Granger-causality test.
+% r = A float t-by-n matrix (-Inf,Inf) representing the logarithmic returns.
+% sst = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
+% rp = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
 %
 % [OUTPUT]
 % am = A binary n-by-n matrix representing the adjcency matrix.
@@ -13,8 +13,8 @@ function am = causal_adjacency(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('r',@(x)validateattributes(x,{'double'},{'real' '2d' 'nonempty'}));
-        ip.addRequired('sst',@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'}));
-        ip.addRequired('rp',@(x)validateattributes(x,{'logical'},{'scalar'}));
+        ip.addOptional('sst',0.05,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'}));
+        ip.addOptional('rp',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -99,7 +99,7 @@ function [b,c,r] = hac_regression(y,x,ratio)
         o_hat = o_hat + (((l - i) / l) * (o_tmp + o_tmp.'));
     end
 
-    c = (q_hat \ o_hat) / q_hat;
+    c = linsolve(q_hat,o_hat) / q_hat;
 
 end
 

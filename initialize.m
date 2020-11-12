@@ -93,8 +93,22 @@ addpath(paths_base);
 
 %% ENVIRONMENT VARIABLES
 
-ds_version = 'v3.4';
+ds_dir = 'Datasets';
+ds_version = 'v3.5';
+
+try
+    sn = ['INIT-' upper(char(java.util.UUID.randomUUID()))];
+catch
+    sn = randi([0 10000000]);
+    sn = ['INIT-' sprintf('%08s',num2str(sn))];
+end
+
+temp_dir = 'Templates';
+temp_name = 'Template';
+
+out_dir = 'Results';
+out_name = 'Result';
 
 %% CLEANUP
 
-clearvars('-except','ds_version','path_base');
+clearvars('-except','ds_dir','ds_version','out_dir','out_name','path_base','sn','temp_dir','temp_name');

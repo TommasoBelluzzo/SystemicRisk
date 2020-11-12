@@ -1,5 +1,5 @@
 % [INPUT]
-% r = A float t-by-n matrix representing the logarithmic returns.
+% r = A float t-by-n matrix (-Inf,Inf) representing the logarithmic returns.
 % pods = A vector of floats [0,1] of length n representing the probabilities of default.
 % md = A string representing the multivariate distribution used by the model:
 %   - 'N' for normal distribution.

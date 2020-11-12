@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % sst = A float (0.0,0.1] representing the statistical significance threshold for the linear Granger-causality test (optional, default=0.05).
@@ -19,6 +20,7 @@ function [result,stopped] = run_connectedness(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
@@ -32,6 +34,7 @@ function [result,stopped] = run_connectedness(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'Connectedness');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -42,17 +45,17 @@ function [result,stopped] = run_connectedness(varargin)
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,analyze);
+    [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,k,analyze);
 
 end
 
-function [result,stopped] = run_connectedness_internal(ds,temp,out,bw,sst,rp,k,analyze)
+function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
     
-    ds = initialize(ds,bw,sst,rp,k);
+    ds = initialize(ds,sn,bw,sst,rp,k);
     t = ds.T;
     
     bar = waitbar(0,'Initializing connectedness measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
@@ -144,7 +147,7 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,bw,sst,rp,k)
+function ds = initialize(ds,sn,bw,sst,rp,k)
 
     n = ds.N;
     t = ds.T;
@@ -152,6 +155,7 @@ function ds = initialize(ds,bw,sst,rp,k)
     ds.Result = 'Connectedness';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyse_result(ds);
+    ds.ResultSerial = sn;
 
     ds.BW = bw;
     ds.K = k;
@@ -308,31 +312,7 @@ function write_results(ds,temp,out)
     tab = cell2table(vars,'VariableNames',labels);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            for i = 1:numel(ds.LabelsSheetsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
     
 end
 
@@ -594,7 +574,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -606,25 +586,9 @@ function temp = validate_template(temp)
     file_sheets = validate_xls(temp,'T');
 
     if (~all(ismember(sheets,file_sheets)))
-        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s', sheets{2:end}) '.']);
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

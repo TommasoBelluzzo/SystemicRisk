@@ -30,14 +30,14 @@ function safe_plot_internal(handle)
     try
         id = [upper(name) '-' upper(char(java.util.UUID.randomUUID()))];
     catch
-        id = randi([0 100000]);
+        id = randi([0 10000000]);
         
         while (ismember(id,ids))
             id = randi([0 100000]);
         end
         
         ids = [ids; id];
-        id = [upper(name) '-' sprintf('%06s',num2str(id))];
+        id = [upper(name) '-' sprintf('%08s',num2str(id))];
     end
 
     try

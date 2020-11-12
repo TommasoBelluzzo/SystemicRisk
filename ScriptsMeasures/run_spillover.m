@@ -1,6 +1,7 @@
- % [INPUT]
+% [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % bws = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
@@ -22,6 +23,7 @@ function [result,stopped] = run_spillover(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
@@ -36,6 +38,7 @@ function [result,stopped] = run_spillover(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'Spillover');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -47,18 +50,18 @@ function [result,stopped] = run_spillover(varargin)
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,h,analyze);
+    [result,stopped] = run_spillover_internal(ds,sn,temp,out,bw,bws,fevd,lags,h,analyze);
 
 end
 
-function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,h,analyze)
+function [result,stopped] = run_spillover_internal(ds,sn,temp,out,bw,bws,fevd,lags,h,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
     indices = unique([1:bws:ds.T ds.T]);
-    ds = initialize(ds,bw,bws,indices,fevd,lags,h);
+    ds = initialize(ds,sn,bw,bws,indices,fevd,lags,h);
     
     rng(double(bitxor(uint16('T'),uint16('B'))));
     cleanup_1 = onCleanup(@()rng('default'));
@@ -82,7 +85,7 @@ function [result,stopped] = run_spillover_internal(ds,temp,out,bw,bws,fevd,lags,
         futures_results = cell(windows_len,1);
 
         for i = 1:windows_len
-           futures(i) = parfeval(@main_loop,1,windows{i},ds.Lags,ds.H,ds.FEVD);
+           futures(i) = parfeval(@main_loop,1,windows{i},ds.FEVD,ds.Lags,ds.H);
         end
         
         for i = 1:windows_len
@@ -154,7 +157,7 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
+function ds = initialize(ds,sn,bw,bws,indices,fevd,lags,h)
 
     n = ds.N;
     t = ds.T;
@@ -162,6 +165,7 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
     ds.Result = 'Spillover';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.BW = bw;
     ds.BWS = bws;
@@ -191,11 +195,11 @@ function ds = initialize(ds,bw,bws,indices,fevd,lags,h)
 
 end
 
-function window_results = main_loop(r,lags,h,fevd)
+function window_results = main_loop(r,fevd,lags,h)
 
     window_results = struct();
 
-    vd = variance_decomposition(r,lags,h,fevd);
+    vd = variance_decomposition(r,fevd,lags,h);
     window_results.VarianceDecomposition = vd;
 
     [sf,st,sn,si] = spillover_metrics(vd);
@@ -306,31 +310,7 @@ function write_results(ds,temp,out)
     tab = [dates_str array2table(ds.Indicators,'VariableNames',strrep(ds.LabelsIndicatorsSimple,' ','_'))];
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            for i = 1:numel(ds.LabelsSheetsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
     
 end
 
@@ -533,7 +513,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -548,22 +528,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

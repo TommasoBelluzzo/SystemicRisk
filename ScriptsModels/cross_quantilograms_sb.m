@@ -1,9 +1,9 @@
 % [INPUT]
-% data = A float t-by-n matrix representing the model input.
+% data = A float t-by-n matrix (-Inf,Inf) representing the model input.
 % a = A float [0.01,0.10] representing the target quantile.
 % k = An integer [1,60] representing the target lag.
-% cis = A float (0.0,0.1] representing the significance level of confidence intervals.
-% cib = An integer [10,1000] representing the number of bootstrap iterations of confidence intervals.
+% cis = A float (0.0,0.1] representing the significance level of confidence intervals (optional, default=0.050).
+% cib = An integer [10,1000] representing the number of bootstrap iterations of confidence intervals (optional, default=100).
 %
 % [OUTPUT]
 % cq = A float (-Inf,Inf) representing the cross-quantilogram.
@@ -21,8 +21,8 @@ function [cq,ci] = cross_quantilograms_sb(varargin)
         ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty'}));
         ip.addRequired('a',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
         ip.addRequired('k',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 '<=' 60 'scalar'}));
-        ip.addRequired('cis',@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'}));
-        ip.addRequired('cib',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 10 '<=' 1000 'scalar'}));
+        ip.addOptional('cis',0.050,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'}));
+        ip.addOptional('cib',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 10 '<=' 1000 'scalar'}));
     end
 
     ip.parse(varargin{:});

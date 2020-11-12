@@ -1,10 +1,10 @@
 % [INPUT]
-% l = A float t-by-n matrix representing the losses.
+% l = A float t-by-n matrix [0,Inf) representing the losses.
 % k = A float [0.90,0.99] representing the minimum confidence level. Risk indicators are calculated over all the quantiles {0.900;0.925;0.950;0.975;0.990} greater than or equal to k;
 %
 % [OUTPUT]
-% jvars = A row vector of floats [0,Inf) representing the joint values-at-risk.
-% jes = A float [0,Inf) representing the joint expected shortfall.
+% jvars = A row vector of floats [0,Inf) representing the Joint Values-at-Risk.
+% jes = A float [0,Inf) representing the Loint Expected Shortfall.
 
 function [jvars,jes] = mgev_joint_risk_metrics(varargin)
 
@@ -19,7 +19,7 @@ function [jvars,jes] = mgev_joint_risk_metrics(varargin)
     ip.parse(varargin{:});
     
     ipr = ip.Results;
-    l = ipr.l;
+    l =  validate_input(ipr.l);
     k = ipr.k;
 
     nargoutchk(2,2);
@@ -98,7 +98,7 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     jvars = zeros(1,numel(q_fin));
 
     if (up)
-        parfor j = 1:numel(q_fin)
+        for j = 1:numel(q_fin)
             lhs = -log(q_fin(j)) / d;
 
             x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
@@ -143,7 +143,7 @@ function y = objective(x,v,lhs,n,mu,sigma,xi)
 
     um = repelem(v,n,1);
 
-    um_check = (xi .* (repelem(x,20,1) - mu)) ./ sigma;
+    um_check = (xi .* (repelem(x,n,1) - mu)) ./ sigma;
     um_valid = isfinite(um_check) & (um_check > -1);
 
     x = repelem(x,sum(um_valid),1);
@@ -153,5 +153,15 @@ function y = objective(x,v,lhs,n,mu,sigma,xi)
     um(um_valid) = (1 + (xi .* ((x - mu) ./ sigma))) .^ -(1 ./ xi);
 
     y = (sum(um) - lhs)^2;
+
+end
+
+function l = validate_input(l)
+
+    t = size(l,1);
+    
+    if (t < 5)
+        error('The value of ''l'' is invalid. Expected input to be a matrix with at least 5 rows.');
+    end
 
 end

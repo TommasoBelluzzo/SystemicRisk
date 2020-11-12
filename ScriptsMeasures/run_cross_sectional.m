@@ -1,9 +1,10 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k = A float [0.90,0.99] representing the confidence level (optional, default=0.95).
-% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.40).
+% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK (optional, default=0.08).
 % sf = A float [0,1] representing the fraction of separate accounts, if available, to include in liabilities and used to calculate SES and SRISK (optional, default=0.40).
 % fr = An integer [0,6] representing the number of months of forward-rolling used to calculate the SRISK, simulating the difficulty of renegotiating debt in case of financial distress (optional, default=3).
@@ -20,6 +21,7 @@ function [result,stopped] = run_cross_sectional(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('k',0.95,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.90 '<=' 0.99 'scalar'}));
@@ -34,6 +36,7 @@ function [result,stopped] = run_cross_sectional(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'CrossSectional');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     k = ipr.k;
@@ -45,17 +48,17 @@ function [result,stopped] = run_cross_sectional(varargin)
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,fr,analyze);
+    [result,stopped] = run_cross_sectional_internal(ds,sn,temp,out,k,d,car,sf,fr,analyze);
 
 end
 
-function [result,stopped] = run_cross_sectional_internal(ds,temp,out,k,d,car,sf,fr,analyze)
+function [result,stopped] = run_cross_sectional_internal(ds,sn,temp,out,k,d,car,sf,fr,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,k,d,car,sf,fr);
+    ds = initialize(ds,sn,k,d,car,sf,fr);
     n = ds.N;
     t = ds.T;
 
@@ -167,7 +170,7 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,k,d,car,sf,fr)
+function ds = initialize(ds,sn,k,d,car,sf,fr)
 
     lb = ds.Liabilities;
     sa = ds.SeparateAccounts;
@@ -187,6 +190,7 @@ function ds = initialize(ds,k,d,car,sf,fr)
     ds.Result = 'CrossSectional';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.A = 1 - k;
     ds.CAR = car;
@@ -294,33 +298,9 @@ function write_results(ds,temp,out)
     end
 
     tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSheetsSimple(1:end-1),' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
-
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            for i = 1:numel(ds.LabelsSheetsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);
+    
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
@@ -871,7 +851,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -886,22 +866,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

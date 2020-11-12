@@ -42,6 +42,7 @@ function ds = validate_dataset_internal(ds,category,categories)
     result = validate_field(ds,'Result',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
     result_date = validate_field(ds,'ResultDate',{'double'},{'optional' 'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
     result_analysis = validate_field(ds,'ResultAnalysis',{'function_handle'},{'optional' 'scalar'});
+    result_serial = validate_field(ds,'ResultSerial',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
     
     if (isempty(result))
         if (~isempty(result_date))
@@ -50,6 +51,10 @@ function ds = validate_dataset_internal(ds,category,categories)
 
         if (~isempty(result_analysis))
             error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be empty.']);
+        end
+        
+        if (~isempty(result_serial))
+            error(['The dataset field ''ResultSerial'' is invalid.' newline() 'Expected value to be empty.']);
         end
     else
         if (~ismember(result,categories))
@@ -62,6 +67,10 @@ function ds = validate_dataset_internal(ds,category,categories)
         
         if (isempty(result_analysis))
             error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be a function handle.']);
+        end
+        
+        if (isempty(result_serial))
+            error(['The dataset field ''ResultSerial'' is invalid.' newline() 'Expected value to be a function handle.']);
         end
     end
 

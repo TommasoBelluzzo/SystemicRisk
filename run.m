@@ -3,16 +3,34 @@
 up = true;
 initialize;
 
-if ((exist('ds_version','var') == 0) || (exist('path_base','var') == 0))
+ev = {'ds_dir' 'ds_version' 'out_dir' 'out_name' 'path_base' 'sn' 'temp_dir' 'temp_name'};
+ev_len = numel(ev);
+
+failures = false(ev_len,1);
+
+for i = 1:numel(ev)
+    ev_i = ev{i};
+    
+    if (exist(ev_i,'var') == 0)
+        failures(i) = true;
+    end
+    
+    eval(['failures(i) = isempty(' ev_i ') || ~ischar(' ev_i ');']);
+end
+
+if (any(failures))
     error('The initialization process failed.');
 end
+
+chunk_temp = [temp_dir filesep() temp_name];
+chunk_out = [out_dir filesep() out_name];
 
 %% DATASET PARSING
 
 ds_process = false;
 
-file = fullfile(path_base,['Datasets' filesep() 'Example_Large.xlsx']);
-[file_path,file_name,file_extension] = fileparts(file);
+file = fullfile(path_base,[ds_dir filesep() 'Example_Large.xlsx']);
+[file_path,file_name,~] = fileparts(file);
 
 if (exist(file,'file') == 0)
     error(['The dataset file ''' file ''' could not be found.']);
@@ -30,9 +48,18 @@ if (exist(mat,'file') == 2)
     if (file_lmd > mat_lmd)
         ds_process = true;
     else
-        load(mat);
+        try
+            load(mat);
+            mat_loaded = true;
+        catch
+            mat_loaded = false;
+        end
         
-        if ((exist('ds','var') == 0) || ~strcmp(ds.Version,ds_version))
+        if (mat_loaded)
+            if ((exist('ds','var') == 0) || ~strcmp(ds.Version,ds_version))
+                ds_process = true;
+            end
+        else
             ds_process = true;
         end
     end
@@ -54,15 +81,15 @@ comparison_analyze = true;
 
 measures_setup = {
 %   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
-    'Component'          true     true     true     @(ds,temp,file,analyze)run_component(ds,temp,file,bw,0.99,0.98,0.05,0.2,0.75,analyze);
-    'Connectedness'      true     true     true     @(ds,temp,file,analyze)run_connectedness(ds,temp,file,bw,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     true     @(ds,temp,file,analyze)run_cross_entropy(ds,temp,file,bw,'G',0.4,'W','N',analyze);
-    'CrossQuantilogram'  true     true     true     @(ds,temp,file,analyze)run_cross_quantilogram(ds,temp,file,bw,0.05,60,'SB',0.05,100,analyze);
-    'CrossSectional'     true     true     true     @(ds,temp,file,analyze)run_cross_sectional(ds,temp,file,0.95,0.40,0.08,0.40,3,analyze);
-    'Default'            true     true     true     @(ds,temp,file,analyze)run_default(ds,temp,file,bw,'BSM',3,0.08,0.45,2,0.10,100,5,0.95,analyze);
-    'Liquidity'          true     true     true     @(ds,temp,file,analyze)run_liquidity(ds,temp,file,bw,21,5,'B',500,0.01,0.0004,analyze);
-    'RegimeSwitching'    true     true     true     @(ds,temp,file,analyze)run_regime_switching(ds,temp,file,true,true,true,analyze);
-    'Spillover'          true     true     true     @(ds,temp,file,analyze)run_spillover(ds,temp,file,bw,10,'G',2,4,analyze);
+    'Component'          true     true     true     @(temp,out,analyze)run_component(ds,sn,temp,out,bw,0.99,0.98,0.05,0.2,0.75,analyze);
+    'Connectedness'      true     true     true     @(temp,out,analyze)run_connectedness(ds,sn,temp,out,bw,0.05,false,0.06,analyze);
+    'CrossEntropy'       true     true     true     @(temp,out,analyze)run_cross_entropy(ds,sn,temp,out,bw,'G',0.4,'W','N',analyze);
+    'CrossQuantilogram'  true     true     true     @(temp,out,analyze)run_cross_quantilogram(ds,sn,temp,out,bw,0.05,60,'SB',0.05,100,analyze);
+    'CrossSectional'     true     true     true     @(temp,out,analyze)run_cross_sectional(ds,sn,temp,out,0.95,0.40,0.08,0.40,3,analyze);
+    'Default'            true     true     true     @(temp,out,analyze)run_default(ds,sn,temp,out,bw,'BSM',3,0.08,2,0.55,0.10,100,5,0.95,analyze);
+    'Liquidity'          true     true     true     @(temp,out,analyze)run_liquidity(ds,sn,temp,out,bw,21,5,'B',500,0.01,0.0004,analyze);
+    'RegimeSwitching'    true     true     true     @(temp,out,analyze)run_regime_switching(ds,sn,temp,out,true,true,true,analyze);
+    'Spillover'          true     true     true     @(temp,out,analyze)run_spillover(ds,sn,temp,out,bw,10,'G',2,4,analyze);
 };
 
 enabled_all = [measures_setup{:,2}];
@@ -89,9 +116,9 @@ for i = 1:size(measures_setup,1)
 
     pause(2);
 
-    temp = fullfile(path_base,['Templates' filesep() 'Template' category '.xlsx']);
-    out = fullfile(path_base,['Results' filesep() 'Results' category '.xlsx']);
-    [result,stopped] = run_function(ds,temp,out,analyze);
+    temp = fullfile(path_base,[chunk_temp category '.xlsx']);
+    out = fullfile(path_base,[chunk_out category '.xlsx']);
+    [result,stopped] = run_function(temp,out,analyze);
 
     if (stopped)
         clear('-regexp','(?!^(?:ds|result_[a-z_]+)$)^.+$');
@@ -119,7 +146,7 @@ for i = 1:size(measures_setup,1)
     category_reference = ['result' lower(regexprep(category,'([A-Z])','_$1'))];
     eval([category_reference ' = result;']);
 
-    mat = fullfile(path_base,['Results' filesep() 'Results' category '.mat']);
+    mat = fullfile(path_base,[chunk_out category '.mat']);
     save(mat,category_reference);
 end
 
@@ -135,13 +162,15 @@ if (numel(ml) <= 1)
 else
     pause(2);
     
-    temp = fullfile(path_base,['Templates' filesep() 'TemplateComparison.xlsx']);
-    out = fullfile(path_base,['Results' filesep() 'ResultsComparison.xlsx']);
+    temp = fullfile(path_base,[chunk_temp 'Comparison.xlsx']);
+    out = fullfile(path_base,[chunk_out 'Comparison.xlsx']);
 
-    result_comparison = run_comparison(ds,temp,out,ml,md,comparison_co,[],21,'AIC',0.01,false,4,'GG',comparison_analyze);
+    [result_comparison,stopped] = run_comparison(ds,sn,temp,out,ml,md,comparison_co,[],21,'AIC',0.01,false,4,'GG',comparison_analyze);
     
-    mat = fullfile(path_base,['Results' filesep() 'ResultsComparison.mat']);
-    save(mat,'result_comparison');
+    if (~stopped)
+        mat = fullfile(path_base,[chunk_out 'Comparison.mat']);
+        save(mat,'result_comparison');
+    end
 end
 
 %% CLEANUP

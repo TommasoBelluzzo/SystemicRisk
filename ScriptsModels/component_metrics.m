@@ -1,6 +1,6 @@
 % [INPUT]
-% r = A float t-by-n matrix representing the logarithmic returns.
-% f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio.
+% r = A float t-by-n matrix (-Inf,Inf) representing the logarithmic returns.
+% f = A float [0.2,0.8] representing the percentage of components to include in the computation of the Absorption Ratio (optional, default=0.2).
 %
 % [OUTPUT]
 % ar = A float [0,1] representing the Absorption Ratio.
@@ -14,7 +14,7 @@ function [ar,cs,ti] = component_metrics(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('r',@(x)validateattributes(x,{'double'},{'real' '2d' 'nonempty'}));
-        ip.addRequired('f',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.2 '<=' 0.8 'scalar'}));
+        ip.addOptional('f',0.2,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.2 '<=' 0.8 'scalar'}));
     end
 
     ip.parse(varargin{:});

@@ -1,12 +1,12 @@
 % [INPUT]
 % r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which the first column represents the market returns and the second column represents the firm returns.
-% cp = A vector of floats [0,Inf) of length t representing the market capitalization.
-% lb = A vector of floats [0,Inf) of length t representing the liabilities.
-% lbr = A vector of floats [0,Inf) of length t representing the forward-rolled liabilities.
+% cp = A vector of floats [0,Inf) of length t representing the market capitalization of the firm.
+% lb = A vector of floats [0,Inf) of length t representing the liabilities of the firm.
+% lbr = A vector of floats [0,Inf) of length t representing the forward-rolled liabilities of the firm.
 % sv = A float t-by-k matrix (-Inf,Inf) representing the state variables.
 % a = A float [0.01,0.10] representing the target quantile.
-% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES.
-% car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK.
+% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
+% car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK (optional, default=0.08).
 %
 % [OUTPUT]
 % beta = A column vector of floats [0,Inf) of length t representing the CAPM Beta.
@@ -30,8 +30,8 @@ function [beta,var,es,covar,dcovar,mes,ses,srisk] = cross_sectional_metrics(vara
         ip.addRequired('lbr',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
         ip.addRequired('sv',@(x)validateattributes(x,{'double'},{'real' 'finite'}));
         ip.addRequired('a',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
-        ip.addRequired('d',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.1 '<=' 0.6 'scalar'}));
-        ip.addRequired('car',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
+        ip.addOptional('d',0.4,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.1 '<=' 0.6 'scalar'}));
+        ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
     end
 
     ip.parse(varargin{:});
@@ -154,7 +154,7 @@ function b = quantile_regression(y,x,a)
         x_star_t = x_star.';
         b_0 = b;
 
-        b = ((x_star_t * x) \ x_star_t) * y;
+        b = linsolve(x_star_t * x,x_star_t) * y;
 
         rsd = y - (x * b);
         rsd(abs(rsd) < 1e-06) = 1e-06;

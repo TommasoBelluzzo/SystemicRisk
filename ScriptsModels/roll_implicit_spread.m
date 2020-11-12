@@ -16,9 +16,9 @@ function ris = roll_implicit_spread(varargin)
         ip = inputParser();
         ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
         ip.addRequired('bw',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
-        ip.addRequired('w',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
-        ip.addRequired('c',@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
-        ip.addRequired('s2',@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
+        ip.addOptional('w',1000,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
+        ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
+        ip.addOptional('s2',0.0004,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));
     end
 
     ip.parse(varargin{:});
@@ -68,7 +68,7 @@ function g = gibbs_sampler(p,w,c,s2)
         dq = diff(q);
 
         d = 1 + ((1 / s2) * (dq.' * dq));
-        mu = d \ ((1 / s2) * (dq.' * dp));
+        mu = linsolve(d,(1 / s2) * (dq.' * dp));
         rho = inv(d);
         c = mvnrnd_truncated(mu,rho);
 

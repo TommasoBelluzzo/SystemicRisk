@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A float t-by-n matrix representing the model input.
+% data = A float t-by-n matrix (-Inf,Inf) representing the model input.
 % dcc_q = An integer [1,Inf) representing the lag of the innovation term in the DCC estimator (optional, default=1).
 % dcc_p = An integer [1,Inf) representing the lag of correlation matrices in the DCC estimator (optional, default=1).
 % arch_q = Optional argument (default=1) with two possible types:

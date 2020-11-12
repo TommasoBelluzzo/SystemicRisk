@@ -352,6 +352,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.Result = [];
     ds.ResultDate = [];
     ds.ResultAnalysis = [];
+    ds.ResultSerial = [];
     
     ds.TimeSeries = {'Assets' 'Capitalizations' 'CDS' 'Equity' 'Liabilities' 'Returns' 'SeparateAccounts' 'Volumes'};
     

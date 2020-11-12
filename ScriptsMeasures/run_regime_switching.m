@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % rs2 = A boolean that indicates whether to compute the two-states regime-switching model (optional, default=true).
 % rs3 = A boolean that indicates whether to compute the three-states regime-switching model (optional, default=true).
@@ -18,6 +19,7 @@ function [result,stopped] = run_regime_switching(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('rs2',true,@(x)validateattributes(x,{'logical'},{'scalar'}));
@@ -30,6 +32,7 @@ function [result,stopped] = run_regime_switching(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'RegimeSwitching');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [rs2,rs3,rs4] = validate_booleans(ipr.rs2,ipr.rs3,ipr.rs4);
@@ -37,17 +40,17 @@ function [result,stopped] = run_regime_switching(varargin)
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_regime_switching_internal(ds,temp,out,rs2,rs3,rs4,analyze);
+    [result,stopped] = run_regime_switching_internal(ds,sn,temp,out,rs2,rs3,rs4,analyze);
 
 end
 
-function [result,stopped] = run_regime_switching_internal(ds,temp,out,rs2,rs3,rs4,analyze)
+function [result,stopped] = run_regime_switching_internal(ds,sn,temp,out,rs2,rs3,rs4,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,rs2,rs3,rs4);
+    ds = initialize(ds,sn,rs2,rs3,rs4);
     n = ds.N;
     t = ds.T;
 
@@ -174,7 +177,7 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,rs2,rs3,rs4)
+function ds = initialize(ds,sn,rs2,rs3,rs4)
 
     n = ds.N;
     t = ds.T;
@@ -188,12 +191,26 @@ function ds = initialize(ds,rs2,rs3,rs4)
     ds.Result = 'RegimeSwitching';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
     
     ds.RS2 = rs2;
     ds.RS3 = rs3;
     ds.RS4 = rs4;
-    
-    ds.LabelsSheetsSimple = {'Indicators' 'RS2 CM' 'RS2 CV' 'RS2 SP' 'RS3 CM' 'RS3 CV' 'RS3 SP' 'RS4 CM' 'RS4 CV' 'RS4 SP'};
+	
+    ds.LabelsSheetsSimple = {'Indicators'};
+	
+    if (ds.RS2)
+        ds.LabelsSheetsSimple = [ds.LabelsSheetsSimple {'RS2 CM' 'RS2 CV' 'RS2 SP'}];
+    end
+
+    if (ds.RS3)
+        ds.LabelsSheetsSimple = [ds.LabelsSheetsSimple {'RS3 CM' 'RS3 CV' 'RS3 SP'}];
+    end
+
+    if (ds.RS4)
+        ds.LabelsSheetsSimple = [ds.LabelsSheetsSimple {'RS4 CM' 'RS4 CV' 'RS4 SP'}];
+    end
+
     ds.LabelsSheets = ds.LabelsSheetsSimple;
     
     ds.MeanParams = cell(m,n);
@@ -279,16 +296,13 @@ function write_results(ds,temp,out)
     labels_types = repelem({' AP' ' JP'},1,3);
     labels_indicators = strcat(labels_regimes,labels_types);
     
-    if (~ds.RS2)
-        labels_indicators(strcmp(labels_regimes,'RS2')) = [];
-    end
-    
-    if (~ds.RS3)
-        labels_indicators(strcmp(labels_regimes,'RS3')) = [];
-    end
-    
-    if (~ds.RS4)
-        labels_indicators(strcmp(labels_regimes,'RS4')) = [];
+    for i = 2:4
+        regime = ['RS' num2str(i)];
+        
+        if (~ds.(regime))
+            labels_indices = cellfun(@(x)~isempty(x),regexp(labels_indicators,['^' regime]));
+            labels_indicators(labels_indices) = [];
+        end
     end
 
     tab = [dates_str array2table([ds.AverageProbabilities ds.JointProbabilities],'VariableNames',strrep(labels_indicators,' ','_'))];
@@ -366,45 +380,7 @@ function write_results(ds,temp,out)
         writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{10},'WriteRowNames',true);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            if (~ds.RS2)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{2}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{3}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{4}).Delete();
-            end
-
-            if (~ds.RS3)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{5}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{6}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{7}).Delete();
-            end
-
-            if (~ds.RS4)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{8}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{9}).Delete();
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{10}).Delete();
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
@@ -849,7 +825,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -864,22 +840,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

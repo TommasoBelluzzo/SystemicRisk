@@ -1,6 +1,6 @@
 % [INPUT]
-% data = A float t-by-n matrix representing the model input.
-% truncate = A boolean that indicates whether to normalize the model input (optional, default=true).
+% data = A float t-by-n matrix (-Inf,Inf) representing the model input.
+% normalize = A boolean that indicates whether to normalize the model input (optional, default=true).
 %
 % [OUTPUT]
 % coefficients = A float n-by-n matrix (-Inf,Inf) representing the PCA coefficients.

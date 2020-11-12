@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A float t-by-n matrix representing the model input.
+% data = A float t-by-2 matrix representing the model input.
 % type = A string representing the type of metric to calculate:
 %   - 'GG' for Gonzalo-Granger Component Metric.
 %   - 'H' for Hasbrouck Information Metric.
@@ -151,13 +151,14 @@ end
 function [data,lag_max] = validate_input(data,lag_max)
 
     t = size(data,1);
-
+    b = t - 2;
+    
     if (t < 5)
         error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end
     
-    if (lag_max > (t - 2))
-        error(['The value of ''lag_max'' is invalid. Expected input to be less than or equal to ' num2str(t - 2) '.']);
+    if (lag_max > b)
+        error(['The value of ''lag_max'' is invalid. Expected input to be less than or equal to ' num2str(b) '.']);
     end
 
 end

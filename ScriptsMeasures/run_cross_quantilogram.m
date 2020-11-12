@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % a = A float [0.01,0.10] representing the target quantile (optional, default=0.05).
@@ -27,6 +28,7 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
@@ -42,6 +44,7 @@ function [result,stopped] = run_cross_quantilogram(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'CrossQuantilogram');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
@@ -52,17 +55,17 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lags,cim,cis,cip,analyze);
+    [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,lags,cim,cis,cip,analyze);
 
 end
 
-function [result,stopped] = run_cross_quantilogram_internal(ds,temp,out,bw,a,lags,cim,cis,cip,analyze)
+function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,lags,cim,cis,cip,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,bw,a,lags,cim,cis,cip);
+    ds = initialize(ds,sn,bw,a,lags,cim,cis,cip);
     n = ds.N;
     t = ds.T;
     
@@ -176,13 +179,14 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,bw,a,lags,cim,cis,cip)
+function ds = initialize(ds,sn,bw,a,lags,cim,cis,cip)
 
     n = ds.N;
     
     ds.Result = 'CrossQuantilogram';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.A = a;
     ds.BW = bw;
@@ -342,64 +346,9 @@ function write_results(ds,temp,out)
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialTo,[3 1 2]),ds.Lags * 3,ds.N))];
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
         writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{4},'WriteRowNames',true);
-    else
-        if (ispc())
-            try
-                excel = actxserver('Excel.Application');
-            catch
-                return;
-            end
-
-            try
-                exc_wb = excel.Workbooks.Open(out,0,false);
-
-                exc_wb.Sheets.Item('Partial From').Delete();
-                exc_wb.Sheets.Item('Partial To').Delete();
-
-                exc_wb.Save();
-                exc_wb.Close();
-                excel.Quit();
-            catch
-            end
-
-            try
-                delete(excel);
-            catch
-            end
-        end
     end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-            
-            if (ds.PI)
-                offset = 4;
-            else
-                offset = 2;
-            end
-
-            for i = 1:offset
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+	
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
@@ -555,7 +504,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -570,22 +519,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

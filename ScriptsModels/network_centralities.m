@@ -165,7 +165,7 @@ end
 
 function kc = katz_centrality(am,am_len)
 
-    kc = (eye(am_len) - (am .* 0.1)) \ ones(am_len,1);
+    kc = linsolve(eye(am_len) - (am .* 0.1),ones(am_len,1));
     kc = kc.' ./ (sign(sum(kc)) * norm(kc,'fro'));
 
 end

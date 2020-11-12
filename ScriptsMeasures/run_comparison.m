@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % ml = A cell array of strings representing the measures labels.
 % md = A float t-by-n matrix containing the measures time series.
@@ -13,9 +14,9 @@
 %   - 'BIC' for Bayesian Information Criterion.
 %   - 'FPE' for Final Prediction Error.
 %   - 'HQIC' for Hannan-Quinn Information Criterion.
-% gca = A float [0.01,0.10] representing the probability level of the F test critical value for the Granger-causality model (optional, default=0.01).
+% gca = A float [0.01,0.10] representing the probability level of the F test critical value used in the Granger-causality model (optional, default=0.01).
 % lma = A boolean that indicates whether to use the adjusted McFadden R2 for the Logistic model (optional, default=false).
-% ppsk = An integer [2,10] representing the number of cross-validation folds to use in the Predictive Power Score model (optional, default=4).
+% ppsk = An integer [2,10] representing the number of cross-validation folds used in the Predictive Power Score model (optional, default=4).
 % pdt = A string representing the type of metric to calculate for the Price Discovery model (optional, default='GG'):
 %   - 'GG' for Gonzalo-Granger Component Metric.
 %   - 'H' for Hasbrouck Information Metric.
@@ -32,6 +33,7 @@ function [result,stopped] = run_comparison(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('ml',@(x)validateattributes(x,{'cell'},{'vector' 'nonempty'}));
@@ -51,6 +53,7 @@ function [result,stopped] = run_comparison(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'Comparison');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [ml,md,co] = validate_measures(ipr.ml,ipr.md,ipr.co);
@@ -65,18 +68,18 @@ function [result,stopped] = run_comparison(varargin)
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze);
+    [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze);
 
 end
 
-function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze)
+function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt);
-    k = numel(ds.SM);
+    ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt);
+    k = numel(ds.SM) + 1;
 
     bar = waitbar(0,'Initializing measures comparison...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
@@ -96,7 +99,11 @@ function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_
                 break;
             end
             
-            eval(['ds = perform_comparison_' lower(ds.SM{i}) '(ds);']);
+            if (i == 1)
+                ds = check_similarity(ds);
+            else
+                eval(['ds = perform_comparison_' lower(ds.SM{i-1}) '(ds);']);
+            end
             
             if (getappdata(bar,'Stop'))
                 stopped = true;
@@ -150,11 +157,12 @@ function [result,stopped] = run_comparison_internal(ds,temp,out,ml,md,co,sc,lag_
 
 end
 
-%% DATA
+%% PROCESS
 
-function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
+function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
 
     cd = ds.CrisesDummy;
+    cd_empty = isempty(cd);
     
     mdn = ds.DatesNum(co:end);
     [mdy,~,~,~,~,~] = datevec(mdn);
@@ -165,27 +173,46 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
     md = (md - repmat(mean(md,1),mt,1)) ./ repmat(std(md,1),mt,1);
     md(isnan(md)) = 0;
     
+    c = nchoosek(1:mn,2);
+    c_len = size(c,1);
+    mc = cell(c_len,2);
+    
+    for i = 1:c_len
+        c_i = c(i,:);
+        mc(i,:) = {c_i md(:,c_i)};
+    end
+    
     ds.Result = 'Comparison';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.MN = mn;
     ds.MT = mt;
     ds.MData = md;
     ds.MDatesNum = mdn;
     ds.MLabels = ml;
+    ds.MCombinations = mc;
     ds.MMonthlyTicks = numel(unique(mdy)) <= 3;
     
-    if (~isempty(cd))
+    if (cd_empty)
+        ds.MDummy = [];
+    else
         ds.MDummy = cd(co:end);
     end
-
-    ds.SC = sc;
-    ds.SM = {'GC' 'LM' 'PPS' 'PD'};
-
+    
     ds.CO = co;
     ds.LagMax = lag_max;
     ds.LagSel = lag_sel;
+    
+    ds.LabelsSheetsSimple = {'Distance Correlation' 'RMS Similarity' 'Scores'};
+    ds.LabelsSheets = {'Distance Correlation' 'RMS Similarity' 'Scores'};
+    
+    ds.DistanceCorrelation = NaN(mn);
+    ds.RMSSimilarity = NaN(mn);
+
+    ds.SC = sc;
+    ds.SM = {'GC' 'LM' 'PPS' 'PD'};
 
     off = 1;
 
@@ -199,7 +226,7 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
         ds.SM(off) = [];
     end
     
-    if ((ds.SC(off) > 0) && ~isempty(ds.MDummy))
+    if ((ds.SC(off) > 0) && ~cd_empty)
         ds.LMA = lma;
         ds.LMData = NaN(1,mn);
         ds.LMScores = NaN(1,mn);
@@ -209,7 +236,7 @@ function ds = initialize(ds,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
         ds.SM(off) = [];
     end
     
-    if ((ds.SC(off) > 0) && ~isempty(ds.MDummy))
+    if ((ds.SC(off) > 0) && ~cd_empty)
         ds.PPSK = ppsk;
         ds.PPSData = NaN(1,mn);
         ds.PPSScores = NaN(1,mn);
@@ -251,91 +278,6 @@ function ds = finalize(ds)
 
 end
 
-function lag_max = validate_lag_max(lag_max,md)
-
-    mt = size(md,1);
-    b = (lag_max * 2) + 1;
-    
-    if ((lag_max > (mt - 2)) || (b >= (mt - b)))
-        error('The ''lag_max'' parameter is too high for the provided number of observations.');
-    end
-
-end
-
-function [ml,md,co] = validate_measures(ml,md,co)
-
-    if (any(cellfun(@(x)~ischar(x)||isempty(x),ml)))
-        error('The ''ml'' parameter contains invalid values.');
-    end
-
-    [mt,mn] = size(md);
-
-    if (mn ~= numel(ml))
-        error('The number of measures and the number of measure labels are mismatching.');
-    end
-
-    if ((mt - co + 1) < 100)
-        error('The number of observations, after the cut-off is applied, is too low to obtain consistent results.');
-    end
-    
-    ml = ml(:);
-    
-end
-
-function out = validate_output(out)
-
-    [path,name,extension] = fileparts(out);
-
-    if (~strcmp(extension,'.xlsx'))
-        out = fullfile(path,[name extension '.xlsx']);
-    end
-    
-end
-
-function sc = validate_sc(sc)
-
-    if (isempty(sc))
-        sc = ones(1,4);
-    else
-        if (numel(sc) ~= 4)
-            error('The ''sc'' parameter, when specified as a vector of floats, must contain exactly 4 elements.');
-        end
-        
-        sc_sum = sum(sc);
-        
-        if (sc_sum == 0)
-            error('The ''sc'' parameter, when specified as a vector of floats, must contain at least one positive element.');
-        end
-    end
-
-end
-
-function temp = validate_template(temp)
-
-    file_sheets = validate_xls(temp,'T');
-
-    if ((numel(file_sheets) ~= 1) || ~strcmp(file_sheets{1},'Scores'))
-        error('The template must contain only one sheet named ''Scores''.');
-    end
-    
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-                
-            excel_wb.Sheets.Item('Scores').Cells.Clear();
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
-
-end
-
 function write_results(ds,temp,out)
 
     [out_path,~,~] = fileparts(out);
@@ -359,6 +301,16 @@ function write_results(ds,temp,out)
     end
     
     mn = ds.MN;
+
+    labels = [{'Firms'} ds.MLabels.'];
+    
+    if (ispc())
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],1);
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],2);
+    else
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],ds.LabelsSheetsSimple{1});
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],ds.LabelsSheetsSimple{2});
+    end
     
     sm = ds.SM;
     sm_len = numel(sm);
@@ -382,48 +334,87 @@ function write_results(ds,temp,out)
     scores = mat2cell(scores,ds.MN,ones(1,size(scores,2)));
     
     tab = table(ds.MLabels,scores{:},'VariableNames',labels);
-    writetable(tab,out,'FileType','spreadsheet','Sheet','Scores','WriteRowNames',true);
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
+
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
-%% MEASURES
+%% INTERNAL CALCULATIONS
+
+function ds = check_similarity(ds)
+
+    mc = ds.MCombinations;
+    mc_len = size(mc,1);
+    mc_results = cell(mc_len,2);
+
+    parfor k = 1:mc_len
+        md_k = mc{k,2};
+        [dcor_i,rmss_i] = similarity_statistics(md_k);
+        mc_results(k,:) = {dcor_i rmss_i};
+    end
+
+    mn = ds.MN;
+    dcor = zeros(mn);
+    rmss = zeros(mn);
+    
+    for k = 1:mc_len
+        mo_k = mc{k,1};
+        i = mo_k(1);
+        j = mo_k(2);
+
+        [dcor(i,j),rmss(i,j)] = deal(mc_results{k,:});
+    end
+
+    ds.DistanceCorrelation = dcor + dcor.' + eye(mn);
+    ds.RMSSimilarity = rmss + rmss.' + eye(mn);
+
+end
 
 function ds = perform_comparison_gc(ds) %#ok<DEFNU>
 
-    m = ds.MData;
-    mn = size(m,2);
-    
     lag_max = ds.LagMax;
     lag_sel = ds.LagSel;
     gca = ds.GCA;
 
+    mc = ds.MCombinations;
+    mc_len = size(mc,1);
+    mc_results = cell(mc_len,1);
+
+    parfor k = 1:mc_len
+        md_k = mc{k,2};
+        
+        [f,cv,h0,lag_r,lag_u] = granger_causality(md_k,gca,lag_max,lag_sel);
+
+        data_k = struct();
+        data_k.F = f;
+        data_k.CV = cv;
+        data_k.H0 = h0;
+        data_k.LagR = lag_r;
+        data_k.LagU = lag_u;
+
+        mc_results{k} = data_k;
+    end
+
+    mn = ds.MN;
     data = cell(mn,mn);
     scores = zeros(1,mn);
+    
+    for k = 1:mc_len
+        mo_k = mc{k,1};
+        i = mo_k(1);
+        j = mo_k(2);
+        
+        data_k = mc_results{k};
+        h0_k = data_k.H0;
+        data_k = rmfield(data_k,'H0');
 
-    for i = 1:mn
-        m_i = m(:,i);
+        data{i,j} = data_k;
+        data{j,i} = data_k;
 
-        for j = 1:mn
-            if (i == j)
-                continue;
-            end
-
-            m_j = m(:,j);
-
-            [f,cv,h0,lag_r,lag_u] = granger_causality([m_i m_j],gca,lag_max,lag_sel);
-            
-            data_ij = struct();
-            data_ij.F = f;
-            data_ij.CV = cv;
-            data_ij.LagR = lag_r;
-            data_ij.LagU = lag_u;
-            
-            data{i,j} = data_ij;
-
-            if (~h0)
-                scores(i) = scores(i) - 1;
-                scores(j) = scores(j) + 1;
-            end
+        if (~h0_k)
+            scores(i) = scores(i) - 1;
+            scores(j) = scores(j) + 1;
         end
     end
     
@@ -443,17 +434,15 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
     
     lma = ds.LMA;
     y = ds.MDummy;
-    a = zeros(mt,1);
 
     mfr2 = zeros(1,mn);
-    scores = zeros(1,mn);
 
     parfor i = 1:mn
         mdl = fitglm(m(:,i),y,'Distribution','binomial','Link','logit');
         b = mdl.Coefficients{:,1};
         ll = mdl.LogLikelihood;
 
-        mdl0 = fitglm(a,y,'Distribution','binomial','Link','logit');
+        mdl0 = fitglm(zeros(mt,1),y,'Distribution','binomial','Link','logit');
         ll0 = mdl0.LogLikelihood;
 
         if (lma)
@@ -462,6 +451,8 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
             mfr2(i) = 1 - (ll / ll0);
         end
     end
+    
+    scores = zeros(1,mn);
 
     for i = 1:mn
         a = mfr2(i);
@@ -564,45 +555,49 @@ end
 
 function ds = perform_comparison_pd(ds) %#ok<DEFNU>
 
-    m = ds.MData;
-    mn = size(m,2);
-    
     lag_max = ds.LagMax;
     lag_sel = ds.LagSel;
     pdt = ds.PDT;
 
+    mc = ds.MCombinations;
+    mc_len = size(mc,1);
+    mc_results = cell(mc_len,1);
+
+    parfor k = 1:mc_len
+        md_k = mc{k,2};
+        
+        [m1,m2,lag] = price_discovery(md_k,pdt,lag_max,lag_sel);
+
+        data_k = struct();
+        data_k.M1 = m1;
+        data_k.M2 = m2;
+        data_k.Lag = lag;
+
+        mc_results{k} = data_k;
+    end
+
+    mn = ds.MN;
     data = cell(mn,mn);
     scores = zeros(1,mn);
+    
+    for k = 1:mc_len
+        mo_k = mc{k,1};
+        i = mo_k(1);
+        j = mo_k(2);
+        
+        data_k = mc_results{k};
+        data{i,j} = data_k;
+        data{j,i} = data_k;
 
-    for i = 1:mn
-        m_i = m(:,i);
-
-        for j = 1:mn
-            if (i == j)
-                continue;
-            end
-
-            m_j = m(:,j);
-
-            [m1,m2,lag] = price_discovery([m_i m_j],pdt,lag_max,lag_sel);
-            
-            data_ij = struct();
-            data_ij.M1 = m1;
-            data_ij.M2 = m2;
-            data_ij.Lag = lag;
-            
-            data{i,j} = data_ij;
-
-            if (m1 > 0.5)
-                scores(i) = scores(i) + 1;
-                scores(j) = scores(j) - 1;
-            elseif (m2 > 0.5)
-                scores(i) = scores(i) - 1;
-                scores(j) = scores(j) + 1;
-            end
+        if (data_k.M1 > 0.5)
+            scores(i) = scores(i) + 1;
+            scores(j) = scores(j) - 1;
+        elseif (data_k.M2 > 0.5)
+            scores(i) = scores(i) - 1;
+            scores(j) = scores(j) + 1;
         end
     end
-    
+
     if (~all(scores == 0))
         scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
     end
@@ -619,6 +614,8 @@ function analyze_result(ds)
     k = numel(ds.SM);
 
     safe_plot(@(id)plot_measures(ds,id));
+    safe_plot(@(id)plot_similarity(ds,'Distance Correlation',id));
+    safe_plot(@(id)plot_similarity(ds,'RMS Similarity',id));
 
     for i = 1:k
         eval(['safe_plot(@(id)plot_scores_' lower(ds.SM{i}) '(ds,id));']);
@@ -723,6 +720,49 @@ function plot_measures(ds,id)
         end
 
     end
+
+end
+
+function plot_similarity(ds,target,id)
+
+    labels = ds.MLabels;
+    n = numel(labels);
+    seq = 1:n;
+    off = seq + 0.5;
+
+    m = ds.(strrep(target,' ',''));
+    
+    s = m;
+    s(s <= 0.5) = 0;
+    s(s > 0.5) = 1;
+    s(logical(eye(n))) = 0.5;
+    
+    [s_x,s_y] = meshgrid(seq,seq);
+    s_x = s_x(:) + 0.5;
+    s_y = s_y(:) + 0.5;
+    s_text = cellstr(num2str(m(:),'%.2f'));
+
+    f = figure('Name',['Measures Comparison > ' target],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
+
+    pcolor(padarray(s,[1 1],'post'));
+    colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
+    
+    if (n <= 10)
+        axis('image');
+    end
+
+    text(s_x,s_y,s_text,'FontSize',9,'HorizontalAlignment','center');
+    
+    ax = gca();
+    set(ax,'FontWeight','bold','TickLength',[0 0]);
+    set(ax,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
+    set(ax,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
+    
+    figure_title(target);
+
+    pause(0.01);
+    frame = get(f,'JavaFrame');
+    set(frame,'Maximized',true);
 
 end
 
@@ -1026,5 +1066,79 @@ function plot_scores_overall(ds,id)
         tooltip = ctooltips{index};
 
     end
+
+end
+
+%% VALIDATION
+
+function lag_max = validate_lag_max(lag_max,md)
+
+    mt = size(md,1);
+    b = (lag_max * 2) + 1;
+    
+    if ((lag_max > (mt - 2)) || (b >= (mt - b)))
+        error('The ''lag_max'' parameter is too high for the provided number of observations.');
+    end
+
+end
+
+function [ml,md,co] = validate_measures(ml,md,co)
+
+    if (any(cellfun(@(x)~ischar(x)||isempty(x),ml)))
+        error('The ''ml'' parameter contains invalid values.');
+    end
+
+    [mt,mn] = size(md);
+
+    if (mn ~= numel(ml))
+        error('The number of measures and the number of measure labels are mismatching.');
+    end
+
+    if ((mt - co + 1) < 100)
+        error('The number of observations, after the cut-off is applied, is too low to obtain consistent results.');
+    end
+    
+    ml = ml(:);
+    
+end
+
+function out = validate_output(out)
+
+    [path,name,extension] = fileparts(out);
+
+    if (~strcmpi(extension,'.xlsx'))
+        out = fullfile(path,[name extension '.xlsx']);
+    end
+    
+end
+
+function sc = validate_sc(sc)
+
+    if (isempty(sc))
+        sc = ones(1,4);
+    else
+        if (numel(sc) ~= 4)
+            error('The ''sc'' parameter, when specified as a vector of floats, must contain exactly 4 elements.');
+        end
+        
+        sc_sum = sum(sc);
+        
+        if (sc_sum == 0)
+            error('The ''sc'' parameter, when specified as a vector of floats, must contain at least one positive element.');
+        end
+    end
+
+end
+
+function temp = validate_template(temp)
+
+    sheets = {'Distance Correlation' 'RMS Similarity' 'Scores'};
+    file_sheets = validate_xls(temp,'T');
+
+    if (~all(ismember(sheets,file_sheets)))
+        error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
+    end
+    
+    worksheets_batch(temp,sheets);
 
 end

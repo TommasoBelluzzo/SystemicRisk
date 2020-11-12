@@ -3,19 +3,36 @@
 up = false;
 initialize;
 
-if ((exist('ds_version','var') == 0) || (exist('path_base','var') == 0))
+ev = {'ds_dir' 'ds_version' 'out_dir' 'out_name' 'path_base' 'sn' 'temp_dir' 'temp_name'};
+ev_len = numel(ev);
+
+failures = false(ev_len,1);
+
+for i = 1:numel(ev)
+    ev_i = ev{i};
+    
+    if (exist(ev_i,'var') == 0)
+        failures(i) = true;
+    end
+    
+    eval(['failures(i) = isempty(' ev_i ') || ~ischar(' ev_i ');']);
+end
+
+if (any(failures))
     error('The initialization process failed.');
 end
 
 %% EXECUTION
 
-files = dir(fullfile(path_base,['Results' filesep() '*.mat']));
+target_sn = '';
+
+files = dir(fullfile(path_base,[out_dir filesep() '*.mat']));
 files_len = numel(files);
 
 if (files_len == 0)
     warning('MATLAB:SystemicRisk','The analysis of systemic risk measures cannot be performed because no result files have been found.');
 else
-    v = cell(files_len,3);
+    v = cell(files_len,5);
     voff = 1;
     
     for i = 1:files_len
@@ -62,18 +79,11 @@ else
             continue;
         end
 
-        result = s_value.Result;
-        
-        if (strcmp(result,'Comparison'))
-            file_path_w = strrep(file_path,filesep(),[filesep() filesep()]);
-            warning('MATLAB:SystemicRisk',['The content of the result file ''' file_path_w ''' is invalid: inner data is not supported.']);
-            continue;
+        if (~isempty(target_sn) && ~strcmp(s_value.ResultSerial,target_sn))
+            continue;    
         end
-        
-        result_date = s_value.ResultDate;
-        result_analysis = s_value.ResultAnalysis;
 
-        v(voff,:) = {s_value result result_date};
+        v(voff,:) = {file_path s_value s_value.Result s_value.ResultDate s_value.ResultSerial};
         voff = voff + 1;
     end
     
@@ -81,32 +91,44 @@ else
     v_len = size(v,1);
 
     if (v_len == 0)
-        warning('MATLAB:SystemicRisk','The analysis of systemic risk measures cannot be performed because no result files have been loaded.');
-    else
-        v = sortrows(v,[2 -3]);
+        warning('MATLAB:SystemicRisk','The analysis of systemic risk measures cannot be performed because no valid result files have been detected.');
+        clearvars();
+        return;
+    end
 
-        [u,u_indices] = unique(v(:,2));
-        u_len = numel(u);
+    v = sortrows(v,[3 -4]);
+    
+    comparison_indices = strcmp(v(:,3),'Comparison');
+    v = [v(~comparison_indices,:); v(comparison_indices,:)];
+
+    [u,u_indices] = unique(v(:,3),'stable');
+    u_len = numel(u);
+
+    if (u_len ~= v_len)
+        v = v(u_indices,:);
         
-        if (u_len ~= v_len)
-            v = v(u_indices,:);
-            v_len = u_len;
-            
+        if (numel(unique(v(:,5))) > 1)
+            v(strcmp(v(:,3),'Comparison'),:) = [];
+            warning('MATLAB:SystemicRisk','Multiple result files belonging to the same category have been found: only the most recent result file for each category will be analyzed and no comparisons will be displayed.');
+        else
             warning('MATLAB:SystemicRisk','Multiple result files belonging to the same category have been found: only the most recent result file for each category will be analyzed.');
         end
-        
-        for i = 1:v_len
-            v_i = v{i};
-            
-            try
-                v_i.ResultAnalysis(v_i);
-            catch e
-                file_path_w = strrep(file_path,filesep(),[filesep() filesep()]);
-                warning('MATLAB:SystemicRisk',['The result file ''' file_path_w ''' could not be analyzed.' newline() e.message]);
-                continue;
-            end
-        end 
+
+        v_len = size(v,1);
     end
+
+    for i = 1:v_len
+        v_i = v{i,2};
+
+        try
+            v_i.ResultAnalysis(v_i);
+        catch e
+            file_path_w = strrep(v{i,1},filesep(),[filesep() filesep()]);
+            warning('MATLAB:SystemicRisk',['The result file ''' file_path_w ''' could not be analyzed.' newline() e.message]);
+            continue;
+        end
+    end
+
 end
 
 %% CLEANUP

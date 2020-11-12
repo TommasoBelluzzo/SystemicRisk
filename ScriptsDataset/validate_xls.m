@@ -40,7 +40,7 @@ function file_sheets = validate_xls_internal(file,type)
 
     [~,~,extension] = fileparts(file);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
     end
 

@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % op = A string representing the option pricing model (optional, default='BSM'):
@@ -8,8 +9,8 @@
 %   - 'GC' for Gram-Charlier.
 % lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used to calculate D2C and D2D (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
-% rr = A float [0,1] representing the recovery rate in case of default used to calculate the DIP (optional, default=0.45).
 % f = An integer [2,n], where n is the number of firms, representing the number of systematic risk factors used to calculate the DIP (optional, default=2).
+% lgd = A float (0,1] representing the loss given default, complement to recovery rate, used to calculate the DIP (optional, default=0.55).
 % l = A float [0.05,0.20] representing the importance sampling threshold used to calculate the DIP (optional, default=0.10).
 % c = An integer [50,1000] representing the number of simulated samples used to calculate the DIP (optional, default=100).
 % it = An integer [5,100] representing the number of iterations to perform to calculate the DIP (optional, default=5).
@@ -27,14 +28,15 @@ function [result,stopped] = run_default(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bw',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addOptional('op','BSM',@(x)any(validatestring(x,{'BSM' 'GC'})));
         ip.addOptional('lst',3,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 'vector'}));
         ip.addOptional('car',0.08,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.03 '<=' 0.20 'scalar'}));
-        ip.addOptional('rr',0.45,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0 '<=' 1 'scalar'}));
         ip.addOptional('f',2,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
+        ip.addOptional('lgd',0.55,@(x)validateattributes(x,{'double'},{'real' 'finite' '>' 0 '<=' 1 'scalar'}));
         ip.addOptional('l',0.10,@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.05 '<=' 0.20 'scalar'}));
         ip.addOptional('c',100,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 50 '<=' 1000 'scalar'}));
         ip.addOptional('it',5,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 5 '<=' 100 'scalar'}));
@@ -46,14 +48,15 @@ function [result,stopped] = run_default(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'Default');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     bw = ipr.bw;
     op = ipr.op;
     lst = validate_lst(ipr.lst,ds.N);
     car = ipr.car;
-    rr = ipr.rr;
     f = validate_f(ipr.f,ds.N);
+    lgd = ipr.lgd;
     l = ipr.l;
     c = ipr.c;
     it = ipr.it;
@@ -62,17 +65,17 @@ function [result,stopped] = run_default(varargin)
     
     nargoutchk(1,2);
     
-    [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,it,k,analyze);
+    [result,stopped] = run_default_internal(ds,sn,temp,out,bw,op,lst,car,f,lgd,l,c,it,k,analyze);
 
 end
 
-function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,l,c,it,k,analyze)
+function [result,stopped] = run_default_internal(ds,sn,temp,out,bw,op,lst,car,f,lgd,l,c,it,k,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k);
+    ds = initialize(ds,sn,bw,op,lst,car,f,lgd,l,c,it,k);
     n = ds.N;
     t = ds.T;
     
@@ -173,7 +176,7 @@ function [result,stopped] = run_default_internal(ds,temp,out,bw,op,lst,car,rr,f,
         futures_results = cell(t,1);
 
         for i = 1:t
-            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.LGD,ds.F,ds.L,ds.C,ds.IT,windows_cl{i},ds.K);
+            futures(i) = parfeval(@main_loop_2,1,windows_r{i},cds(i,:),lb(i,:),ds.F,ds.LGD,ds.L,ds.C,ds.IT,windows_cl{i},ds.K);
         end
 
         for i = 1:t
@@ -245,7 +248,7 @@ end
 
 %% PROCESS
 
-function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k)
+function ds = initialize(ds,sn,bw,op,lst,car,f,lgd,l,c,it,k)
 
     q = [(0.900:0.025:0.975) 0.99];
     q = q(q >= k);
@@ -256,6 +259,7 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k)
     ds.Result = 'Default';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.A = 1 - k;
     ds.BW = bw;
@@ -266,15 +270,14 @@ function ds = initialize(ds,bw,op,lst,car,rr,f,l,c,it,k)
     ds.IT = it;
     ds.K = k;
     ds.L = l;
-    ds.LGD = 1 - rr;
+    ds.LGD = lgd;
     ds.LST = lst;
     ds.OP = op;
-    ds.RR = rr;
     ds.ST =  1 ./ (1 + lst);
 
     op_label =  [' (' ds.OP ')'];
     d2c_label =  [' (' ds.OP ', CAR=' num2str(ds.CAR * 100) '%)'];
-    dip_label =  [' (RR=' num2str(ds.RR * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%, IT=' num2str(it) ')'];
+    dip_label =  [' (LGD=' num2str(ds.LGD * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%, IT=' num2str(it) ')'];
     scca_label = [' (' ds.OP ', K=' num2str(ds.K * 100) '%)'];
 
     ds.LabelsMeasuresSimple = {'D2D' 'D2C' 'SCCA EL' 'SCCA CL'};
@@ -334,11 +337,11 @@ function window_results = main_loop_1(firm_data,offsets,r,st,dt,car,op)
 
 end
 
-function window_results = main_loop_2(r,cds,lb,lgd,f,l,c,it,cl,k)
+function window_results = main_loop_2(r,cds,lb,f,lgd,l,c,it,cl,k)
 
     window_results = struct();
 
-    dip = distress_insurance_premium(r,cds,lb,lgd,f,l,c,it);
+    dip = distress_insurance_premium(r,cds,lb,f,lgd,l,c,it);
     window_results.DIP = dip;
 
     [jvars,jes] = mgev_joint_risk_metrics(cl,k);
@@ -448,33 +451,9 @@ function write_results(ds,temp,out)
     end
 
     tab = [dates_str array2table(ds.Indicators,'VariableNames',strrep(ds.LabelsIndicatorsSimple,' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
-
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            for i = 1:numel(ds.LabelsSheet)
-                exc_wb.Sheets.Item(ds.LabelsSheetSimple{i}).Name = ds.LabelsSheet{i};
-            end
-
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);
+    
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
@@ -571,7 +550,7 @@ function plot_dip(ds,id)
     plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
-    title(sub_1,['DIP (RR=' num2str(ds.RR * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%)']);
+    title(sub_1,['DIP (LGD=' num2str(ds.LGD * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%)']);
     
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -790,7 +769,7 @@ function out_file = validate_output(out_file)
 
     [path,name,extension] = fileparts(out_file);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out_file = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -813,22 +792,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(res,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

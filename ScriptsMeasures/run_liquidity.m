@@ -1,6 +1,7 @@
 % [INPUT]
 % ds = A structure representing the dataset.
-% temp = A string representing the full path to the Excel spreadsheet used as a template for the results file.
+% sn = A string representing the serial number of the result file.
+% temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bwl = An integer [90,252] representing the dimension of the long bandwidth (optional, default=252).
 % bwm = An integer [21,90) representing the dimension of the medium bandwidth (optional, default=21).
@@ -26,6 +27,7 @@ function [result,stopped] = run_liquidity(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('ds',@(x)validateattributes(x,{'struct'},{'nonempty'}));
+        ip.addRequired('sn',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('temp',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('out',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addOptional('bwl',252,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 90 '<=' 252 'scalar'}));
@@ -42,6 +44,7 @@ function [result,stopped] = run_liquidity(varargin)
 
     ipr = ip.Results;
     ds = validate_dataset(ipr.ds,'Liquidity');
+    sn = ipr.sn;
     temp = validate_template(ipr.temp);
     out = validate_output(ipr.out);
     [bwl,bwm,bws] = validate_bandwidths(ipr.bwl,ipr.bwm,ipr.bws);
@@ -53,17 +56,17 @@ function [result,stopped] = run_liquidity(varargin)
     
     nargoutchk(1,2);
 
-    [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w,c,s2,analyze);
+    [result,stopped] = run_liquidity_internal(ds,sn,temp,out,bwl,bwm,bws,mem,w,c,s2,analyze);
 
 end
 
-function [result,stopped] = run_liquidity_internal(ds,temp,out,bwl,bwm,bws,mem,w,c,s2,analyze)
+function [result,stopped] = run_liquidity_internal(ds,sn,temp,out,bwl,bwm,bws,mem,w,c,s2,analyze)
 
     result = [];
     stopped = false;
     e = [];
 
-    ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2);
+    ds = initialize(ds,sn,bwl,bwm,bws,mem,w,c,s2);
     n = ds.N;
     t = ds.T;
 
@@ -186,7 +189,7 @@ end
 
 %% DATA
 
-function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
+function ds = initialize(ds,sn,bwl,bwm,bws,mem,w,c,s2)
 
     n = ds.N;
     t = ds.T;
@@ -194,6 +197,7 @@ function ds = initialize(ds,bwl,bwm,bws,mem,w,c,s2)
     ds.Result = 'Liquidity';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
+    ds.ResultSerial = sn;
 
     ds.CI = ~isempty(ds.StateVariables);
     ds.BWL = bwl;
@@ -306,37 +310,9 @@ function write_results(ds,temp,out)
     end
 
     tab = [dates_str array2table(ds.Averages,'VariableNames',strrep(ds.LabelsSheetsSimple(1:end-1),' ','_'))];
-    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);    
-
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-        catch
-            return;
-        end
-
-        try
-            exc_wb = excel.Workbooks.Open(out,0,false);
-
-            if (~ds.CI)
-                exc_wb.Sheets.Item('ILLIQC').Delete();
-            end
-            
-            for i = 1:numel(ds.LabelsSheetsSimple)
-                exc_wb.Sheets.Item(ds.LabelsSheetsSimple{i}).Name = ds.LabelsSheets{i};
-            end
-            
-            exc_wb.Save();
-            exc_wb.Close();
-            excel.Quit();
-        catch
-        end
-        
-        try
-            delete(excel);
-        catch
-        end
-    end
+    writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{end},'WriteRowNames',true);
+	
+    worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
 
@@ -660,7 +636,7 @@ function out = validate_output(out)
 
     [path,name,extension] = fileparts(out);
 
-    if (~strcmp(extension,'.xlsx'))
+    if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
     
@@ -675,22 +651,6 @@ function temp = validate_template(temp)
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
     
-    if (ispc())
-        try
-            excel = actxserver('Excel.Application');
-            excel_wb = excel.Workbooks.Open(temp,0,false);
-
-            for i = 1:numel(sheets)
-                excel_wb.Sheets.Item(sheets{i}).Cells.Clear();
-            end
-            
-            excel_wb.Save();
-            excel_wb.Close();
-            excel.Quit();
-
-            delete(excel);
-        catch
-        end
-    end
+    worksheets_batch(temp,sheets);
 
 end

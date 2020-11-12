@@ -164,7 +164,7 @@ end
 
 function core = validate_core(core)
 
-    n = validate_field(core,'N',{'double'},{'real' 'finite' 'integer' '>=' 3 'scalar'},{},{});
+    n = validate_field(core,'N',{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'},{},{});
     validate_field(core,'Data',{'cell'},{'2d' 'nonempty' 'size' [NaN n]},{'double'},{'real' 'nonempty'});
     validate_field(core,'Function',{'function_handle'},{'scalar'},{},{});
 
