@@ -4,7 +4,7 @@
 %
 % [OUTPUT]
 % jvars = A row vector of floats [0,Inf) representing the Joint Values-at-Risk.
-% jes = A float [0,Inf) representing the Loint Expected Shortfall.
+% jes = A float [0,Inf) representing the Joint Expected Shortfall.
 
 function [jvars,jes] = mgev_joint_risk_metrics(varargin)
 
@@ -98,7 +98,7 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     jvars = zeros(1,numel(q_fin));
 
     if (up)
-        for j = 1:numel(q_fin)
+        parfor j = 1:numel(q_fin)
             lhs = -log(q_fin(j)) / d;
 
             x0 = (x0_mu + (x0_sigma / x0_xi) * (lhs^-x0_xi - 1));
