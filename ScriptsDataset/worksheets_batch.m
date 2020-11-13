@@ -92,19 +92,22 @@ function worksheets_batch_internal(file,sheets,names)
         wb.Save();
         wb.Close();
     catch e
-        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' file '''.' newline() e.message]);
+        file_w = strrep(file,filesep(),[filesep() filesep()]);
+        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' file_w '''.' newline() e.message]);
     end
         
     try
         excel.Quit();
         delete(excel);
     catch e1
-        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file ''' (step 1).' newline() e1.message]);
+        file_w = strrep(file,filesep(),[filesep() filesep()]);
+
+        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file_w ''' (step 1).' newline() e1.message]);
 
         try
             delete(excel);
         catch e2
-            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file ''' (step 2).' newline() e2.message]);
+            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file_w ''' (step 2).' newline() e2.message]);
         end
     end
 
@@ -112,16 +115,18 @@ end
 
 function [sheets,names] = validate_input(sheets,names)
 
-    if (numel(sheets) ~= numel(names))
-        error('The ''sheets'' parameter and the ''names'' parameter must contain the same number of elements.');
-    end
-
     if (any(cellfun(@(x)~ischar(x)||isempty(x),sheets)))
         error('The ''sheets'' parameter contains invalid elements.');
     end
 
-    if (~isempty(names) && any(cellfun(@(x)~ischar(x)||isempty(x)||(length(x) > 31),names)))
-        error('The ''names'' parameter contains invalid elements.');
+    if (~isempty(names))
+        if (numel(sheets) ~= numel(names))
+            error('The ''sheets'' parameter and the ''names'' parameter must contain the same number of elements.');
+        end
+        
+        if (any(cellfun(@(x)~ischar(x)||isempty(x)||(length(x) > 31),names)))
+            error('The ''names'' parameter contains invalid elements.');
+        end
     end
 
 end
