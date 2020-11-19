@@ -75,7 +75,6 @@ The minimum required `MATLAB` version is `R2014b`. In addition, the following pr
 * Image Processing Toolbox
 * Optimization Toolbox
 * Parallel Computing Toolbox
-* Simulink Control Design
 * Statistics and Machine Learning Toolbox
 * System Identification Toolbox
 
