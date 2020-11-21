@@ -34,7 +34,7 @@ function [mu,e,mem_params,dist_params] = multiplicative_error(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [v,d,z,type] = validate_input(ipr.data,ipr.type);
     q = ipr.q;
@@ -82,12 +82,12 @@ function [params,mu,e] = multiplicative_error_baseline(v,z,q,p,options)
     vm = mean(v);
 
     zn = size(z,2);
-    
+
     offset = max([zn q p]);
 
     qp = q + p;
     qpz = qp + zn;
-    
+
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.10 / q)); (ones(p,1) .* (0.75 / p)); (ones(zn,1) .* (0.01 / zn)); 0.5];
@@ -132,7 +132,7 @@ function [params,mu,e] = multiplicative_error_baseline(v,z,q,p,options)
         ll = generalized_gamma_likelihood(v,mu,x(end));
 
     end
-    
+
 end
 
 function [params,mu,e] = multiplicative_error_asymmetric(v,d,z,q,p,options)
@@ -147,7 +147,7 @@ function [params,mu,e] = multiplicative_error_asymmetric(v,d,z,q,p,options)
     q2 = q * 2;
     q2p = q2 + p;
     q2pz = q2p + zn;
-    
+
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); (ones(q,1) .* (0.10 / q)); (ones(p,1) .* (0.70 / p)); (ones(zn,1) .* (0.01 / zn)); 0.5];
@@ -193,7 +193,7 @@ function [params,mu,e] = multiplicative_error_asymmetric(v,d,z,q,p,options)
         ll = generalized_gamma_likelihood(v,mu,x(end));
 
     end
-    
+
 end
 
 function [params,mu,e] = multiplicative_error_asymmetric_power(v,d,z,q,p,options)
@@ -209,7 +209,7 @@ function [params,mu,e] = multiplicative_error_asymmetric_power(v,d,z,q,p,options
     q2p = q2 + p;
     q2pz = q2p + zn + 1;
     pz = p + zn + 1;
-    
+
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); zeros(q,1); (ones(p,1) .* (0.75 / p)); 0.3; (ones(zn,1) .* (0.01 / zn)); 0.5];
@@ -256,7 +256,7 @@ function [params,mu,e] = multiplicative_error_asymmetric_power(v,d,z,q,p,options
         ll = generalized_gamma_likelihood(v,mu,x(end));
 
     end
-    
+
 end
 
 function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
@@ -265,21 +265,21 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
     vm = mean(v);
 
     zn = size(z,2);
-    
+
     offset = max(q,p);
 
     qp = q + p;
 
     fh = @(x,k,qpk,qpkz)likelihood(x,v,z,vn,vm,zn,k,q,p,offset,qp,qpk,qpkz);
     tol = 2 * options.TolCon;
-    
+
     knots = 2:15;
     knots_len = numel(knots);
 
     params_list = cell(knots_len,1);
     mu_list = cell(knots_len,1);
     e_list = cell(knots_len,1);
-    
+
     results = [knots.' zeros(knots_len,1)];
 
     parfor k = knots
@@ -295,17 +295,17 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
 
         params = fmincon(@(x)fh(x,k,qpk,qpkz),x0,ai,bi,[],[],lb,ub,[],options);
         [~,mu,e,t] = fh(params,k,qpk,qpkz);
-        
+
         params_list{k - 1} = params;
         mu_list{k - 1} = mu;
         e_list{k - 1} = e;
 
         results(k - 1,2) = sum(log(abs(mu - t))) + (log(vn) * ((k + 2) / vn));
     end
-    
+
     results = sortrows(results,[2 1]);
     k = results(1,1);
-    
+
     params = [k; params_list{k - 1}];
     mu = mu_list{k - 1};
     e = e_list{k - 1};
@@ -315,11 +315,11 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
         a = x(1:q);
         b = x(q+1:qp);
         o = 1 - sum(a) - sum(b);
-        
+
         c = x(qp+1);
         w = x(qp+2:qpk);
         y = x(qpk+1:qpkz);
-        
+
         if (zn == 0)
             yz = [];
         else
@@ -337,7 +337,7 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
 
         mu = zeros(vn,1);
         mu(1:offset) = vm;
-        
+
         for i = offset+1:vn
             mu_i = o;
 
@@ -351,14 +351,14 @@ function [params,mu,e] = multiplicative_error_spline(v,z,q,p,options)
 
             mu(i) = mu_i;
         end
-        
+
         mu = sqrt(mu .* t);
         e = v ./ mu;
 
         ll = generalized_gamma_likelihood(v,mu,x(end));
 
     end
-    
+
 end
 
 function ll = generalized_gamma_likelihood(v,mu,gamma)
@@ -382,11 +382,11 @@ function [v,d,z,type] = validate_input(data,type)
     n = size(data,2);
 
     v = data(:,1);
-    
+
     if (any(v <= 0))
         error('The value of ''data'' is invalid. Expected input to contain only positive values in the first column.');
     end
-    
+
     if (any(strcmp(type,{'A' 'P'})))
         if (n < 2)
             error('The value of ''data'' is invalid. Expected input to be a matrix with at least 2 columns.');
@@ -402,19 +402,19 @@ function [v,d,z,type] = validate_input(data,type)
         zo = 3;
     else
         d = [];
-        
+
         zn = n - 1;
         zo = 2;
     end
-    
+
     if (zn == 0)
         z = [];
     else
         z = data(:,zo:end);
-        
+
         for i = 1:zn
             z_i = z(:,1);
-            
+
             if (any(z_i <= 0))
                 z(:,1) = z_i + min(z_i) + 1e-6;
             end

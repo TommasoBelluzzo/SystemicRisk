@@ -3,6 +3,9 @@
 % type = A string representing the type of Excel spreadsheet:
 %   - 'D' for dataset.
 %   - 'T' for template.
+%
+% [OUTPUT]
+% file_sheets = A cell array of strings representing the sheet names of the Excel spreadsheet.
 
 function file_sheets = validate_xls(varargin)
 
@@ -46,7 +49,7 @@ function file_sheets = validate_xls_internal(file,type)
 
     if (verLessThan('MATLAB','9.7'))
         check_format = false;
-        
+
         try
             if (ispc())
                 try
@@ -61,17 +64,18 @@ function file_sheets = validate_xls_internal(file,type)
                 file_format = [];
             end
         catch e
-            error(['The ' label ' file ''' file ''' could not be read.' newline() e.message]);
+            error(['The ' label ' file ''' file ''' could not be read.' new_line() e.message]);
         end
-        
+
         if (isempty(file_status) || (check_format && ~strcmp(file_format,'xlOpenXMLWorkbook')))
             error(['The ' label ' file ''' file ''' is not a valid Excel spreadsheet.']);
         end
     else
         try
-            file_sheets = sheetnames(file);
+            file_sheets = cellstr(sheetnames(file));
+            file_sheets = file_sheets(:).';
         catch e
-            error(['The ' label ' file ''' file ''' could not be read.' newline() e.message]);
+            error(['The ' label ' file ''' file ''' could not be read.' new_line() e.message]);
         end
     end
 

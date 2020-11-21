@@ -28,7 +28,7 @@ function [m1,m2,lag] = price_discovery(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [data,lag_max] = validate_input(ipr.data,ipr.lag_max);
     type = ipr.type;
@@ -44,24 +44,24 @@ function [m1,m2,lag] = price_discovery_internal(data,type,lag_max,lag_sel)
 
     t = size(data,1);
     b = t - 2;
-    
+
     if (lag_max == 1)
         lag = 1;
     else
         lag = select_lag_order(data,lag_max,lag_sel);
     end
-    
+
     lag_seq = 1:(lag + 1);
 
     [~,~,e] = regress(data(:,2),[ones(size(data,1),1) data(:,1)]);
     ect = e((lag + 2):end);
-    
+
     x1_diff = diff(data(:,1));
     x1 = cell2mat(arrayfun(@(i)x1_diff(i:(b - lag + i)),lag_seq,'UniformOutput',false));
-    
+
     x2_diff = diff(data(:,2));
     x2 = cell2mat(arrayfun(@(i)x2_diff(i:(b - lag + i)),lag_seq,'UniformOutput',false));
-    
+
     [b1,~,e1] = regress(x1(:,1),[ones(size(ect,1),1) ect x1(:,2:end-1) x2(:,2:end-1)]);
     [b2,~,e2] = regress(x2(:,1),[ones(size(ect,1),1) ect x1(:,2:end-1) x2(:,2:end-1)]);
 
@@ -74,7 +74,7 @@ function [m1,m2,lag] = price_discovery_internal(data,type,lag_max,lag_sel)
         s1 = std(e1);
         s2 = std(e2);
         rho = corr(e1,e2);
-        
+
         vp = ((-d2 * s1) + (d1 * rho * s2)) ^ 2;
         v = vp / (vp + ((d1 * s2 * sqrt(1 - rho^2)) ^ 2));
     end
@@ -103,18 +103,18 @@ function lag = select_lag_order(data,lag_max,lag_sel)
 
     data_lag = data_lag(:,3:end);
     s = size(data_lag,1);
-    
+
     data_y = data(lag_sam:end,:);
 
     ni = 2:2:(2 * lag_max);
     rhs = [ones(k,1) (lag_sam:k+lag_sam-1).'];
     crit = zeros(lag_max,1);
-    
+
     for i = 1:lag_max
         data_x = [data_lag(:,1:ni(i)) rhs];
 
         r = zeros(k,2);
-        
+
         parfor j = 1:2
             [~,~,e] = regress(data_y(:,j),data_x);
             r(:,j) = e;
@@ -130,7 +130,7 @@ function lag = select_lag_order(data,lag_max,lag_sel)
 
         sigmad = det(cp / k);
         d = (i * 4) + 4;
-        
+
         switch (lag_sel)
             case 'AIC'
                 crit(i) = log(sigmad) + ((2 / s) * d);
@@ -152,11 +152,11 @@ function [data,lag_max] = validate_input(data,lag_max)
 
     t = size(data,1);
     b = t - 2;
-    
+
     if (t < 5)
         error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end
-    
+
     if (lag_max > b)
         error(['The value of ''lag_max'' is invalid. Expected input to be less than or equal to ' num2str(b) '.']);
     end

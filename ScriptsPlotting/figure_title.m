@@ -15,7 +15,7 @@ function t = figure_title(varargin)
 
     ip.parse(varargin{:});
     ipr = ip.Results;
-    
+
     nargoutchk(0,1);
 
     if (nargout == 0)
@@ -31,7 +31,7 @@ function t = figure_title_internal(s)
     f = gcf();
     f_font_size = get(f,'DefaultAxesFontSize') + 4;
     f_units = get(f,'Units');
-    
+
     if (~strcmp(f_units,'pixels'))
         set(f,'Units','pixels');
         f_position = get(f,'Position');
@@ -51,14 +51,14 @@ function t = figure_title_internal(s)
 
     for i = 1:handles_len
         h_current = handles(i);
-        
+
         f_position = get(h_current,'Position');
         handles_position(i,:) = f_position;
 
         if (~strcmp(get(h_current,'Tag'),'FigureTitle'))
             f_y = f_position(2);
             f_height = f_position(4);
-            
+
             if (f_y < y_min)
                 y_min = f_y - (adjustment / 15);
             end

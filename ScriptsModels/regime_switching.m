@@ -56,7 +56,7 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     vs = ipr.vs;
     [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(ipr.dep,ipr.indep_s,ipr.indep_ns,ipr.k,ipr.finit,ipr.tmm,ipr.fnlcon);
@@ -76,7 +76,7 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
     end
 
     t = numel(dep);
-    
+
     [p_params,p_lb,p_ub,p_ae,p_be] = parametrize_p(k,tmm,p0);
     p_params_count = numel(p_params);
 
@@ -85,13 +85,13 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
         [ai,bi] = deal([]);
         [ae,be] = deal([]);
         [lb,ub] = deal([]);
-        
+
         [s2_params,s2_lb,s2_ub] = parametrize_s2(dep,k,vs,1.5,0.75);
         s2_params_count = numel(s2_params);
         x0 = [x0; s2_params];
         lb = [lb; s2_lb];
         ub = [ub; s2_ub];
-        
+
         [indep_s_params,indep_s_lb,indep_s_ub] = parametrize_indep_s(dep,indep_s,k);
         indep_s_params_count = numel(indep_s_params);
         x0 = [x0; indep_s_params];
@@ -107,79 +107,79 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
         params_count = indep_s_params_count + indep_ns_params_count + s2_params_count;
     else
         [x0,ai,bi,ae,be,lb,ub] = finit(dep,indep_s,indep_ns,k,vs,tmm,p0,options);
-        
+
         if (vs)
             s2_params_count = k;
         else
             s2_params_count = 1;
         end
-        
+
         indep_s_params_count = size(indep_s,2) * k;
         indep_ns_params_count = size(indep_ns,2);
 
         params_count = s2_params_count + indep_s_params_count + indep_ns_params_count;
-        
+
         if (~isa(x0,'double') || ~ismatrix(x0) || (size(x0,2) ~= 1) || (size(x0,1) ~= params_count))
             error(['The function ''finit'' generated an invalid value for ''x0'': it must be a float column vector of length ' num2str(params_count) '.']);
         end
-                
+
         if (~isempty(ai) || ~isempty(bi))
             if (~isa(ai,'double') || ~ismatrix(ai))
                 error(['The function ''finit'' generated an invalid value for ''ai'': it must be a float 2d matrix with no zero-valued dimensions and the number of columns equal to ' num2str(params_count) '.']);
             end
-            
+
             [ai_r,ai_c] = size(ai);
-            
+
             if ((ai_r == 0) || (ai_c ~= params_count))
                 error(['The function ''finit'' generated an invalid value for ''ai'': it must be a float 2d matrix with no zero-valued dimensions and the number of columns equal to ' num2str(params_count) '.']);
             end
-            
+
             if (~isa(bi,'double') || ~ismatrix(bi))
                 error(['The function ''finit'' generated an invalid value for ''bi'': it must be a a column vector of length ' num2str(ai_r) '.']);
             end
-            
+
             [bi_r,bi_c] = size(bi);
-            
+
             if ((bi_r ~= ai_r) || (bi_c ~= 1))
                 error(['The function ''finit'' generated an invalid value for ''bi'': it must be a a column vector of length ' num2str(ai_r) '.']);
             end
-            
+
             ai = [ai zeros(ai_r,p_params_count)];
         end
-        
+
         if (~isempty(ae) || ~isempty(be))
             if (~isa(ae,'double') || ~ismatrix(ae))
                 error(['The function ''finit'' generated an invalid value for ''ae'': it must be a float 2d matrix with no zero-valued dimensions and the number of columns equal to ' num2str(params_count) '.']);
             end
-            
+
             [ae_r,ae_c] = size(ae);
-            
+
             if ((ae_r == 0) || (ae_c ~= params_count))
                 error(['The function ''finit'' generated an invalid value for ''ae'': it must be a float 2d matrix with no zero-valued dimensions and the number of columns equal to ' num2str(params_count) '.']);
             end
-            
+
             if (~isa(be,'double') || ~ismatrix(be))
                 error(['The function ''finit'' generated an invalid value for ''be'': it must be a a column vector of length ' num2str(ae_r) '.']);
             end
-            
+
             [be_r,be_c] = size(be);
-            
+
             if ((be_r ~= ae_r) || (be_c ~= 1))
                 error(['The function ''finit'' generated an invalid value for ''be'': it must be a a column vector of length ' num2str(ae_r) '.']);
             end
-            
+
             ae = [ae zeros(ae_r,p_params_count)];
         end
-        
+
         if (~isa(lb,'double') || ~ismatrix(lb) || (size(lb,2) ~= 1) || (size(lb,1) ~= params_count))
             error(['The function ''finit'' generated an invalid value for ''lb'': it must be a float column vector of length ' num2str(params_count) '.']);
         end
-        
+
         if (~isa(ub,'double') || ~ismatrix(ub) || (size(ub,2) ~= 1) || (size(ub,1) ~= params_count))
             error(['The function ''finit'' generated an invalid value for ''ub'': it must be a float column vector of length ' num2str(params_count) '.']);
         end
     end
-    
+
     x0 = [x0; p_params];
     ae = [ae; zeros(k,params_count) p_ae];
     be = [be; p_be];
@@ -191,9 +191,9 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
     else
         params = fmincon(@(x)likelihood(x,dep,indep_s,indep_ns,k,vs,tmm),x0,ai,bi,ae,be,lb,ub,@(x)fnlcon(x,dep,indep_s,indep_ns,k,vs,tmm,options),options);
     end
-    
+
     [~,mu,g] = likelihood(params,dep,indep_s,indep_ns,k,vs,tmm);
-    
+
     if (vs)
         s2_params = params(1:k).';
         o = k + 1;
@@ -215,11 +215,11 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
 
     p = tmm;
     p(isnan(tmm)) = params(o:end);
-    
+
     pt = p.';
 
     prob = [ones(1,k) .* (1 / k); zeros(t - 1,k)];
-    
+
     for i = 2:t
         prob(i,:) = pt * g(i-1,:).';
     end
@@ -231,12 +231,12 @@ function [indep_s_params,indep_ns_params,s2_params,p,sprob,dur,cmu,cs2,e] = regi
             sprob(i,j) = sum((sprob(i+1,:) .* g(i,j) .* pt(:,j).') ./ prob(i+1,:),'omitnan');
         end
     end
-    
+
     dur = round(1 ./ (1 - diag(p).'),0);
 
     cmu = sum(mu .* prob,2);
     cs2 = sum(repmat(sqrt(s2_params),t,1) .* prob,2);
-    
+
     e = dep - cmu;
     e = (e - mean(e)) ./ std(e);
 
@@ -245,7 +245,7 @@ end
 function [ll,mu,g] = likelihood(x,dep,indep_s,indep_ns,k,vs,tmm)
 
     t = numel(dep);
-    
+
     if (vs)
         c = x(1:k);
         o = k + 1;
@@ -258,7 +258,7 @@ function [ll,mu,g] = likelihood(x,dep,indep_s,indep_ns,k,vs,tmm)
     indep_s_params_count = indep_s_count * k;
     indep_s_params = reshape(x(o:o+indep_s_params_count-1),k,indep_s_count).';
     o = o + indep_s_params_count;
-    
+
     indep_ns_count = size(indep_ns,2);
 
     if (indep_ns_count == 0)
@@ -287,7 +287,7 @@ function [ll,mu,g] = likelihood(x,dep,indep_s,indep_ns,k,vs,tmm)
         mu(:,i) = mu_i;
         z(:,i) = (1 / (nc * sqrt(c_i))) .* exp(-0.5 .* sum((e_i / c_i) .* e_i,2));
     end
-    
+
     w1 = (pt * (ones(k,1) .* (1 / k))) .* z(1,:).';
     f1 = ones(1,k) * w1;
 
@@ -357,12 +357,12 @@ function [params,lb,ub,ae,be] = parametrize_p(k,tmm,p0)
 
         lb = zeros(k^2,1);
         ub = ones(k^2,1) - 1e-4;
-        
+
         ae = repmat(eye(k),1,k);
         be = ones(k,1);
     else
         filter = ~tmm_nans(:);
-        
+
         params = p0(:);
         params(filter) = [];
 
@@ -402,7 +402,7 @@ function [params,lb,ub] = parametrize_s2(dep,k,vs,factor,multiplier)
 end
 
 function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep_s,indep_ns,k,finit,tmm,fnlcon)
-    
+
     dep = dep(:);
     t = numel(dep);
 
@@ -410,23 +410,23 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         if (size(indep_s,1) ~= t)
             error(['The value of ''indep_s'' is invalid. Expected input to have ' num2str(t) ' rows.']);
         end
-        
+
         if (all(indep_s(:,1) == 1))
             error('The value of ''indep_s'' is invalid. Expected input to exclude the intercept because it is internally handled by the model.');
         end
-        
+
         if (any(sum(indep_s == 0,1) == t))
             error('The value of ''indep_s'' is invalid. Expected input to contain no zero-valued vectors.');
         end
     end
-    
+
     indep_s = [ones(t,1) indep_s];
 
     if (~isempty(indep_ns) && (size(indep_ns,1) ~= t))
         if (size(indep_ns,1) ~= t)
             error(['The value of ''indep_ns'' is invalid. Expected input to have ' num2str(t) ' rows.']);
         end
-        
+
         if (any(sum(indep_ns,1) == t) || any(sum(indep_ns == 0,1) == t))
             error('The value of ''indep_ns'' is invalid. Expected input to contain no zero-valued or one-valued vectors.');
         end
@@ -453,10 +453,10 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         if (any(size(tmm) ~= k))
             error(['The value of ''tmm'' is invalid. Expected input to be a matrix of size ' num2str(k) 'x' num2str(k) '.']);
         end
-        
+
         tmm_nans = isnan(tmm);
         p0 = zeros(k,k);
-        
+
         for i = 1:k
             tmm_i = tmm(i,:);
             tmm_nans_i = tmm_nans(i,:);
@@ -502,7 +502,7 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
                     pnd = (delta - pd) / (k_i - 1);
 
                     p0(i,i) = pd;
-                    
+
                     tmm_nans_i(i) = 0;
                     p0(i,tmm_nans_i) = pnd;
                 else
@@ -514,7 +514,7 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         we = (k - 1)^2 + 1;
         q = p0^we;
         is_ergodic = ~any(q(:) < (k * eps()));
-        
+
         if (~is_ergodic)
             error('The value of ''tmm'' is invalid. Expected input to produce an ergodic stochastic row-wise transition matrix.');
         end
@@ -524,11 +524,11 @@ function [dep,indep_s,indep_ns,k,finit,tmm,p0,fnlcon] = validate_input(dep,indep
         if (~isa(fnlcon,'function_handle') || ~isscalar(fnlcon))
             error('The value of ''fnlcon'' is invalid. Expected input to be a single function handle.');
         end
-        
+
         if (nargin(fnlcon) ~= 8)
             error('The value of ''fnlcon'' is invalid. Expected input to accept 8 input arguments.');
         end
-        
+
         if (nargout(fnlcon) ~= 2)
             error('The value of ''fnlcon'' is invalid. Expected input to accept 2 output arguments.');
         end

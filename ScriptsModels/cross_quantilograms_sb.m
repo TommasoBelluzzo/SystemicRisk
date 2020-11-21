@@ -26,7 +26,7 @@ function [cq,ci] = cross_quantilograms_sb(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = validate_input(ipr.data);
     a = ipr.a;
@@ -45,16 +45,16 @@ function [cq,ci] = cross_quantilograms_sb_internal(data,a,k,cis,cib)
     [t,n] = size(data);
     len = t - k;
     partial = n > 2;
-    
+
     cis = cis / 2;
-    
+
     d = zeros(len,n);
     d(:,1) = data(k+1:t,1);
     d(:,2:n) = data(1:len,2:n);
-    
+
     block_length = ppw_optimal_block_length(d);
     g = mean(block_length(:,1));
-    
+
     a_sb = ones(len,n) .* a;
     cq_sb = zeros(cib,1);
 
@@ -64,9 +64,9 @@ function [cq,ci] = cross_quantilograms_sb_internal(data,a,k,cis,cib)
 
             d_sb = d(indices,:);
             q_sb = (d_sb <= repmat(gumbel_quantile(d_sb,a),len,1)) - a_sb;
-            
+
             h_sb = q_sb.' * q_sb;
-            
+
             if (det(h_sb) <= 1e-08)
                 hi_sb = pinv(h_sb);
             else
@@ -81,19 +81,19 @@ function [cq,ci] = cross_quantilograms_sb_internal(data,a,k,cis,cib)
 
             d_sb = d(indices,:);
             q_sb = (d_sb <= repmat(gumbel_quantile(d_sb,a),len,1)) - a_sb;
-            
+
             h_sb = q_sb.' * q_sb;
 
             cq_sb(i) = h_sb(1,2) / sqrt(h_sb(1,1) * h_sb(2,2));
         end
     end
-    
+
     q = (data <= repmat(gumbel_quantile(data,a),t,1)) - (ones(t,n) .* a);
-    
+
     d = zeros(len,n);
     d(:,1) = q(k+1:t,1);
     d(:,2:n) = q(1:len,2:n);
-    
+
     h = d.' * d;
 
     if (partial)
@@ -118,11 +118,11 @@ function q = gumbel_quantile(x,p)
     index = 1 + ((size(x,1) - 1) * p);
     low = floor(index);
     high = ceil(index);
-    
+
     x = sort(x);
     x_low = x(low,:);
     x_high = x(high,:);
-    
+
     h = max(index - low,0);
     q = (h .* x_high) + ((1 - h) .* x_low);
 
@@ -208,7 +208,7 @@ function bl = ppw_optimal_block_length(x)
             bl(ppw_i,:) = 1;
         end
     end
-    
+
     function l = m_lag(x,n)
 
         mn = numel(x);

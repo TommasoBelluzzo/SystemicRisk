@@ -35,7 +35,7 @@ function [beta,var,es,covar,dcovar,mes,ses,srisk] = cross_sectional_metrics(vara
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [r,cp,lb,lbr,sv] = validate_input(ipr.r,ipr.cp,ipr.lb,ipr.lbr,ipr.sv);
     a = ipr.a;
@@ -60,9 +60,9 @@ function [beta,var,es,covar,dcovar,mes,ses,srisk] = cross_sectional_metrics_inte
     sm = sqrt(h(:,1));
     sf = sqrt(h(:,2));
     rho = squeeze(p(1,2,:));
-    
+
     beta = rho .* (sf ./ sm);
-    
+
     c = quantile((rf_0 ./ sf),a);
     var = -1 .* min(sf * c,0);
     es = -1 .* min(sf * -(normpdf(c) / a),0);
@@ -86,12 +86,12 @@ function [covar,dcovar] = calculate_covar(rm_0,rf_0,var,sv,a)
         for i = 1:size(sv,2)
             covar = covar + (b(i+2) .* sv(1:end-1,i));
         end
-        
+
         covar = [covar(1); covar];
     end
 
     dcovar = b(2) .* (var - repmat(median(rf_0),length(rm_0),1));
-    
+
     covar = -1 .* min(covar,0);
     dcovar = -1 .* min(dcovar,0);
 
@@ -124,7 +124,7 @@ function ses = calculate_ses(cp,lb,car)
 
     lb_pc = [0; diff(lb) ./ lb(1:end-1)];
     eq_pc = [0; diff(cp) ./ cp(1:end-1)];
-    
+
     ses = (car .* lb .* (1 + lb_pc)) - ((1 - car) .* cp .* (1 + eq_pc));
     ses(ses < 0) = 0;
 
@@ -170,7 +170,7 @@ function b = quantile_regression(y,x,a)
 
         x_star = z;
         b_1 = b;
-        
+
         diff = max(abs(b_1 - b_0));
         i = i + 1;
     end
@@ -184,37 +184,37 @@ function [r,cp,lb,lbr,sv] = validate_input(r,cp,lb,lbr,sv)
     if (t < 5)
         error('The value of ''r'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end
-    
+
     if (~isvector(cp))
         error('The value of ''cp'' is invalid. Expected input to be a vector.');
     end
-    
+
     if (numel(cp) ~= t)
         error(['The value of ''cp'' is invalid. Expected input to contain ' num2str(t) ' elements.']);
     end
-    
+
     cp = cp(:);
-    
+
     if (~isvector(lb))
         error('The value of ''lb'' is invalid. Expected input to be a vector.');
     end
-    
+
     if (numel(lb) ~= t)
         error(['The value of ''lb'' is invalid. Expected input to contain ' num2str(t) ' elements.']);
     end
-    
+
     lb = lb(:);
-    
+
     if (~isvector(lbr))
         error('The value of ''lbr'' is invalid. Expected input to be a vector.');
     end
-    
+
     if (numel(lbr) ~= t)
         error(['The value of ''lbr'' is invalid. Expected input to contain ' num2str(t) ' elements.']);
     end
-    
+
     lbr = lbr(:);
-    
+
     if (~isempty(sv))
         if (~ismatrix(sv))
             error('The value of ''sv'' is invalid. Expected input to be a matrix.');

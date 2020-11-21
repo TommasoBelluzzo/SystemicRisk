@@ -16,7 +16,7 @@ function windows = extract_rolling_windows(varargin)
     if (isempty(ip))
         ip = inputParser();
         ip.addRequired('data',@(x)validateattributes(x,{'double'},{'2d' 'nonempty'}));
-        ip.addRequired('bw',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 '<=' 252 'scalar'}));
+        ip.addRequired('bw',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 2 'scalar'}));
         ip.addOptional('truncate',false,@(x)validateattributes(x,{'logical'},{'scalar'}));
     end
 

@@ -28,7 +28,7 @@ function [hhlr,tr,vr] = liquidity_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [p,r,v,cp,bwl,bwm,bws] = validate_input(ipr.p,ipr.r,ipr.v,ipr.cp,ipr.bwl,ipr.bwm,ipr.bws);
 
@@ -53,7 +53,7 @@ function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
 
     windows_p = extract_rolling_windows(p,bws);
     dp = cellfun(@(x)(max(x) - min(x)) / min(x),windows_p);
-    
+
     alpha = 2 / (bwl + 1);
 
     hhlr = dp ./ tr;
@@ -61,7 +61,7 @@ function hhlr = calculate_hhlr(p,v,cp,bwl,bws)
     hhlr(1:bws) = mean(hhlr(bws+1:bws*2+1));
     hhlr = [hhlr(1); filter(alpha,[1 (alpha - 1)],hhlr(2:end),(1 - alpha) * hhlr(1))];
     hhlr = (hhlr - min(hhlr)) ./ (max(hhlr) - min(hhlr));
-    
+
 end
 
 function tr = calculate_tr(v,cp,bwl)
@@ -82,7 +82,7 @@ function vr = calculate_vr(r,bwl,bwm)
 
     windows_long = extract_rolling_windows(r,bwl);
     var_long = cellfun(@var,windows_long);
-    
+
     windows_short = extract_rolling_windows(r,bwm);
     var_short = cellfun(@var,windows_short);
 
@@ -96,23 +96,23 @@ end
 function [p,r,v,cp,bwl,bwm,bws] = validate_input(p,r,v,cp,bwl,bwm,bws)
 
     data = {p(:) r(:) v(:) cp(:)};
-    
+
     l = unique(cellfun(@numel,data));
-    
+
     if (numel(l) ~= 1)
         error('The number of elements of ''p'', ''r'' and ''v'' must be equal.');
     end
-    
+
     if (l < 5)
         error('The value of ''p'', ''r'' and ''v'' is invalid. Expected inputs to be vectors containing at least 5 elements.');
     end
-    
+
     [p,r,v,cp] = deal(data{:});
 
     if (bwl < (bwm * 2))
         error(['The long bandwidth (' num2str(bwl) ') must be at least twice the medium bandwidth (' num2str(bwm) ').']);
     end
-  
+
     if (bwm < (bws * 2))
         error(['The medium bandwidth (' num2str(bwm) ') must be at least twice the short bandwidth (' num2str(bws) ').']);
     end

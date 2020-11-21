@@ -28,7 +28,7 @@ function [el,cl,a] = contingent_claims_analysis(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [va,vap,cds,db,r,t] = validate_input(ipr.va,ipr.vap,ipr.cds,ipr.db,ipr.r,ipr.t);
 
@@ -49,14 +49,14 @@ function [el,cl,a] = contingent_claims_analysis_internal(va,vap,cds,db,r,t)
     d2 = d1 - st;
 
     put_price = (dbd .* normcdf(-d2)) - (va .* normcdf(-d1));
-    
+
     if (numel(vap) == 3)
         g = vap(2);
         k = vap(3);
 
         t1 = (g / 6) .* ((2 * s) - d1);
         t2 = (k / 24) .* (1 - d1.^2 + (3 .* d1 .* s) - (3 * s^2));
-        
+
         put_price = put_price - (va .* normcdf(d1) .* s .* (t1 - t2));
     end
 
@@ -66,10 +66,10 @@ function [el,cl,a] = contingent_claims_analysis_internal(va,vap,cds,db,r,t)
 
     cds_put_price = dbd .* (1 - exp(-cds .* max(0.5,((db ./ rd) - 1)) .* t));
     cds_put_price = min(cds_put_price,put_price);  
-    
+
     a = max(0,min(1 - (cds_put_price ./ put_price),1));
     a(~isreal(a)) = 0;
-    
+
     el = put_price;
     cl = el .* a;
 
@@ -79,27 +79,27 @@ function [va,vap,cds,db,r,t] = validate_input(va,vap,cds,db,r,t)
 
     va = va(:);
     va_len = numel(va);
-    
+
     if (va_len < 5)
         error('The value of ''va'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
 
     vap_len = numel(vap);
-    
+
     if ((vap_len ~= 1) && (vap_len ~= 3))
         error('The value of ''vap'' is invalid. Expected input to be a vector containing either 1 or 3 elements.');
     end
-    
+
     if (vap(1) < 0)
         error('The value of ''vap'' is invalid. Expected input first element to be greater than or equal to 0.');
     end
 
     cds = cds(:);
-    
+
     if (numel(va) ~= va_len)
         error(['The value of ''cds'' is invalid. Expected input to be a vector of length ' num2str(va_len) ' elements.']);
     end
-    
+
     if (all(cds >= 1))
         cds = cds ./ 10000;
     end
@@ -121,7 +121,7 @@ function [va,vap,cds,db,r,t] = validate_input(va,vap,cds,db,r,t)
 
     for i = 1:numel(data)
         data_i = data{i};
-        
+
         if (numel(data_i) == 1)
             data{i} = repmat(data_i,va_len,1);
         end

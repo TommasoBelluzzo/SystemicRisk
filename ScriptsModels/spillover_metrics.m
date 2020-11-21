@@ -17,7 +17,7 @@ function [sf,st,sn,si] = spillover_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     vd = validate_input(ipr.vd);
 
@@ -30,13 +30,13 @@ end
 function [sf,st,sn,si] = spillover_metrics_internal(vd)
 
     vd_diag = diag(vd);
-    
+
     sf = min(max(sum(vd,2) - vd_diag,0),1);
     st = sum(vd,1).' - vd_diag;
     sn = st - sf;
 
     si = sum(sf,1) / (sum(vd_diag) + sum(sf,1));
-    
+
     sf = sf.';
     st = st.';
     sn = sn.';
@@ -50,9 +50,9 @@ function vd = validate_input(vd)
     if (numel(vdv) < 4)
         error('The value of ''vd'' is invalid. Expected input to be a square matrix with a minimum size of 2x2.');
     end
-    
+
     tol = 1e4 * eps(max(abs(vdv))); 
-    
+
     if (any(abs(sum(vd,2) - 1) > tol))
         error('The value of ''vd'' is invalid. Expected input to be a matrix whose row sums are equal to 1.');
     end

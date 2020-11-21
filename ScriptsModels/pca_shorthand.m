@@ -18,7 +18,7 @@ function [coefficients,scores,explained] = pca_shorthand(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = validate_input(ipr.data);
     normalize = ipr.normalize;

@@ -24,10 +24,10 @@ end
 function analyze_dataset_internal(ds)
 
     safe_plot(@(id)plot_index(ds,id));
-    
+
     safe_plot(@(id)plot_boxes(ds,'Returns',id));
     safe_plot(@(id)plot_sequence_returns(ds,id));
-    
+
     if (~isempty(ds.Volumes))
         safe_plot(@(id)plot_boxes(ds,'Volumes',id));
         safe_plot(@(id)plot_sequence_other(ds,'Volumes',id));
@@ -37,24 +37,24 @@ function analyze_dataset_internal(ds)
         safe_plot(@(id)plot_boxes(ds,'Capitalizations',id));
         safe_plot(@(id)plot_sequence_other(ds,'Capitalizations',id));
     end
-    
+
     if (~isempty(ds.CDS))
         safe_plot(@(id)plot_risk_free_rate(ds,id));
         safe_plot(@(id)plot_boxes(ds,'CDS',id));
         safe_plot(@(id)plot_sequence_other(ds,'CDS',id));
     end
-    
+
     if (~isempty(ds.Assets) && ~isempty(ds.Equity))
         safe_plot(@(id)plot_boxes(ds,'Assets',id));
         safe_plot(@(id)plot_sequence_other(ds,'Assets',id));
-        
+
         safe_plot(@(id)plot_boxes(ds,'Equity',id));
         safe_plot(@(id)plot_sequence_other(ds,'Equity',id));
-        
+
         safe_plot(@(id)plot_boxes(ds,'Liabilities',id));
         safe_plot(@(id)plot_sequence_other(ds,'Liabilities',id));
     end
-    
+
     if (ds.Crises > 0)
         safe_plot(@(id)plot_crises(ds,id));
     end
@@ -72,7 +72,7 @@ function plot_boxes(ds,target,id)
     set(findobj(f,'type','line','Tag','Median'),'Color','g');
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     delete(findobj(f,'-regexp','Tag','\w*Outlier'));
-    
+
     lower_av = findobj(f,'-regexp','Tag','Lower Adjacent Value');
     lower_av = cell2mat(get(lower_av,'YData'));
     y_low = min(lower_av(:));
@@ -82,7 +82,7 @@ function plot_boxes(ds,target,id)
     upper_av = cell2mat(get(upper_av,'YData'));
     y_high = max(upper_av(:));
     y_high = y_high + abs(y_high / 10);
-    
+
     ax = gca();
     set(ax,'TickLength',[0 0]);
     set(ax,'XTick',1:n,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
@@ -104,16 +104,16 @@ function plot_crises(ds,id)
         cd = ds.CrisesDummy;
         cddn = ds.DatesNum(logical(cd));
         cddn_len = numel(cddn);
-        
+
         plot(ds.DatesNum,nan(ds.T,1));
-        
+
         hold on;
             for i = cddn_len:-1:1
                 l = line(ones(2,1) .* cddn(i),[0 1],'Color',[1 0.4 0.4]);
                 set(l,'Tag',num2str(i));
             end
         hold off;
-        
+
         ax = gca();
 
         tooltips = ds.CrisisNames;
@@ -121,17 +121,17 @@ function plot_crises(ds,id)
     else
         cd = ds.CrisisDummies;
         k = size(cd,2);
-        
+
         co = get(gca,'ColorOrder');
         cor = ceil(k / size(co,1));
         co = repmat(co,cor,1);
-        
+
         hold on;
             for i = k:-1:1
                 cddn = ds.DatesNum(logical(cd(:,i)));
                 cddn_max = max(cddn);
                 cddn_min = min(cddn);
-                
+
                 p = patch('XData',[cddn_min cddn_max cddn_max cddn_min],'YData',[0 0 1 1],'EdgeAlpha',0.25,'FaceAlpha',0.40,'FaceColor',co(i,:));
                 set(p,'Tag',num2str(i));
             end
@@ -168,7 +168,7 @@ function plot_crises(ds,id)
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
-    
+
     if (~isempty(tooltips))
         drawnow();
 
@@ -178,7 +178,7 @@ function plot_crises(ds,id)
     end
 
     function tooltip = create_tooltip(~,evtd,tooltips)
-        
+
         target = get(evtd,'Target');
         index = str2double(get(target,'Tag'));
         tooltip = tooltips{index};
@@ -194,7 +194,7 @@ function plot_index(ds,id)
     index_obs = numel(index);
     index_max = max(index);
     index_min = min(index);
-    
+
     index_avg = mean(index);
     index_med = median(index);
     index_std = std(index);
@@ -218,7 +218,7 @@ function plot_index(ds,id)
     else
         date_ticks(sub_1,'x','yyyy','KeepLimits');
     end
-    
+
     sub_2 = subplot(2,1,2);
     hist = histogram(sub_2,ds.Index,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
     edges = get(hist,'BinEdges');
@@ -237,10 +237,10 @@ function plot_index(ds,id)
     t = figure_title(['Index (' ds.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
-    
+
     txt = {sprintf('Observations: %d',index_obs) sprintf('Mean: %.4f',index_avg) sprintf('Median: %.4f',index_med) sprintf('Standard Deviation: %.4f',index_std) sprintf('Skewness: %.4f',index_ske) sprintf('Kurtosis: %.4f',index_kur)};
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
-    
+
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
@@ -251,7 +251,7 @@ function plot_risk_free_rate(ds,id)
 
     rfr = ds.RiskFreeRate;
     y_limits_rfr = plot_limits(rfr,0.1);
-    
+
     rfr_pc = [0; (((rfr(2:end) - rfr(1:end-1)) ./ rfr(1:end-1)) .* 100)];
     y_limits_rfr_pc = plot_limits(rfr_pc,0.1);
 
@@ -283,7 +283,7 @@ function plot_risk_free_rate(ds,id)
     else
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
-    
+
     figure_title('Risk-Free Rate');
 
     pause(0.01);
@@ -298,12 +298,12 @@ function plot_sequence_returns(ds,id)
     t = ds.T;
     dn = ds.DatesNum;
     mt = ds.MonthlyTicks;
-    
+
     ts = ds.Returns;
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
 
     plots_title = [repmat({'Log Returns'},1,n); repmat({'P&L Distribution'},1,n)];
-    
+
     x_limits = [dn(1) dn(end)];
 
     core = struct();
@@ -334,14 +334,14 @@ function plot_sequence_returns(ds,id)
     core.YRotation = {[] []};
     core.YTick = {[] []};
     core.YTickLabels = {[] []};
-    
+
     sequential_plot(core,id);
 
     function plot_function(subs,data)
 
         x = data{1};
         y = data{2};
-        
+
         y_obs = numel(y);
         y_max = max(y,[],'omitnan');
         y_min = min(y,[],'omitnan');
@@ -351,15 +351,15 @@ function plot_sequence_returns(ds,id)
         y_std = std(y,'omitnan');
         y_ske = skewness(y,0);
         y_kur = kurtosis(y,0);
-        
+
         d = find(isnan(y),1,'first');
-        
+
         if (isempty(d))
             xd = [];
         else
             xd = x(d) - 1;
         end
-        
+
         delete(findall(gcf,'type','annotation'));
 
         plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
@@ -381,7 +381,7 @@ function plot_sequence_returns(ds,id)
             plot(subs(2),points,values,'-b','LineWidth',1.5);
         hold(subs(2),'off');
         set(subs(2),'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
-        
+
         txt = {sprintf('Observations: %d',y_obs) sprintf('Mean: %.4f',y_avg) sprintf('Median: %.4f',y_med) sprintf('Standard Deviation: %.4f',y_std) sprintf('Skewness: %.4f',y_ske) sprintf('Kurtosis: %.4f',y_kur)};
         annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
@@ -395,12 +395,12 @@ function plot_sequence_other(ds,target,id)
     t = ds.T;
     dn = ds.DatesNum;
     mt = ds.MonthlyTicks;
-    
+
     ts = smooth_data(ds.(target));
     data = [repmat({dn},1,n); mat2cell(ts,t,ones(1,n))];
-    
+
     plots_title = repmat({' '},1,n);
-    
+
     x_limits = [dn(1) dn(end)];
 
     core = struct();
@@ -431,22 +431,22 @@ function plot_sequence_other(ds,target,id)
     core.YRotation = {[]};
     core.YTick = {[]};
     core.YTickLabels = {[]};
-    
+
     sequential_plot(core,id);
 
     function plot_function(subs,data)
 
         x = data{1};
         y = data{2};
-        
+
         d = find(isnan(y),1,'first');
-        
+
         if (isempty(d))
             xd = [];
         else
             xd = x(d) - 1;
         end
-        
+
         plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))

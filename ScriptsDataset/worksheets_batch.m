@@ -1,5 +1,5 @@
 % [INPUT]
-% file = A string representing the full path to the Excel spreadsheet.
+% file_path = A string representing the full path to the Excel spreadsheet.
 % sheets = A cell array of strings defining the target sheets.
 % names = A cell array of strings defining the sheets names.
 %
@@ -14,7 +14,7 @@ function worksheets_batch(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('file',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
+        ip.addRequired('file_path',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
         ip.addRequired('sheets',@(x)validateattributes(x,{'cell'},{'vector' 'nonempty'}));
         ip.addOptional('names',[],@(x)validateattributes(x,{'cell'},{'vector' 'nonempty'}));
     end
@@ -22,27 +22,27 @@ function worksheets_batch(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    file = ipr.file;
+    file_path = ipr.file_path;
     [sheets,names] = validate_input(ipr.sheets,ipr.names);
 
     nargoutchk(0,0);
 
-    worksheets_batch_internal(file,sheets,names);
+    worksheets_batch_internal(file_path,sheets,names);
 
 end
 
-function worksheets_batch_internal(file,sheets,names)
+function worksheets_batch_internal(file_path,sheets,names)
 
-    if (exist(file,'file') == 0)
-        error(['The file ''' file ''' could not be found.']);
+    if (exist(file_path,'file') == 0)
+        error(['The file ''' file_path ''' could not be found.']);
     end
 
-    [~,~,extension] = fileparts(file);
+    [~,~,extension] = fileparts(file_path);
 
     if (~strcmpi(extension,'.xlsx'))
-        error(['The file ''' file ''' is not a valid Excel spreadsheet.']);
+        error(['The file ''' file_path ''' is not a valid Excel spreadsheet.']);
     end
-    
+
     if (~ispc())
         warning('MATLAB:SystemicRisk','The current machine does not provide Excel ActiveX support.');
         return;
@@ -56,8 +56,8 @@ function worksheets_batch_internal(file,sheets,names)
     end
 
     try
-        wb = excel.Workbooks.Open(file,0,false);
-        
+        wb = excel.Workbooks.Open(file_path,0,false);
+
         if (isempty(names))
             for i = 1:numel(sheets)
                 wb.Sheets.Item(sheets{i}).Cells.Clear();
@@ -92,22 +92,19 @@ function worksheets_batch_internal(file,sheets,names)
         wb.Save();
         wb.Close();
     catch e
-        file_w = strrep(file,filesep(),[filesep() filesep()]);
-        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' file_w '''.' newline() e.message]);
+        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' escape_path(file_path) '''.' new_line() e.message]);
     end
-        
+
     try
         excel.Quit();
         delete(excel);
     catch e1
-        file_w = strrep(file,filesep(),[filesep() filesep()]);
-
-        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file_w ''' (step 1).' newline() e1.message]);
+        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' escape_path(file_path) ''' (step 1).' new_line() e1.message]);
 
         try
             delete(excel);
         catch e2
-            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' file_w ''' (step 2).' newline() e2.message]);
+            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' escape_path(file_path) ''' (step 2).' new_line() e2.message]);
         end
     end
 
@@ -123,7 +120,7 @@ function [sheets,names] = validate_input(sheets,names)
         if (numel(sheets) ~= numel(names))
             error('The ''sheets'' parameter and the ''names'' parameter must contain the same number of elements.');
         end
-        
+
         if (any(cellfun(@(x)~ischar(x)||isempty(x)||(length(x) > 31),names)))
             error('The ''names'' parameter contains invalid elements.');
         end

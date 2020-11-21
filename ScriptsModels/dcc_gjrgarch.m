@@ -33,7 +33,7 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = ipr.data;
     dcc_q = ipr.dcc_q;
@@ -55,15 +55,15 @@ function [p,h,e,dcc_params,gjr_params] = dcc_gjrgarch_internal(data,dcc_q,dcc_p,
     if (isempty(dcc_options))
         dcc_options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off');
     end
-    
+
     if (isempty(gjr_options))
         gjr_options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off','MaxSQPIter',1000,'TolFun',1e-6);
     end
-    
+
     up = isempty(getCurrentTask());
 
     [t,n] = size(data);
-    
+
     for i = 1:n
         data_i = data(:,i);
         data(:,i) = data_i - mean(data_i);
@@ -180,7 +180,7 @@ function p = dcc_gjrgarch_core(data,dcc_q,dcc_p,arch_q,garch_p,gjr_params,dcc_pa
             s(:,i) = s_i;
         end
     end
-    
+
     e = data ./ sqrt(s);
 
     m = max(dcc_q,dcc_p);
@@ -228,12 +228,12 @@ end
 function params = dcc(e,q,p,options)
 
     [t,n] = size(e);
-    
+
     qpm = max(q,p);
     qpmt = t + qpm;
-    
+
     qp = q + p;
-    
+
     tol = 2 * options.TolCon;
 
     x0 = [((ones(1,q) .* 0.01) ./ q) ((ones(1,p) .* 0.97) ./ p)];
@@ -242,7 +242,7 @@ function params = dcc(e,q,p,options)
     lb = zeros(1,qp) + tol;
 
     params = fmincon(@(x)dcc_likelihood(x,e,n,q,p,qpm,qpmt,qp),x0,ai,bi,[],[],lb,[],[],options);
-    
+
     function ll = dcc_likelihood(x,e,n,q,p,qpm,qpmt,qp)
 
         a = x(1:q);
@@ -294,7 +294,7 @@ function [params,h] = gjrgarch(data,q,p,options)
 
     q2 = q * 2;
     q2p = q2 + p;
-    
+
     tol = 2 * options.TolCon;
 
     x0 = [(ones(q,1) .* (0.05 / q)); (ones(q,1) .* (0.10 / q)); ((ones(p,1) .* 0.75) ./ p)];
@@ -316,7 +316,7 @@ function [params,h] = gjrgarch(data,q,p,options)
         a = x(1:q);
         g = x(q+1:q2);
         b = x(q2+1:end);
-        
+
         a_sum = sum(a);
         g_sum = 0.5 * sum(g);
         b_sum = sum(b);

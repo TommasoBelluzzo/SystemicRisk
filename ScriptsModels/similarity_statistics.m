@@ -16,7 +16,7 @@ function [dcor,rmss] = similarity_statistics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = validate_input(ipr.data);
 
@@ -70,7 +70,7 @@ end
 function data = validate_input(data)
 
     t = size(data,1);
-    
+
     if (t < 5)
         error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end

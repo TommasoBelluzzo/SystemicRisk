@@ -18,7 +18,7 @@ function [dci,cio,cioo] = connectedness_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [am,gd] = validate_input(ipr.am,ipr.gd);
 
@@ -36,14 +36,14 @@ function [dci,cio,cioo] = connectedness_metrics_internal(am,gd)
 
     ni = zeros(n,1);
     no = zeros(n,1);
-    
+
     for i = 1:n     
         ni(i) = sum(am(:,i));
         no(i) = sum(am(i,:));
     end
 
     cio = (sum(ni) + sum(no)) / (2 * (n - 1));
-    
+
     if (isempty(gd))
         cioo = NaN;
     else
@@ -51,11 +51,11 @@ function [dci,cio,cioo] = connectedness_metrics_internal(am,gd)
 
         nifo = zeros(n,1);
         noto = zeros(n,1);
-        
+
         for i = 1:n
             group_1 = gd(1);
             group_n = gd(gd_len);
-            
+
             if (i <= group_1)
                 g_beg = 1;
                 g_end = group_1;
@@ -90,12 +90,12 @@ function [am,gd] = validate_input(am,gd)
     if (numel(amv) < 4)
         error('The value of ''am'' is invalid. Expected input to be a square matrix with a minimum size of 2x2.');
     end
-    
+
     if (~isempty(gd))
         if (~isvector(gd) || (numel(gd) < 2))
             error('The value of ''gd'' is invalid. Expected input to be a vector containing at least 2 elements.');
         end
-        
+
         gd = gd(:);
     end
 

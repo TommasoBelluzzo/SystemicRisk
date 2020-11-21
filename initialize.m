@@ -52,22 +52,22 @@ if (~isempty(regexpi(path_base,'Editor')))
         if (~strcmpi(pwd_current(end),filesep()))
             pwd_current = [pwd_current filesep()];
         end
-        
+
         while (true) 
             answer = inputdlg('The script is being executed in live mode. Please, confirm or change its root folder:','Manual Input Required',1,{pwd_current});
-    
+
             if (isempty(answer))
                 return;
             end
-            
+
             path_base_new = answer{:};
 
             if (isempty(path_base_new) || strcmp(path_base_new,path_base) || strcmp(path_base_new(1:end-1),path_base) || ~exist(path_base_new,'dir'))
                continue;
             end
-            
+
             path_base = path_base_new;
-            
+
             break;
         end
     end

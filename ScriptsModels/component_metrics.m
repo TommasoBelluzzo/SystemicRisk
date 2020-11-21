@@ -18,7 +18,7 @@ function [ar,cs,ti] = component_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [r,fc] = validate_input(ipr.r,ipr.f);
 
@@ -32,12 +32,16 @@ function [ar,cs,ti] = component_metrics_internal(r,fc)
 
     zero_indices = find(~r);
     r(zero_indices) = (-9e-9 .* rand(numel(zero_indices),1)) + 1e-8;
-    
+
     novar_indices = find(var(r,1) == 0);
     r(:,novar_indices) = r(:,novar_indices) + ((-9e-9 .* rand(size(r(:,novar_indices)))) + 1e-8);
 
     c = cov(r);
-    bm = eye(size(c)) .* diag(c);
+    c_size = size(c);
+    
+    bm = zeros(c_size);
+    bm(logical(eye(size(c)))) = diag(c);
+
     e = eigs(c,size(c,1));
 
     v = r(end,:) - mean(r(1:end-1,:),1);
@@ -59,7 +63,7 @@ function [r,fc] = validate_input(r,f)
     if ((t < 5) || (n < 2))
         error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2, after the exclusion of time series containing NaN values.');
     end
-    
+
     fc = max(round(n * f,0),1);
 
 end

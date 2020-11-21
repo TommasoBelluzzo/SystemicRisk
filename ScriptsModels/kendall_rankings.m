@@ -17,7 +17,7 @@ function [rc,rs] = kendall_rankings(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     m = validate_input(ipr.m);
 
@@ -31,19 +31,19 @@ function [rc,rs] = kendall_rankings_internal(m)
 
     [t,~,k] = size(m);
     p = nchoosek(1:k,2);
-    
+
     rc = zeros(k,k);
     rs = zeros(1,k);
 
     for i = 1:size(p,1)
         p_i = p(i,:);
-        
+
         index_1 = p_i(1);
         measure_1 = m(:,:,index_1);
 
         index_2 = p_i(2);
         measure_2 = m(:,:,index_2);
-        
+
         for j = 1:t
             [~,rank_1] = sort(measure_1(j,:),'ascend');
             [~,rank_2] = sort(measure_2(j,:),'ascend');
@@ -51,10 +51,10 @@ function [rc,rs] = kendall_rankings_internal(m)
             rc(index_1,index_2) = rc(index_1,index_2) + concordance_coefficient(rank_1.',rank_2.');
         end
     end
-    
+
     for i = 1:k
         measure = m(:,:,i);
-        
+
         for j = t:-1:2
             [~,rank_previous] = sort(measure(j-1,:),'ascend');
             [~,rank_current] = sort(measure(j,:),'ascend');
@@ -62,7 +62,7 @@ function [rc,rs] = kendall_rankings_internal(m)
             rs(i) = rs(i) + concordance_coefficient(rank_current.',rank_previous.');
         end
     end
-    
+
     rc = ((rc + rc.') / t) + eye(k);
     rs = rs ./ (t - 1);
 
@@ -94,7 +94,7 @@ function m_final = validate_input(m)
         if (~isvector(m))
             error('The value of ''m'' is invalid. Expected input to be a vector, when specified as a cell array.');
         end
-        
+
         k = numel(m);
 
         if (k < 2)
@@ -112,11 +112,11 @@ function m_final = validate_input(m)
             end
 
             [t,n] = size(m_i);
-            
+
             if ((t < 5) || (n < 2))
                 error('The value of ''m'' is invalid. Expected input to contain matrices with a minimum size of 5x2.');
             end
-            
+
             ts(i) = t;
             ns(i) = n;
         end
@@ -127,7 +127,7 @@ function m_final = validate_input(m)
         if ((numel(ts_uni) ~= 1) || (numel(ns_uni) ~= 1))
             error('The value of ''m'' is invalid. Expected input to contain equally sized matrices, when specified as a cell array.');
         end
-        
+
         t = ts_uni(1);
         n = ns_uni(1);
         m_final = zeros(t,n,k);
@@ -137,22 +137,22 @@ function m_final = validate_input(m)
         end
     else
         m_size = size(m);
-        
+
         if (numel(m_size) ~= 3)
             error('The value of ''m'' is invalid. Expected input to have 3 dimensions, when specified as a matrix.');
         end
-        
+
         [t,n,k] = deal(m_size(1),m_size(2),m_size(3));
 
         if (k < 2)
             error('The value of ''m'' is invalid. Expected input to have third dimension greater than or equal to 2, when specified as a matrix.');
         end
-        
+
         if ((t < 5) || (n < 2))
             error('The value of ''m'' is invalid. Expected input to have a minimum 2-dimensional size of 5x2.');
         end
-        
+
         m_final = m;
     end
-    
+
 end

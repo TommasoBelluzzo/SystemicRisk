@@ -28,7 +28,7 @@ function dip = distress_insurance_premium(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [n,indices,r,cds,lb,f] = validate_input(ipr.r,ipr.cds,ipr.lb,ipr.f);
     lgd = ipr.lgd;
@@ -53,7 +53,7 @@ function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,f,lgd,l,c,
     c2 = c^2;
 
     a = zeros(5,1);
-    
+
     if (up)
         parfor i = 1:it 
             mcmc_p = slicesample(rand(1,f),c,'PDF',@(x)zpdf(x,dt,ead,lgd,b,l),'Thin',3,'BurnIn',bi);
@@ -91,7 +91,7 @@ function dip = distress_insurance_premium_internal(n,indices,r,cds,lb,f,lgd,l,c,
             a(i) = mean((losses > l) .* lr);
         end
     end
-    
+
     dip = max(mean(a) * ead_volume,0);
 
 end
@@ -150,7 +150,7 @@ function [theta,theta_p] = exponential_twist(phi,w,l)
     if (isempty(options))
         options = optimset(optimset(@fminunc),'Diagnostics','off','Display','off','LargeScale','off');
     end
-    
+
     [c,n] = size(phi);
 
     theta = zeros(c,1);
@@ -210,7 +210,7 @@ function [mu,sigma,weights] = gmm_fit(x,gm)
         [~,indices] = max((x * m.') - repmat(dot(m,m,2).' / 2,c,1),[],2);
         [u,~,indices] = unique(indices);
     end
-    
+
     r = zeros(c,gm);
     r(sub2ind([c gm],1:c,indices.')) = 1;
 
@@ -301,30 +301,30 @@ function [n,indices,r,cds,lb,f] = validate_input(r,cds,lb,f)
     if ((t < 5) || (n_tot < 2))
         error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2.');
     end
-    
+
     cds = cds(:).';
-    
+
     if (numel(cds) ~= n_tot)
         error(['The value of ''cds'' is invalid. Expected input to be a vector of ' num2str(n_tot) ' elements.']);
     end
-    
+
     if (all(cds >= 1))
         cds = cds ./ 10000;
     end
-    
+
     lb = lb(:).';
-    
+
     if (numel(lb) ~= n_tot)
         error(['The value of ''lb'' is invalid. Expected input to be a vector of ' num2str(n_tot) ' elements.']);
     end
-    
+
     indices = (sum(isnan(r),1) == 0) & ~isnan(cds) & ~isnan(lb);
     n = sum(indices);
-    
+
     if (n < 2)
         error('Input data must contain at least 2 valid time series without NaN values.');
     end
-    
+
     f = min(f,n);
 
 end

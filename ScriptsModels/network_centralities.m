@@ -22,7 +22,7 @@ function [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(varargin
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     am = validate_input(ipr.am);
 
@@ -64,7 +64,7 @@ function bc = betweenness_centrality(am,am_len)
 
         [rows,cols,v] = find(nsp);
         v = 1 ./ v;
-        
+
         nsp_inv = accumarray([rows.' cols.'],v,[1 am_len]);
 
         bcu = ones(1,am_len);
@@ -89,7 +89,7 @@ function cc = closeness_centrality(am,am_len)
     for i = 1:am_len
         paths = dijkstra_shortest_paths(am,am_len,i);
         paths_sum = sum(paths(~isinf(paths)));
-        
+
         if (paths_sum ~= 0)
             cc(i) = 1 / paths_sum;
         end
@@ -121,7 +121,7 @@ function clc = clustering_coefficient(am,am_len,deg)
 
         if (issymmetric(k_subgraph))
             k_subgraph_trace = trace(k_subgraph);
-            
+
             if (k_subgraph_trace == 0)
                 edges = sum(sum(k_subgraph)) / 2; 
             else
@@ -133,7 +133,7 @@ function clc = clustering_coefficient(am,am_len,deg)
 
         clc(i) = (f * edges) / (degree * (degree - 1));     
     end
-    
+
     clc = clc.';
 
 end
@@ -142,7 +142,7 @@ function [deg,deg_in,deg_out,dc] = degree_centrality(am,am_len)
 
     deg_in = sum(am);
     deg_out = sum(am.');
-    
+
     if (issymmetric(am))
         deg = deg_in + diag(am).';
     else
@@ -186,7 +186,7 @@ function paths = dijkstra_shortest_paths(am,am_len,node)
 
             offset = am(s_min,s_i);
             offset_sum = offset + paths(s_min);
-            
+
             if ((offset > 0) && (paths(s_i) > offset_sum))
                 paths(s_i) = offset_sum;
             end

@@ -17,7 +17,7 @@ function [jvars,jes] = mgev_joint_risk_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     l =  validate_input(ipr.l);
     k = ipr.k;
@@ -36,27 +36,27 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     if (isempty(options))
         options = optimset(optimset(@fmincon),'Algorithm','sqp','Diagnostics','off','Display','off','LargeScale','off');
     end
-    
+
     if (isempty(q))
         q = [(0.900:0.025:0.975) 0.99];
     end
-    
+
     up = isempty(getCurrentTask());
 
     [t,n] = size(l);
     l_sorted = sort(l,1);
-    
+
     q_fin = q(q >= k);
     q_diff = diff([q_fin 1]);
-    
+
     xi_s = (1:floor(t / 4)).';
     xi_a = sqrt(log((t - xi_s) ./ t) ./ log(xi_s ./ t));
     xi_q0 = xi_s;
     xi_q1 = floor(t .* (xi_s ./ t).^xi_a);
     xi_q2 = t - xi_s;
     xi_r = (l_sorted(xi_q2,:) - l_sorted(xi_q1,:)) ./ max(1e-8,(l_sorted(xi_q1,:) - l_sorted(xi_q0,:)));
-        
-    xi = sum([zeros(1,n); -(log(xi_r) ./ (ones(1,n) .* log(xi_a)))]).' ./ xi_s(end);
+
+    xi = sum([zeros(1,n); -(log(xi_r) ./ repmat(log(xi_a),1,n))]).' ./ xi_s(end);
     xi_positive = xi > 0;
     xi(xi_positive) = max(0.01,min(2,xi(xi_positive)));
     xi(~xi_positive) = max(-1,min(-0.01,xi(~xi_positive)));
@@ -64,10 +64,10 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     ms_d = floor(t / 10);
     ms_s = ((ms_d+1):(t-ms_d)).';
     ms_q = -log((1:t).' ./ (t + 1));
-    
+
     mu = zeros(n,1);
     sigma = zeros(n,1);
-    
+
     if (up)
         parfor j = 1:n
             y = (ms_q.^-xi(j) - 1) ./ xi(j);
@@ -85,7 +85,7 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
             sigma(j) = b(2);
         end
     end
-    
+
     d_p = tiedrank(l) ./ (t + 1);
     d_y = -1 ./ log(d_p);
     d_v = (d_y ./ repmat(mean(d_y,1),t,1)) ./ (ones(size(l)) .* (1 / n));
@@ -94,7 +94,7 @@ function [jvars,jes] = mgev_joint_risk_metrics_internal(l,k)
     x0_mu = n * mean(mu);
     x0_sigma = sqrt(n) * mean(sigma);
     x0_xi = mean(xi);
-    
+
     jvars = zeros(1,numel(q_fin));
 
     if (up)
@@ -159,7 +159,7 @@ end
 function l = validate_input(l)
 
     t = size(l,1);
-    
+
     if (t < 5)
         error('The value of ''l'' is invalid. Expected input to be a matrix with at least 5 rows.');
     end

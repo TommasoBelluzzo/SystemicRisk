@@ -22,7 +22,7 @@ function ris = roll_implicit_spread(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     p = validate_input(ipr.p);
     bw = ipr.bw;
@@ -79,17 +79,17 @@ function g = gibbs_sampler(p,w,c,s2)
 
         q = perform_draw(p,q,c,s2);
     end
-    
+
     g = 2 * c;
 
 end
-    
+
 function q = perform_draw(p,q,c,s2)
 
     t = numel(p);
     q_nnz = q ~= 0;
     s22 = s2 * 2;
-    
+
     m = mod((1:t).',2);
     r = rand(t,1);
 
@@ -98,7 +98,7 @@ function q = perform_draw(p,q,c,s2)
 
     for i = 1:2
         o = (m == (i - 1)) & q_nnz;
-        
+
         if (~any(o))
             continue;
         end

@@ -42,9 +42,9 @@ function [result,stopped] = run_connectedness(varargin)
     rp = ipr.rp;
     k = ipr.k;
     analyze = ipr.analyze;
-    
+
     nargoutchk(1,2);
-    
+
     [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,k,analyze);
 
 end
@@ -54,14 +54,14 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
     result = [];
     stopped = false;
     e = [];
-    
+
     ds = initialize(ds,sn,bw,sst,rp,k);
     t = ds.T;
-    
+
     bar = waitbar(0,'Initializing connectedness measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop',true));
     setappdata(bar,'Stop',false);
     cleanup = onCleanup(@()delete(bar));
-    
+
     pause(1);
     waitbar(0,bar,'Calculating connectedness measures...');
     pause(1);
@@ -83,10 +83,10 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
                 stopped = true;
                 break;
             end
-            
+
             [future_index,value] = fetchNext(futures);
             futures_results{future_index} = value;
-            
+
             futures_max = max([future_index futures_max]);
             waitbar((futures_max - 1) / t,bar);
 
@@ -98,7 +98,7 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
 
     catch e
     end
-    
+
     try
         cancel(futures);
     catch
@@ -108,12 +108,12 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
         delete(bar);
         rethrow(e);
     end
-    
+
     if (stopped)
         delete(bar);
         return;
     end
-    
+
     pause(1);
     waitbar(1,bar,'Finalizing connectedness measures...');
     pause(1);
@@ -128,7 +128,7 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
     pause(1);
     waitbar(1,bar,'Writing connectedness measures...');
     pause(1);
-    
+
     try
         write_results(ds,temp,out);
         delete(bar);
@@ -140,7 +140,7 @@ function [result,stopped] = run_connectedness_internal(ds,sn,temp,out,bw,sst,rp,
     if (analyze)
         analyse_result(ds);
     end
-    
+
     result = ds;
 
 end
@@ -167,7 +167,7 @@ function ds = initialize(ds,sn,bw,sst,rp,k)
     else
         all_label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ')'];
     end
-    
+
     ds.LabelsCentralities = {'Betweenness Centrality' 'Closeness Centrality' 'Degree Centrality' 'Eigenvector Centrality' 'Katz Centrality' 'Clustering Coefficient'};
 
     ds.LabelsIndicatorsSimple = {'DCI' 'CIO' 'CIOO'};
@@ -175,7 +175,7 @@ function ds = initialize(ds,sn,bw,sst,rp,k)
 
     ds.LabelsSheetsSimple = {'Indicators' 'Average Adjacency Matrix' 'Average Centrality Measures'};
     ds.LabelsSheets = {['Indicators' all_label] 'Average Adjacency Matrix' 'Average Centrality Measures'};
-    
+
     ds.AdjacencyMatrices = cell(t,1);
     ds.BetweennessCentralities = NaN(t,n);
     ds.ClosenessCentralities = NaN(t,n);
@@ -186,7 +186,7 @@ function ds = initialize(ds,sn,bw,sst,rp,k)
     ds.Degrees = NaN(t,n);
     ds.DegreesIn = NaN(t,n);
     ds.DegreesOut = NaN(t,n);
-    
+
     ds.Indicators = NaN(t,numel(ds.LabelsIndicators));
 
     ds.AverageAdjacencyMatrix = NaN(n);
@@ -199,7 +199,7 @@ function ds = initialize(ds,sn,bw,sst,rp,k)
     ds.AverageDegreesIn = NaN(1,n);
     ds.AverageDegreesOut = NaN(1,n);
     ds.AverageDegrees = NaN(1,n);
-    
+
     if (ds.Groups == 0)
         ds.ComparisonReferences = {'Indicators' 1:2 strcat({'CO-'},ds.LabelsIndicatorsSimple)};
     else
@@ -250,7 +250,7 @@ function ds = finalize(ds,results)
         ds.Degrees(i,:) = result.Degrees;
         ds.DegreesIn(i,:) = result.DegreesIn;
         ds.DegreesOut(i,:) = result.DegreesOut;
-        
+
         ds.Indicators(i,:) = [result.DCI result.ConnectionsInOut result.ConnectionsInOutOther];
     end
 
@@ -259,7 +259,7 @@ function ds = finalize(ds,results)
     am(am < am_threshold) = 0;
     am(am >= am_threshold) = 1;
     ds.AverageAdjacencyMatrix = am;
-    
+
     [bc,cc,dc,ec,kc,clc,deg,deg_in,deg_out] = network_centralities(am);
     ds.AverageBetweennessCentralities = bc;
     ds.AverageClosenessCentralities = cc;
@@ -288,9 +288,9 @@ function write_results(ds,temp,out)
     catch
         error('A system I/O error occurred while writing the results.');
     end
-    
+
     copy_result = copyfile(temp,out,'f');
-    
+
     if (copy_result == 0)
         error('The output file could not be created from the template file.');
     end
@@ -311,9 +311,9 @@ function write_results(ds,temp,out)
     labels = [{'Firms'} strrep(ds.LabelsCentralities,' ','')];
     tab = cell2table(vars,'VariableNames',labels);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
-    
+
     worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
-    
+
 end
 
 %% PLOTTING
@@ -334,11 +334,11 @@ function plot_indicators(ds,id)
     cioo = smooth_data(ds.Indicators(:,3));
 
     connections_max = max(max([cio cioo])) * 1.1;
-    
+
     threshold_indices = dci >= ds.K;
     threshold = NaN(ds.T,1);
     threshold(threshold_indices) = connections_max;
-    
+
     if (ds.RP)
         label = [' (SST=' num2str(ds.SST) ', K=' num2str(ds.K) ', R)'];
     else
@@ -346,7 +346,7 @@ function plot_indicators(ds,id)
     end
 
     f = figure('Name','Connectedness Measures > Indicators','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
-    
+
     sub_1 = subplot(2,1,1);
     p1 = plot(sub_1,ds.DatesNum,dci);
     hold on;
@@ -376,13 +376,13 @@ function plot_indicators(ds,id)
     else
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
-    
+
     sub_1_position = get(sub_1,'Position');
     sub_2_position = get(sub_2,'Position');
     set(sub_1,'Position',[sub_2_position(1) sub_1_position(2) sub_2_position(3) sub_2_position(4)]);
 
     figure_title('Indicators');
-    
+
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
@@ -413,12 +413,12 @@ function plot_network(ds,id)
             end
         end
     end
-    
+
     weights = mean(ds.Degrees,1,'omitnan');
     weights = weights ./ mean(weights);
     weights = (weights - min(weights)) ./ (max(weights) - min(weights));
     weights = (weights .* 3.75) + 0.25;
-    
+
     theta = linspace(0,(2 * pi),(ds.N + 1)).';
     theta(end) = [];
     xy = [cos(theta) sin(theta)];
@@ -466,7 +466,7 @@ function plot_network(ds,id)
 
         legend(sub,lines_ref,ds.GroupShortNames,'Units','normalized','Position',[0.725 0.131 0.040 0.076]);
     end
-    
+
     axis(sub,[-1 1 -1 1]);
     axis('equal','off');
 
@@ -474,7 +474,7 @@ function plot_network(ds,id)
     set(labels,{'Rotation'},num2cell(theta * (180 / pi())));
 
     figure_title('Network Graph');
-    
+
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
@@ -499,7 +499,7 @@ function plot_adjacency_matrix(ds,id)
     set(ax,'TickLength',[0 0]);
     set(ax,'XAxisLocation','top','XTick',1.5:off,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
     set(ax,'YDir','reverse','YTick',1.5:off,'YTickLabels',ds.FirmNames,'YTickLabelRotation',45);
-    
+
     figure_title('Average Adjacency Matrix');
 
     pause(0.01);
@@ -511,7 +511,7 @@ end
 function plot_centralities(ds,id)
 
     seq = 1:ds.N;
-    
+
     [bc,order] = sort(ds.AverageBetweennessCentralities);
     bc_names = ds.FirmNames(order);
     [cc,order] = sort(ds.AverageClosenessCentralities);
@@ -531,22 +531,22 @@ function plot_centralities(ds,id)
     bar(sub_1,seq,bc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_1,'XTickLabel',bc_names);
     title(ds.LabelsCentralities{1});
-    
+
     sub_2 = subplot(2,3,2);
     bar(sub_2,seq,cc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_2,'XTickLabel',cc_names);
     title(ds.LabelsCentralities{2});
-    
+
     sub_3 = subplot(2,3,3);
     bar(sub_3,seq,dc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_3,'XTickLabel',dc_names);
     title(ds.LabelsCentralities{3});
-    
+
     sub_4 = subplot(2,3,4);
     bar(sub_4,seq,ec,'FaceColor',[0.749 0.862 0.933]);
     set(sub_4,'XTickLabel',ec_names);
     title(ds.LabelsCentralities{4});
-    
+
     sub_5 = subplot(2,3,5);
     bar(sub_5,seq,kc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_5,'XTickLabel',kc_names);
@@ -556,12 +556,12 @@ function plot_centralities(ds,id)
     bar(sub_6,seq,clc,'FaceColor',[0.749 0.862 0.933]);
     set(sub_6,'XTickLabel',clc_names);
     title(ds.LabelsCentralities{6});
-    
+
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (ds.N + 1)],'XTick',seq,'XTickLabelRotation',90);
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'YGrid','on');
 
     figure_title('Average Centrality Measures');
-    
+
     pause(0.01);
     frame = get(f,'JavaFrame');
     set(frame,'Maximized',true);
@@ -577,7 +577,7 @@ function out = validate_output(out)
     if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
-    
+
 end
 
 function temp = validate_template(temp)
@@ -588,7 +588,7 @@ function temp = validate_template(temp)
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
-    
+
     worksheets_batch(temp,sheets);
 
 end

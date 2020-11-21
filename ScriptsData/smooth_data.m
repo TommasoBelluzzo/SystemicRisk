@@ -16,7 +16,7 @@ function data = smooth_data(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [data,s] = validate_input(ipr.data,ipr.s);
 
@@ -29,7 +29,7 @@ end
 function data = smooth_data_internal(data,s)
 
     w = s + mod(s,2) - 1;
-    
+
     for i = 1:size(data,2)
         data(:,i) = smoothing_function(data(:,i),s,w);
     end
@@ -49,10 +49,10 @@ function ys = smoothing_function(y,s,w)
 
         n = numel(y);
         z = filter(ones(w,1) ./ w,1,y);
-        
+
         ys_begin = cumsum(y(1:w-2));
         ys_begin = ys_begin(1:2:end) ./ (1:2:w-2).';
-        
+
         ys_end = cumsum(y(n:-1:n-w+3));
         ys_end = ys_end(end:-2:1)./(w-2:-2:1)';
 
@@ -65,7 +65,7 @@ function ys = smoothing_function(y,s,w)
 
         ys = smoothing_function(z1,s,w) ./ smoothing_function(z2,s,w);
     end
-    
+
     ys(nan_indices) = NaN;
 
 end
@@ -77,11 +77,11 @@ function [data,s] = validate_input(data,s)
     end
 
     [t,n] = size(data);
-    
+
     if ((any([t,n]) == 1) && (n > t))
         error('The value of ''data'' is invalid. Expected input to be a column vector when a single time series is defined.');
     end
-    
+
     if (s > t)
         error(['The value of ''s'' is invalid. Expected input to be less than or equal to ' num2str(t) '.']);
     end

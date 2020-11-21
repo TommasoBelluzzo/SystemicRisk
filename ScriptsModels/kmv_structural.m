@@ -27,7 +27,7 @@ function [va,vap] = kmv_structural(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [eq,db,r,t] = validate_input(ipr.eq,ipr.db,ipr.r,ipr.t);
     op = ipr.op;
@@ -57,7 +57,7 @@ function [va,vap] = kmv_structural_internal(eq,db,r,t,op)
 
     va_old = va;
     va = eq + ((va .* (1 - n1)) + (db .* df .* n2));
-    
+
     count = 0;
     error = norm(va - va_old) / sk;
 
@@ -76,13 +76,13 @@ function [va,vap] = kmv_structural_internal(eq,db,r,t,op)
         count = count + 1;
         error = norm(va - va_old) / sk;
     end
-    
+
     if (strcmp(op,'BSM'))
         vap = va_s;
     else
         va_g = skewness(va_r,0) / sqrt(252);
         va_k = (kurtosis(va_r,0) - 3) / 252;
-        
+
         vap = [va_s va_g va_k];
     end
 
@@ -92,7 +92,7 @@ function [eq,db,r,t] = validate_input(eq,db,r,t)
 
     eq = eq(:);
     eq_len = numel(eq);
-    
+
     if (eq_len < 5)
         error('The value of ''eq'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
@@ -114,7 +114,7 @@ function [eq,db,r,t] = validate_input(eq,db,r,t)
 
     for i = 1:numel(data)
         data_i = data{i};
-        
+
         if (numel(data_i) == 1)
             data{i} = repmat(data_i,eq_len,1);
         end

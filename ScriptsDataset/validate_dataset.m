@@ -1,18 +1,21 @@
 % [INPUT]
 % ds = A structure representing the dataset.
 % category = A string representing the type of validation to perform (optional, default='').
+%
+% [OUTPUT]
+% ds = A structure containing the validated dataset.
 
 function ds = validate_dataset(varargin)
 
     persistent categories;
-    
+
     if (isempty(categories))
         categories = {
             'Comparison' 'Component' 'Connectedness' 'CrossEntropy' 'CrossQuantilogram' ...
             'CrossSectional' 'Default' 'Liquidity' 'RegimeSwitching' 'Spillover'
         };
     end
-    
+
     persistent ip;
 
     if (isempty(ip))
@@ -26,7 +29,7 @@ function ds = validate_dataset(varargin)
     ipr = ip.Results;
     ds = ipr.ds;
     category = ipr.category;
-    
+
     nargoutchk(1,1);
 
     ds = validate_dataset_internal(ds,category,categories);
@@ -38,39 +41,39 @@ function ds = validate_dataset_internal(ds,category,categories)
     validate_field(ds,'File',{'char'},{'nonempty' 'size' [1 NaN]});
     validate_field(ds,'Version',{'char'},{'nonempty' 'size' [1 NaN]});
     creation_date = validate_field(ds,'CreationDate',{'double'},{'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
-    
+
     result = validate_field(ds,'Result',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
     result_date = validate_field(ds,'ResultDate',{'double'},{'optional' 'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
     result_analysis = validate_field(ds,'ResultAnalysis',{'function_handle'},{'optional' 'scalar'});
     result_serial = validate_field(ds,'ResultSerial',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
-    
+
     if (isempty(result))
         if (~isempty(result_date))
-            error(['The dataset field ''ResultDate'' is invalid.' newline() 'Expected value to be empty.']);
+            error(['The dataset field ''ResultDate'' is invalid.' new_line() 'Expected value to be empty.']);
         end
 
         if (~isempty(result_analysis))
-            error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be empty.']);
+            error(['The dataset field ''ResultAnalysis'' is invalid.' new_line() 'Expected value to be empty.']);
         end
-        
+
         if (~isempty(result_serial))
-            error(['The dataset field ''ResultSerial'' is invalid.' newline() 'Expected value to be empty.']);
+            error(['The dataset field ''ResultSerial'' is invalid.' new_line() 'Expected value to be empty.']);
         end
     else
         if (~ismember(result,categories))
-            error(['The dataset field ''Result'' is invalid.' newline() 'Expected value to be a string containing a valid result category.']);
+            error(['The dataset field ''Result'' is invalid.' new_line() 'Expected value to be a string containing a valid result category.']);
         end
-        
+
         if (isempty(result_date) || (result_date < creation_date))
-            error(['The dataset field ''ResultDate'' is invalid.' newline() 'Expected value to be a numeric date greater than or equal to ' datestr(creation_date,'dd/mm/yyyy') '.']);
+            error(['The dataset field ''ResultDate'' is invalid.' new_line() 'Expected value to be a numeric date greater than or equal to ' datestr(creation_date,'dd/mm/yyyy') '.']);
         end
-        
+
         if (isempty(result_analysis))
-            error(['The dataset field ''ResultAnalysis'' is invalid.' newline() 'Expected value to be a function handle.']);
+            error(['The dataset field ''ResultAnalysis'' is invalid.' new_line() 'Expected value to be a function handle.']);
         end
-        
+
         if (isempty(result_serial))
-            error(['The dataset field ''ResultSerial'' is invalid.' newline() 'Expected value to be a function handle.']);
+            error(['The dataset field ''ResultSerial'' is invalid.' new_line() 'Expected value to be a function handle.']);
         end
     end
 
@@ -85,7 +88,7 @@ function ds = validate_dataset_internal(ds,category,categories)
 
     validate_field(ds,'IndexName',{'char'},{'nonempty' 'size' [1 NaN]});
     validate_field(ds,'FirmNames',{'cellstr'},{'nonempty' 'size' [1 n]});
-    
+
     validate_field(ds,'Index',{'double'},{'real' 'finite' 'nonempty' 'size' [t 1]});
     validate_field(ds,'Returns',{'double'},{'real' 'nanfinite' 'nonempty' 'size' [t n]});
 
@@ -115,14 +118,14 @@ function ds = validate_dataset_internal(ds,category,categories)
         validate_field(ds,'GroupNames',{'cellstr'},{'nonempty' 'size' [groups 1]});
         validate_field(ds,'GroupShortNames',{'cellstr'},{'nonempty' 'size' [groups 1]});
     end
-    
+
     crises = validate_field(ds,'Crises',{'double'},{'real' 'finite' 'integer' '>=' 0 'scalar'});
     crises_type = validate_field(ds,'CrisesType',{'char'},{'nonempty' 'size' [1 1]});
-    
+
     if (~strcmp(crises_type,'E') && ~strcmp(crises_type,'R'))
-        error(['The dataset field ''CrisesType'' is invalid.' newline() 'Expected value to be either ''E'' or ''R''.']);
+        error(['The dataset field ''CrisesType'' is invalid.' new_line() 'Expected value to be either ''E'' or ''R''.']);
     end
-    
+
     if (crises == 0)
         validate_field(ds,'CrisesDummy',{'double'},{'size' [0 0]});
         validate_field(ds,'CrisisDates',{'double'},{'size' [0 0]});
@@ -130,7 +133,7 @@ function ds = validate_dataset_internal(ds,category,categories)
         validate_field(ds,'CrisisNames',{'double'},{'size' [0 0]});
     else
         validate_field(ds,'CrisesDummy',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t 1]});
-        
+
         if (strcmp(crises_type,'E'))
             validate_field(ds,'CrisisDates',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 1]});
             validate_field(ds,'CrisisDummies',{'double'},{'size' [0 0]});
@@ -138,7 +141,7 @@ function ds = validate_dataset_internal(ds,category,categories)
             validate_field(ds,'CrisisDates',{'double'},{'real' 'finite' 'integer' '>' 0 'nonempty' 'size' [crises 2]});
             validate_field(ds,'CrisisDummies',{'double'},{'real' 'finite' 'integer' '>=' 0 '<=' 1 'nonempty' 'size' [t crises]});
         end
-        
+
         validate_field(ds,'CrisisNames',{'cellstr'},{'nonempty' 'size' [crises 1]});
     end
 
@@ -154,7 +157,7 @@ function ds = validate_dataset_internal(ds,category,categories)
     validate_field(ds,'SupportsRegimeSwitching',{'logical'},{'scalar'});
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
-    
+
     if (~isempty(category) && ~strcmp(category,'Comparison'))
         supports = ['Supports' category];
 
@@ -172,11 +175,11 @@ function ds = validate_dataset_internal(ds,category,categories)
                     indices(i+1:end) = indices(i+1:end) + 1;
                 end
             end
-            
+
             error(['The dataset cannot be used for calculating ''' category_e ''' measures.']);
         end
     end
-    
+
 end
 
 function value = validate_field(ds,field_name,field_type,field_validator)
@@ -199,17 +202,17 @@ function value = validate_field(ds,field_name,field_type,field_validator)
             empty = true;
         catch
         end
-        
+
         if (empty)
             return;
         end
-        
+
         field_validator = field_validator(2:end);
     end
-    
+
     if (value_iscellstr)
         if (~iscellstr(value) || any(cellfun(@length,value) == 0) || any(cellfun(@(x)size(x,1),value) ~= 1)) %#ok<ISCLSTR>
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be a cell array of non-empty character vectors.']);
+            error(['The dataset field ''' field_name ''' is invalid.' new_line() 'Expected value to be a cell array of non-empty character vectors.']);
         end
 
         field_type{1} = 'cell';
@@ -218,7 +221,7 @@ function value = validate_field(ds,field_name,field_type,field_validator)
             index = strcmp(field_validator,'nanfinite');
             field_validator(index) = [];
         end
-        
+
         if (value_isoffset)
             index = strcmp(field_validator,'offset');
             field_validator(index) = [];
@@ -228,9 +231,9 @@ function value = validate_field(ds,field_name,field_type,field_validator)
     try
         validateattributes(value,field_type,field_validator);
     catch e
-        error(['The dataset field ''' field_name ''' is invalid.' newline() strrep(e.message,'Expected input','Expected value')]);
+        error(['The dataset field ''' field_name ''' is invalid.' new_line() strrep(e.message,'Expected input','Expected value')]);
     end
-    
+
     if (value_isfinite)
         value_check = value;
         value_check(isnan(value_check)) = 0;
@@ -238,10 +241,10 @@ function value = validate_field(ds,field_name,field_type,field_validator)
         try
             validateattributes(value_check,field_type,{'finite'});
         catch
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to be finite.']);
+            error(['The dataset field ''' field_name ''' is invalid.' new_line() 'Expected value to be finite.']);
         end
     end
-    
+
     if (value_isoffset)
         value_check = value;
         value_check(isnan(value_check)) = 2;
@@ -249,7 +252,7 @@ function value = validate_field(ds,field_name,field_type,field_validator)
         try
             validateattributes(value_check,field_type,{'>',1});
         catch
-            error(['The dataset field ''' field_name ''' is invalid.' newline() 'Expected value to contain all the finite values > 1.']);
+            error(['The dataset field ''' field_name ''' is invalid.' new_line() 'Expected value to contain all the finite values > 1.']);
         end
     end
 

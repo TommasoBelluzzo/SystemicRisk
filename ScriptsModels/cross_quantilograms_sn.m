@@ -26,7 +26,7 @@ function [cq,ci] = cross_quantilograms_sn(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = validate_input_data(ipr.data);
     a = ipr.a;
@@ -46,7 +46,7 @@ function [cq,ci] = cross_quantilograms_sn_internal(x,a,k,civ,cif)
     partial = n > 2;
 
     cq_sn = zeros(t,1);
-    
+
     if (partial)
         for i = len:t
             x_i = x(1:i,:);
@@ -59,13 +59,13 @@ function [cq,ci] = cross_quantilograms_sn_internal(x,a,k,civ,cif)
             d_sn(:,2:n) = q_sn(1:x_t-k,2:n);
 
             h_sn = d_sn.' * d_sn;
-            
+
             if (det(h_sn) <= 1e-08)
                 hi_sn = pinv(h_sn);
             else
                 hi_sn = inv(h_sn);
             end
-            
+
             cq_sn(i) = -hi_sn(1,2) / sqrt(hi_sn(1,1) * hi_sn(2,2));
         end 
     else
@@ -86,7 +86,7 @@ function [cq,ci] = cross_quantilograms_sn_internal(x,a,k,civ,cif)
     end
 
     cq = cq_sn(end);
-    
+
     cqc = (cq_sn - repmat(cq,t,1)) .* (1:t).';
     cv0_bb = cqc(len:t);
     cv0_sn = (t * cq^2) / ((1 / t^2) * (cv0_bb.' * cv0_bb));
@@ -100,11 +100,11 @@ function q = gumbel_quantile(x,p)
     index = 1 + ((size(x,1) - 1) * p);
     low = floor(index);
     high = ceil(index);
-    
+
     x = sort(x);
     x_low = x(low,:);
     x_high = x(high,:);
-    
+
     h = max(index - low,0);
     q = (h .* x_high) + ((1 - h) .* x_low);
 
@@ -115,15 +115,15 @@ function [civ,cif] = validate_input_ci(cis,cif)
     persistent cif_allowed;
     persistent cis_allowed;
     persistent v;
-    
+
     if (isempty(cif_allowed))
         cif_allowed = [0.00 0.01 0.03 0.05 0.10 0.15 0.20 0.30];
     end
-    
+
     if (isempty(cis_allowed))
         cis_allowed = [0.005 0.010 0.025 0.050 0.100];
     end
-    
+
     if (isempty(v))
         v = [
             129.15490  99.44085  66.00439 45.43917 28.06313;
@@ -136,21 +136,21 @@ function [civ,cif] = validate_input_ci(cis,cif)
             206.01210 155.00120 101.10960 67.53906 40.84930
         ];
     end
-    
+
     [cis_ok,j] = ismember(cis,cis_allowed);
 
     if (~cis_ok)
         cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
         error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
     end
-    
+
     [cif_ok,i] = ismember(cif,cif_allowed);
 
     if (~cif_ok)
         cif_allowed_text = [sprintf('%.2f',cif_allowed(1)) sprintf(', %.2f',cif_allowed(2:end))];
         error(['The value of ''cif'' is invalid. Expected input to have one of the following values: ' cif_allowed_text '.']);
     end
-    
+
     civ = v(i,j);
 
 end

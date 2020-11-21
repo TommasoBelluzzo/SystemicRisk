@@ -24,7 +24,7 @@ function [jpod,fsi,pce,dide,si,sv,cojpods] = cross_entropy_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [pods,g,p] = validate_input(ipr.pods,ipr.g,ipr.p);
 
@@ -44,7 +44,7 @@ function [jpod,fsi,pce,dide,si,sv,cojpods] = cross_entropy_metrics_internal(pods
     pce = sum(p(g_refs >= 2,:)) / sum(p(g_refs >= 1,:));
 
     dide = eye(n);
-    
+
     for i = 1:n
         for j = 1:n
             if (isnan(pods(j)))
@@ -61,7 +61,7 @@ function [jpod,fsi,pce,dide,si,sv,cojpods] = cross_entropy_metrics_internal(pods
 
     jpods = ones(n,1) .* jpod;
     cojpods = (jpods ./ pods).';
-    
+
 end
 
 function [pods,g,p] = validate_input(pods,g,p)
@@ -72,21 +72,21 @@ function [pods,g,p] = validate_input(pods,g,p)
     if (n < 2)
         error('The value of ''pods'' is invalid. Expected input to be a vector containing at least 2 elements.');
     end
-    
+
     k = n^2;
-    
+
     [kg,ng] = size(g);
-    
+
     if ((kg ~= k) || (ng ~= n))
         error(['The value of ''g'' is invalid. Expected input to be a matrix of size ' num2str(k) 'x' num2str(n) '.']);
     end
-    
+
     kp = numel(p);
-    
+
     if (kp ~= k)
         error(['The value of ''p'' is invalid. Expected input to be a vector containing ' num2str(k) ' elements.']);
     end
-    
+
     p = p(:);
 
 end

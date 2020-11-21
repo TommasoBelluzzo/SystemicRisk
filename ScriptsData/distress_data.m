@@ -54,5 +54,5 @@ function [data,offsets] = validate_input(data,offsets)
             error(['The number of columns in the time series (' num2str(n) ') must be equal to the number of offsets (' num2str(k) ').']);
         end
     end
-    
+
 end

@@ -18,7 +18,7 @@ function am = causal_adjacency(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     r = validate_input(ipr.r);
     sst = ipr.sst;
@@ -35,7 +35,7 @@ function am = causal_adjacency_internal(r,sst,rp)
     up = isempty(getCurrentTask());
 
     n = size(r,2);
-    
+
     nan_indices = any(isnan(r),1);
     nok = sum(~nan_indices);
 
@@ -51,7 +51,7 @@ function am = causal_adjacency_internal(r,sst,rp)
 
     r_in = arrayfun(@(x)r(:,x),i,'UniformOutput',false);
     r_out = arrayfun(@(x)r(:,x),j,'UniformOutput',false);
-    
+
     k = nok^2 - nok;
     pvals = zeros(k,1);
 
@@ -91,9 +91,9 @@ function [b,c,r] = hac_regression(y,x,ratio)
     h = diag(r) * x;
     q_hat = (x.' * x) / t;
     o_hat = (h.' * h) / t;
-    
+
     l = round(ratio * t,0);
-    
+
     for i = 1:(l - 1)
         o_tmp = (h(1:(t-i),:).' * h((1+i):t,:)) / (t - i);
         o_hat = o_hat + (((l - i) / l) * (o_tmp + o_tmp.'));
@@ -104,7 +104,7 @@ function [b,c,r] = hac_regression(y,x,ratio)
 end
 
 function [pval,pval_robust] = linear_granger_causality(in,out)
-    
+
     t = length(in);
     y = out(2:t,1);
     x = [out(1:t-1) in(1:t-1)];
@@ -114,7 +114,7 @@ function [pval,pval_robust] = linear_granger_causality(in,out)
     xxi = inv(x.' * x);
     s2 = (r.' * r) / (t - 3);
     t_coefficients = b(2) / sqrt(s2 * xxi(2,2));
-    
+
     pval = 1 - normcdf(t_coefficients);
     pval_robust = 1 - normcdf(b(2) / sqrt(c(2,2) / (t - 1)));
 

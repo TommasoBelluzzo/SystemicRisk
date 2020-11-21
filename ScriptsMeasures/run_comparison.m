@@ -65,7 +65,7 @@ function [result,stopped] = run_comparison(varargin)
     ppsk = ipr.ppsk;
     pdt = ipr.pdt;
     analyze = ipr.analyze;
-    
+
     nargoutchk(1,2);
 
     [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt,analyze);
@@ -84,7 +84,7 @@ function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,l
     bar = waitbar(0,'Initializing measures comparison...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
     cleanup = onCleanup(@()delete(bar));
-    
+
     pause(1);
     waitbar(0,bar,['Performing measures comparison (step 1 of ' num2str(k) ')...']);
     pause(1);
@@ -93,23 +93,23 @@ function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,l
 
         for i = 1:k
             waitbar((i - 1) / k,bar,['Performing measures comparison (step ' num2str(i) ' of ' num2str(k) ')...']);
-            
+
             if (getappdata(bar,'Stop'))
                 stopped = true;
                 break;
             end
-            
+
             if (i == 1)
                 ds = check_similarity(ds);
             else
                 eval(['ds = perform_comparison_' lower(ds.SM{i-1}) '(ds);']);
             end
-            
+
             if (getappdata(bar,'Stop'))
                 stopped = true;
                 break;
             end
-            
+
             waitbar(i / k,bar);
         end
 
@@ -120,7 +120,7 @@ function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,l
         delete(bar);
         rethrow(e);
     end
-    
+
     if (stopped)
         delete(bar);
         return;
@@ -136,11 +136,11 @@ function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,l
         delete(bar);
         rethrow(e);
     end
-    
+
     pause(1);
     waitbar(1,bar,'Writing measures comparison result...');
     pause(1);
-    
+
     try
         write_results(ds,temp,out);
         delete(bar);
@@ -148,11 +148,11 @@ function [result,stopped] = run_comparison_internal(ds,sn,temp,out,ml,md,co,sc,l
         delete(bar);
         rethrow(e);
     end
-    
+
     if (analyze)
         analyze_result(ds);
     end
-    
+
     result = ds;
 
 end
@@ -163,7 +163,7 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
 
     cd = ds.CrisesDummy;
     cd_empty = isempty(cd);
-    
+
     mdn = ds.DatesNum(co:end);
     [mdy,~,~,~,~,~] = datevec(mdn);
 
@@ -172,16 +172,16 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
 
     md = (md - repmat(mean(md,1),mt,1)) ./ repmat(std(md,1),mt,1);
     md(isnan(md)) = 0;
-    
+
     c = nchoosek(1:mn,2);
     c_len = size(c,1);
     mc = cell(c_len,2);
-    
+
     for i = 1:c_len
         c_i = c(i,:);
         mc(i,:) = {c_i md(:,c_i)};
     end
-    
+
     ds.Result = 'Comparison';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
@@ -194,20 +194,20 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
     ds.MLabels = ml;
     ds.MCombinations = mc;
     ds.MMonthlyTicks = numel(unique(mdy)) <= 3;
-    
+
     if (cd_empty)
         ds.MDummy = [];
     else
         ds.MDummy = cd(co:end);
     end
-    
+
     ds.CO = co;
     ds.LagMax = lag_max;
     ds.LagSel = lag_sel;
-    
+
     ds.LabelsSheetsSimple = {'Distance Correlation' 'RMS Similarity' 'Scores'};
     ds.LabelsSheets = {'Distance Correlation' 'RMS Similarity' 'Scores'};
-    
+
     ds.DistanceCorrelation = NaN(mn);
     ds.RMSSimilarity = NaN(mn);
 
@@ -225,7 +225,7 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
         ds.SC(off) = [];
         ds.SM(off) = [];
     end
-    
+
     if ((ds.SC(off) > 0) && ~cd_empty)
         ds.LMA = lma;
         ds.LMData = NaN(1,mn);
@@ -235,7 +235,7 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
         ds.SC(off) = [];
         ds.SM(off) = [];
     end
-    
+
     if ((ds.SC(off) > 0) && ~cd_empty)
         ds.PPSK = ppsk;
         ds.PPSData = NaN(1,mn);
@@ -254,7 +254,7 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
         ds.SC(off) = [];
         ds.SM(off) = [];
     end
-    
+
     if (numel(ds.SM) > 1)
         ds.OverallScores = NaN(1,mn);
     end
@@ -293,17 +293,17 @@ function write_results(ds,temp,out)
     catch
         error('A system I/O error occurred while writing the results.');
     end
-    
+
     copy_result = copyfile(temp,out,'f');
-    
+
     if (copy_result == 0)
         error('The output file could not be created from the template file.');
     end
-    
+
     mn = ds.MN;
 
     labels = [{'Firms'} ds.MLabels.'];
-    
+
     if (ispc())
         xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],1);
         xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],2);
@@ -311,28 +311,28 @@ function write_results(ds,temp,out)
         xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],ds.LabelsSheetsSimple{1});
         xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],ds.LabelsSheetsSimple{2});
     end
-    
+
     sm = ds.SM;
     sm_len = numel(sm);
-    
+
     labels = [{'Measure'} sm];
-    
+
     if (sm_len == 1)
         scores = ds.([sm{1} 'Scores']).';
     else
         labels = [labels {'Overall'}];
-        
+
         scores = zeros(mn,sm_len + 1);
-        
+
         for i = 1:sm_len
             scores(:,i) = ds.([sm{i} 'Scores']).';
         end
-        
+
         scores(:,end) = ds.OverallScores.';
     end
-    
+
     scores = mat2cell(scores,ds.MN,ones(1,size(scores,2)));
-    
+
     tab = table(ds.MLabels,scores{:},'VariableNames',labels);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{3},'WriteRowNames',true);
 
@@ -357,7 +357,7 @@ function ds = check_similarity(ds)
     mn = ds.MN;
     dcor = zeros(mn);
     rmss = zeros(mn);
-    
+
     for k = 1:mc_len
         mo_k = mc{k,1};
         i = mo_k(1);
@@ -383,7 +383,7 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
 
     parfor k = 1:mc_len
         md_k = mc{k,2};
-        
+
         [f,cv,h0,lag_r,lag_u] = granger_causality(md_k,gca,lag_max,lag_sel);
 
         data_k = struct();
@@ -399,12 +399,12 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
     mn = ds.MN;
     data = cell(mn,mn);
     scores = zeros(1,mn);
-    
+
     for k = 1:mc_len
         mo_k = mc{k,1};
         i = mo_k(1);
         j = mo_k(2);
-        
+
         data_k = mc_results{k};
         h0_k = data_k.H0;
         data_k = rmfield(data_k,'H0');
@@ -417,11 +417,11 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
             scores(j) = scores(j) + 1;
         end
     end
-    
+
     if (~all(scores == 0))
         scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
     end
-    
+
     ds.GCData = data;
     ds.GCScores = scores;
 
@@ -431,7 +431,7 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
 
     m = ds.MData;
     [mt,mn] = size(m);
-    
+
     lma = ds.LMA;
     y = ds.MDummy;
 
@@ -451,7 +451,7 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
             mfr2(i) = 1 - (ll / ll0);
         end
     end
-    
+
     scores = zeros(1,mn);
 
     for i = 1:mn
@@ -475,7 +475,7 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
             end
         end
     end
-    
+
     if (~all(scores == 0))
         scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
     end
@@ -489,7 +489,7 @@ function ds = perform_comparison_pps(ds) %#ok<DEFNU>
 
     m = ds.MData;
     mn = size(m,2);
-    
+
     ppsk = ds.PPSK;
     y = ds.MDummy;
 
@@ -509,9 +509,9 @@ function ds = perform_comparison_pps(ds) %#ok<DEFNU>
         weight = 1 / size(ts,1);
         feature = ts(:,1);
         target = ts(:,2);
-        
+
         baseline_loss = sum(weight .* (target - median(target)).^2);
-        
+
         cvm = fitrtree(feature,target,'CrossVal','on','KFold',ppsk);
         loss = abs(kfoldLoss(cvm,'Mode','average','LossFun','mse'));
 
@@ -543,7 +543,7 @@ function ds = perform_comparison_pps(ds) %#ok<DEFNU>
             end
         end
     end
-    
+
     if (~all(scores == 0))
         scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
     end
@@ -565,7 +565,7 @@ function ds = perform_comparison_pd(ds) %#ok<DEFNU>
 
     parfor k = 1:mc_len
         md_k = mc{k,2};
-        
+
         [m1,m2,lag] = price_discovery(md_k,pdt,lag_max,lag_sel);
 
         data_k = struct();
@@ -579,12 +579,12 @@ function ds = perform_comparison_pd(ds) %#ok<DEFNU>
     mn = ds.MN;
     data = cell(mn,mn);
     scores = zeros(1,mn);
-    
+
     for k = 1:mc_len
         mo_k = mc{k,1};
         i = mo_k(1);
         j = mo_k(2);
-        
+
         data_k = mc_results{k};
         data{i,j} = data_k;
         data{j,i} = data_k;
@@ -601,7 +601,7 @@ function ds = perform_comparison_pd(ds) %#ok<DEFNU>
     if (~all(scores == 0))
         scores = round(((scores - min(scores)) ./ (max(scores) - min(scores))) .* 100,2);
     end
-    
+
     ds.PDData = data;
     ds.PDScores = scores;
 
@@ -653,13 +653,13 @@ function plot_measures(ds,id)
         c1 = [];
         c2 = [];
     end
-    
+
     data = [repmat({mdn},1,mn); mat2cell(ts,mt,ones(1,mn))];
-    
+
     sequence_titles = ds.MLabels.';
 
     plots_title = repmat({' '},1,mn);
-    
+
     x_limits = [mdn(1) mdn(end)];
     y_limits = ts_limits;
 
@@ -693,18 +693,18 @@ function plot_measures(ds,id)
     core.YTickLabels = {[]};
 
     sequential_plot(core,id);
-    
+
     function plot_function(subs,data,ct,c1,c2)
 
         x = data{1};
         y = data{2};
-        
+
         if (isempty(ct))
             plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
         else
             if (strcmp(ct,'E'))
                 plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
-                
+
                 hold(subs(1),'on');
                     for i = 1:numel(c1)
                         line(subs(1),ones(2,1) .* c1(i),[c2(1) c2(2)],'Color',[1 0.4 0.4]);
@@ -731,12 +731,12 @@ function plot_similarity(ds,target,id)
     off = seq + 0.5;
 
     m = ds.(strrep(target,' ',''));
-    
+
     s = m;
     s(s <= 0.5) = 0;
     s(s > 0.5) = 1;
     s(logical(eye(n))) = 0.5;
-    
+
     [s_x,s_y] = meshgrid(seq,seq);
     s_x = s_x(:) + 0.5;
     s_y = s_y(:) + 0.5;
@@ -746,18 +746,18 @@ function plot_similarity(ds,target,id)
 
     pcolor(padarray(s,[1 1],'post'));
     colormap([1 1 1; 0.65 0.65 0.65; 0.749 0.862 0.933]);
-    
+
     if (n <= 10)
         axis('image');
     end
 
     text(s_x,s_y,s_text,'FontSize',9,'HorizontalAlignment','center');
-    
+
     ax = gca();
     set(ax,'FontWeight','bold','TickLength',[0 0]);
     set(ax,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
     set(ax,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
-    
+
     figure_title(target);
 
     pause(0.01);
@@ -771,7 +771,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     mn = ds.MN;
     seq = 1:mn;
     off = seq + 0.5;
-    
+
     [seq_x,seq_y] = meshgrid(seq,seq);
     seq_x = seq_x(:) + 0.5;
     seq_y = seq_y(:) + 0.5;
@@ -804,7 +804,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     set(sub_2,'YDir','reverse','YLim',[0.5 (mn + 1.5)],'YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',0);
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
-    
+
     figure_title(['Granger-causality (A=' num2str(ds.GCA * 100) '%, LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
     pause(0.01);
@@ -820,15 +820,15 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     function tooltip = create_tooltip(~,evtd,element,data_labels,data)
 
         targ = get(evtd,'Target');
-        
+
         if (targ ~= element)
             tooltip = [];
             return;
         end
-        
+
         [i,j] = ind2sub(size(data),get(evtd,'DataIndex'));
         data_ij = data{i,j};
-        
+
         if (isempty(data_ij))
             tooltip = '';
         else
@@ -848,7 +848,7 @@ function plot_scores_lm(ds,id) %#ok<DEFNU>
     [scores,order] = sort(ds.LMScores);
     labels = ds.MLabels(order);
     mfr2 = ds.LMData(order);
-    
+
     if (ds.LMA)
         lma_label = 'Y';
     else
@@ -862,7 +862,7 @@ function plot_scores_lm(ds,id) %#ok<DEFNU>
     set(t,'Units','normalized');
     t_position = get(t,'Position');
     set(t,'Position',[0.4783 t_position(2) t_position(3)]);
-    
+
     ax = gca();
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
@@ -904,7 +904,7 @@ function plot_scores_pps(ds,id) %#ok<DEFNU>
     set(t,'Units','normalized');
     t_position = get(t,'Position');
     set(t,'Position',[0.4783 t_position(2) t_position(3)]);
-    
+
     ax = gca();
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
@@ -935,7 +935,7 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     mn = ds.MN;
     seq = 1:mn;
     off = seq + 0.5;
-    
+
     [seq_x,seq_y] = meshgrid(seq,seq);
     seq_x = seq_x(:) + 0.5;
     seq_y = seq_y(:) + 0.5;
@@ -968,7 +968,7 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     set(sub_2,'YDir','reverse','YLim',[0.5 (mn + 1.5)],'YTick',off,'YTickLabels',ds.MLabels,'YTickLabelRotation',0);
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
-    
+
     figure_title(['Price Discovery (' ds.PDT ', LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
     pause(0.01);
@@ -984,15 +984,15 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     function tooltip = create_tooltip(~,evtd,element,data_labels,data)
 
         targ = get(evtd,'Target');
-        
+
         if (targ ~= element)
             tooltip = [];
             return;
         end
-        
+
         [i,j] = ind2sub(size(data),get(evtd,'DataIndex'));
         data_ij = data{i,j};
-        
+
         if (isempty(data_ij))
             tooltip = '';
         else
@@ -1023,17 +1023,17 @@ function plot_scores_overall(ds,id)
     end
 
     sm_scores = sm_scores(:,order);
-    
+
     ctooltips = cell(mn,1);
-    
+
     for i = 1:mn
         ctooltip = cell(sm_len,1);
-        
+
         for j = 1:sm_len
             ctooltip{j} = [ds.SM{j} ': ' sprintf('%.2f',sm_scores(j,i))];
         end
-        
-        ctooltips{i} = strjoin(ctooltip,'\n');
+
+        ctooltips{i} = strjoin(ctooltip,new_line());
     end
 
     f = figure('Name','Measures Comparison > Overall Scores','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
@@ -1043,7 +1043,7 @@ function plot_scores_overall(ds,id)
     set(t,'Units','normalized');
     t_position = get(t,'Position');
     set(t,'Position',[0.4783 t_position(2) t_position(3)]);
-    
+
     ax = gca();
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
@@ -1075,7 +1075,7 @@ function lag_max = validate_lag_max(lag_max,md)
 
     mt = size(md,1);
     b = (lag_max * 2) + 1;
-    
+
     if ((lag_max > (mt - 2)) || (b >= (mt - b)))
         error('The ''lag_max'' parameter is too high for the provided number of observations.');
     end
@@ -1097,9 +1097,9 @@ function [ml,md,co] = validate_measures(ml,md,co)
     if ((mt - co + 1) < 100)
         error('The number of observations, after the cut-off is applied, is too low to obtain consistent results.');
     end
-    
+
     ml = ml(:);
-    
+
 end
 
 function out = validate_output(out)
@@ -1109,7 +1109,7 @@ function out = validate_output(out)
     if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
-    
+
 end
 
 function sc = validate_sc(sc)
@@ -1120,9 +1120,9 @@ function sc = validate_sc(sc)
         if (numel(sc) ~= 4)
             error('The ''sc'' parameter, when specified as a vector of floats, must contain exactly 4 elements.');
         end
-        
+
         sc_sum = sum(sc);
-        
+
         if (sc_sum == 0)
             error('The ''sc'' parameter, when specified as a vector of floats, must contain at least one positive element.');
         end
@@ -1138,7 +1138,7 @@ function temp = validate_template(temp)
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
-    
+
     worksheets_batch(temp,sheets);
 
 end

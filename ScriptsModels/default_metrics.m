@@ -25,7 +25,7 @@ function [d2d,d2c] = default_metrics(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [va,db,r,t] = validate_input(ipr.va,ipr.db,ipr.r,ipr.t);
     vas = ipr.vas;
@@ -54,7 +54,7 @@ function [va,db,r,t] = validate_input(va,db,r,t)
 
     va = va(:);
     va_len = numel(va);
-    
+
     if (va_len < 5)
         error('The value of ''va'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
@@ -76,7 +76,7 @@ function [va,db,r,t] = validate_input(va,db,r,t)
 
     for i = 1:numel(data)
         data_i = data{i};
-        
+
         if (numel(data_i) == 1)
             data{i} = repmat(data_i,va_len,1);
         end

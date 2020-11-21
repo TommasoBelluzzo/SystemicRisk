@@ -52,7 +52,7 @@ function [result,stopped] = run_cross_quantilogram(varargin)
     lags = ipr.lags;
     [cim,cis,cip] = validate_ci(ipr.cim,ipr.cis,ipr.cip);
     analyze = ipr.analyze;
-    
+
     nargoutchk(1,2);
 
     [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,lags,cim,cis,cip,analyze);
@@ -68,14 +68,14 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
     ds = initialize(ds,sn,bw,a,lags,cim,cis,cip);
     n = ds.N;
     t = ds.T;
-    
+
     rng(double(bitxor(uint16('T'),uint16('B'))));
     cleanup_1 = onCleanup(@()rng('default'));
 
     bar = waitbar(0,'Initializing cross-quantilogram measures...','CreateCancelBtn',@(src,event)setappdata(gcbf(),'Stop', true));
     setappdata(bar,'Stop',false);
     cleanup_2 = onCleanup(@()delete(bar));
-    
+
     pause(1);
     waitbar(0,bar,'Calculating cross-quantilogram measures...');
     pause(1);
@@ -91,7 +91,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
 
         if (ds.PI)
             sv = ds.StateVariables;
-            
+
             for i = 1:n
                 offset = min(ds.Defaults(i) - 1,t);
                 idx_i = idx(1:offset);
@@ -115,10 +115,10 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
                 stopped = true;
                 break;
             end
-            
+
             [future_index,value] = fetchNext(futures);
             futures_results{future_index} = value;
-            
+
             futures_max = max([future_index futures_max]);
             waitbar((futures_max - 1) / n,bar);
 
@@ -140,12 +140,12 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
         delete(bar);
         rethrow(e);
     end
-    
+
     if (stopped)
         delete(bar);
         return;
     end
-    
+
     pause(1);
     waitbar(1,bar,'Finalizing cross-quantilogram measures...');
     pause(1);
@@ -160,7 +160,7 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
     pause(1);
     waitbar(1,bar,'Writing cross-quantilogram measures...');
     pause(1);
-    
+
     try
         write_results(ds,temp,out);
         delete(bar);
@@ -168,11 +168,11 @@ function [result,stopped] = run_cross_quantilogram_internal(ds,sn,temp,out,bw,a,
         delete(bar);
         rethrow(e);
     end
-    
+
     if (analyze)
         analyze_result(ds);
     end
-    
+
     result = ds;
 
 end
@@ -182,7 +182,7 @@ end
 function ds = initialize(ds,sn,bw,a,lags,cim,cis,cip)
 
     n = ds.N;
-    
+
     ds.Result = 'CrossQuantilogram';
     ds.ResultDate = now();
     ds.ResultAnalysis = @(ds)analyze_result(ds);
@@ -195,29 +195,29 @@ function ds = initialize(ds,sn,bw,a,lags,cim,cis,cip)
     ds.CIS = cis;
     ds.Lags = lags;
     ds.PI = ~isempty(ds.StateVariables);
-    
+
     label = [' (' ds.CIM ', ' num2str(ds.CIS) ', P=' num2str(ds.CIP) ')'];
 
     ds.LabelsMeasuresSimple = {'Full From' 'Full To'};
     ds.LabelsMeasures = {['Full From' label] ['Full To' label]};
-    
+
     ds.LabelsSheetsSimple = ds.LabelsMeasuresSimple;
     ds.LabelsSheets = ds.LabelsMeasures;
-    
+
     ds.CQFullFrom = NaN(lags,n,3);
     ds.CQFullTo = NaN(lags,n,3);
 
     if (ds.PI)
         ds.LabelsMeasuresSimple = [ds.LabelsMeasuresSimple {'Partial From' 'Partial To'}];
         ds.LabelsMeasures = [ds.LabelsMeasures {['Partial From' label] ['Partial To' label]}];
-        
+
         ds.LabelsSheetsSimple = ds.LabelsMeasuresSimple;
         ds.LabelsSheets = ds.LabelsMeasures;
-        
+
         ds.CQPartialFrom = NaN(lags,n,3);
         ds.CQPartialTo = NaN(lags,n,3);
     end
-    
+
     ds.ComparisonReferences = {};
 
 end
@@ -247,9 +247,9 @@ function window_results = main_loop(idx,r,sv,a,lags,cim,cis,cip)
             cq_full(k,2,:) = [cq ci];
         end
     end
-    
+
     window_results.CQFull = cq_full;
-    
+
     if (~isempty(sv))
         from = [r idx sv];
         to = [idx r sv];
@@ -272,25 +272,25 @@ function window_results = main_loop(idx,r,sv,a,lags,cim,cis,cip)
                 cq_partial(k,2,:) = [cq ci];
             end
         end
-        
+
         window_results.CQPartial = cq_partial;
     end
 
 end
 
 function ds = finalize(ds,results)
-  
+
     n = ds.N;
 
     for i = 1:n
         result = results{i};
-        
+
         for j = 1:3
             ds.CQFullFrom(:,i,j) = result.CQFull(:,1,j);
             ds.CQFullTo(:,i,j) = result.CQFull(:,2,j);
         end
     end
-    
+
     if (ds.PI)
         for i = 1:n
             result = results{i};
@@ -319,13 +319,13 @@ function write_results(ds,temp,out)
     catch
         error('A system I/O error occurred while writing the results.');
     end
-    
+
     copy_result = copyfile(temp,out,'f');
-    
+
     if (copy_result == 0)
         error('The output file could not be created from the template file.');
     end
-    
+
     lags = num2cell(repelem(1:ds.Lags,1,3).');
     labels = repmat({'CQ' 'Lower CI' 'Upper CI'},1,ds.Lags).';
     row_headers = [labels lags];
@@ -333,11 +333,11 @@ function write_results(ds,temp,out)
     vars = [row_headers num2cell(reshape(permute(ds.CQFullFrom,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{1},'WriteRowNames',true);
-    
+
     vars = [row_headers num2cell(reshape(permute(ds.CQFullTo,[3 1 2]),ds.Lags * 3,ds.N))];
     tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
     writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{2},'WriteRowNames',true);
-    
+
     if (ds.PI)
         vars = [row_headers num2cell(reshape(permute(ds.CQPartialFrom,[3 1 2]),ds.Lags * 3,ds.N))];
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
@@ -347,7 +347,7 @@ function write_results(ds,temp,out)
         tab = cell2table(vars,'VariableNames',[{'Value' 'Lag'} ds.FirmNames]);
         writetable(tab,out,'FileType','spreadsheet','Sheet',ds.LabelsSheetsSimple{4},'WriteRowNames',true);
     end
-	
+
     worksheets_batch(out,ds.LabelsSheetsSimple,ds.LabelsSheets);
 
 end
@@ -370,7 +370,7 @@ function plot_sequence(ds,target,id)
     lags = ds.Lags;
     cq_from_all = ds.(['CQ' target 'From']);
     cq_to_all = ds.(['CQ' target 'To']);
-    
+
     data = [repmat({(1:lags).'},1,n); cell(6,n)];
 
     if (strcmp(target,'Full'))
@@ -378,19 +378,19 @@ function plot_sequence(ds,target,id)
     else
         plots_title = [repmat(ds.LabelsMeasures(3),1,n); repmat(ds.LabelsMeasures(4),1,n)];
     end
-    
+
     for i = 1:n
         for j = 2:4
             data{j,i} = cq_from_all(:,i,j-1);
         end
-        
+
         for j = 5:7
             data{j,i} = cq_to_all(:,i,j-4);
         end
     end
 
     x_limits = [0.3 (lags + 0.7)];
-    
+
     if (lags <= 10)
         x_tick = 1:lags;
     elseif (lags <= 20)
@@ -404,7 +404,7 @@ function plot_sequence(ds,target,id)
     else
         y_limits = plot_limits([ds.CQFullFrom(:) ds.CQFullTo(:)],0.1);
     end
-    
+
     y_tick_labels = @(x)sprintf('%.2f',x);
 
     core = struct();
@@ -437,9 +437,9 @@ function plot_sequence(ds,target,id)
     core.YTickLabels = {y_tick_labels y_tick_labels};
 
     sequential_plot(core,id);
-    
+
     function plot_function(subs,data)
-        
+
         x = data{1};
         cq_from = data{2};
         cq_from_cl = data{3};
@@ -453,13 +453,13 @@ function plot_sequence(ds,target,id)
             plot(subs(1),x,cq_from_cl,'Color',[1 0.4 0.4],'LineWidth',1);
             plot(subs(1),x,cq_from_ch,'Color',[1 0.4 0.4],'LineWidth',1);
         hold(subs(1),'off');
-        
+
         bar(subs(2),x,cq_to,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
         hold(subs(2),'on');
             plot(subs(2),x,cq_to_cl,'Color',[1 0.4 0.4],'LineWidth',1);
             plot(subs(2),x,cq_to_ch,'Color',[1 0.4 0.4],'LineWidth',1);
         hold(subs(2),'off');
-        
+
     end
 
 end
@@ -470,7 +470,7 @@ function [cim,cis,cip] = validate_ci(cim,cis,cip)
 
     if (strcmp(cim,'SB'))
         validateattributes(cis,{'double'},{'real' 'finite' '>' 0 '<=' 0.1 'scalar'});
-        
+
         if (isempty(cip))
             cip = 100;
         else
@@ -484,7 +484,7 @@ function [cim,cis,cip] = validate_ci(cim,cis,cip)
             cis_allowed_text = [sprintf('%.3f',cis_allowed(1)) sprintf(', %.3f',cis_allowed(2:end))];
             error(['The value of ''cis'' is invalid. Expected input to have one of the following values: ' cis_allowed_text '.']);
         end
-        
+
         if (isempty(cip))
             cip = 0.10;
         else
@@ -497,7 +497,7 @@ function [cim,cis,cip] = validate_ci(cim,cis,cip)
             end
         end
     end
-  
+
 end
 
 function out = validate_output(out)
@@ -507,7 +507,7 @@ function out = validate_output(out)
     if (~strcmpi(extension,'.xlsx'))
         out = fullfile(path,[name extension '.xlsx']);
     end
-    
+
 end
 
 function temp = validate_template(temp)
@@ -518,7 +518,7 @@ function temp = validate_template(temp)
     if (~all(ismember(sheets,file_sheets)))
         error(['The template must contain the following sheets: ' sheets{1} sprintf(', %s',sheets{2:end}) '.']);
     end
-    
+
     worksheets_batch(temp,sheets);
 
 end

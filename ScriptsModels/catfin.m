@@ -23,7 +23,7 @@ function [var_np,var_gpd,var_gev,var_sged] = catfin(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     r = validate_input(ipr.r);
     a = ipr.a;
@@ -75,7 +75,7 @@ function [var_np,var_gpd,var_gev,var_sged] = catfin_internal(r,a,g,u)
     catch
         var_sged = NaN;
     end
-    
+
     vars = min(0,[var_np var_gpd var_gev var_sged]);
     [var_np,var_gpd,var_gev,var_sged] = deal(vars(1),vars(2),vars(3),vars(4));
 

@@ -30,7 +30,7 @@ function [illiq,illiqc,knots] = illiq_indicator(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [r,v,sv,mag] = validate_input(ipr.r,ipr.v,ipr.sv,ipr.mag);
     bw = ipr.bw;
@@ -49,28 +49,28 @@ function [illiq,illiqc,knots] = illiq_indicator_internal(r,v,sv,bw,mem,mag)
     input = mag .* (abs(r) ./ v);
     input(~isfinite(input) | (input == 0)) = NaN;
     input(isnan(input)) = mean(input,'omitnan');
-    
+
     if (any(strcmp(mem,{'A' 'P'})))
         input = [input r];
     end
-    
+
     knots = [];
 
     [illiq,~,mem_params] = multiplicative_error(input,mem);
     illiq = [illiq(1); filter(alpha,[1 (alpha - 1)],illiq(2:end),(1 - alpha) * illiq(1))];
     illiq = (illiq - min(illiq)) ./ (max(illiq) - min(illiq));
-    
+
     if (strcmp(mem,'S'))
         knots(1) = mem_params(1);
     end
-    
+
     if (isempty(sv))
         illiqc = [];
     else
         [illiqc,~,mem_params] = multiplicative_error([input sv],mem);
         illiqc = [illiqc(1); filter(alpha,[1 (alpha - 1)],illiqc(2:end),(1 - alpha) * illiqc(1))];
         illiqc = (illiqc - min(illiqc)) ./ (max(illiqc) - min(illiqc));
-        
+
         if (strcmp(mem,'S'))
             knots(2) = mem_params(1);
         end
@@ -81,19 +81,19 @@ end
 function [r,v,sv,mag] = validate_input(r,v,sv,mag)
 
     data = {r(:) v(:)};
-    
+
     l = unique(cellfun(@numel,data));
-    
+
     if (numel(l) ~= 1)
         error('The number of elements of ''r'' and ''v'' must be equal.');
     end
-    
+
     if (l < 5)
         error('The value of ''r'' and ''v'' is invalid. Expected inputs to be vectors containing at least 5 elements.');
     end
-    
+
     [r,v] = deal(data{:});
-    
+
     if (~isempty(sv))
         if (size(sv,1) ~= l)
             error(['The value of ''sv'' is invalid. Expected input to be a matrix with ' num2str(l) ' rows.']);

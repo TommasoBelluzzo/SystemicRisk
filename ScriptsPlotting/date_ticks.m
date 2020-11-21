@@ -13,7 +13,7 @@ function date_ticks(varargin)
 
     ip.parse(varargin{1});
     ipr = ip.Results;
-    
+
     nargoutchk(0,0);
 
     date_ticks_internal(ipr.axes,varargin(2:numel(varargin)));

@@ -21,7 +21,7 @@ function [g,p] = cimdo(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     [r,pods] = validate_input(ipr.r,ipr.pods);
     md = ipr.md;
@@ -41,26 +41,26 @@ function [g,p] = cimdo_internal(r,pods,md)
     if (isempty(options_mvncdf))
         options_mvncdf = optimset(optimset(@fsolve),'Algorithm','trust-region-dogleg','Diagnostics','off','Display','off','Jacobian','on');
     end
-    
+
     if (isempty(options_mvtcdf))
         options_mvtcdf = optimset(optimset(@fsolve),'Algorithm','trust-region-dogleg','Diagnostics','off','Display','off','Jacobian','off');
     end
-    
+
     if (isempty(options_objective))
         options_objective = optimset(optimset(@fsolve),'Display','none','TolFun',1e-6,'TolX',1e-6);
     end
-    
+
     up = isempty(getCurrentTask());
 
     [t,n] = size(r);
     k = 2^n;
     g = dec2bin(0:(2^n - 1),n) - '0';
-    
+
     rn = (r - repmat(mean(r),t,1)) ./ repmat(std(r),t,1);
     c = cov(rn);
-    
+
     q = NaN(k,1);
-    
+
     if (strcmp(md,'N'))
         dts = norminv(1 - pods);
 
@@ -84,7 +84,7 @@ function [g,p] = cimdo_internal(r,pods,md)
     else
         params = mle(rn(:),'Distribution','tLocationScale');
         df = max(1,min(params(3),6));
-        
+
         dts = tinv(1 - pods,df);
 
         if (up)
@@ -110,12 +110,12 @@ function [g,p] = cimdo_internal(r,pods,md)
         p = NaN(k,1);
         return;
     end
-    
+
     q = q ./ sum(q);
-    
+
     x0 = zeros(n + 1,1);
     [sol,~,ef] = fsolve(@(x)objective(x,n,pods,g,q),x0,options_objective);
-    
+
     if (ef ~= 1)
         p = NaN(k,1);
         return;
@@ -188,11 +188,11 @@ function p = logprobs(a,b)
     s2 = sqrt(2);
 
     a_indices = a > 0;
-    
+
     if (any(a_indices))
         x = a(a_indices);
         pa = (-0.5 * x.^2) - l2 + reallog(erfcx(x / s2));
-        
+
         x = b(a_indices);
         pb = (-0.5 * x.^2) - l2 + reallog(erfcx(x / s2));
 
@@ -249,11 +249,11 @@ function y = mvncdf_fast(c,lb,ub,options)
 
     mu = sol(n:((2 * n) - 2));
     mu(n) = 0;
-    
+
     c = cp * x;
     lb = lb - mu - c;
     ub = ub - mu - c;
-    
+
     psi = sum(logprobs(lb,ub) + (0.5 * mu.^2) - (x .* mu));
 
     y = exp(psi);
@@ -295,7 +295,7 @@ function [g,j] = mvncdf_fast_psi(y,cp,lb,ub)
 
     mx = -eye(d) + dl;
     mx = mx(d_seq,d_seq);
-    
+
     xx = cp.' * dl;
     xx = xx(d_seq,d_seq);
 
@@ -314,7 +314,7 @@ function y = mvtcdf_fast(c,df,lb,ub,options)
         y = NaN;
         return;
     end
-    
+
     lb = lb ./ d;
     ub = ub ./ d;
     cp = (cp ./ repmat(d,1,n)) - eye(n);
@@ -358,10 +358,10 @@ function g = mvtcdf_fast_psi(y,cp,df,lb,ub)
 
     x = zeros(d,1);
     x(d_seq) = y(d_seq);
- 
+
     mu = zeros(d,1);
     mu(d_seq) = y(d+1:2*d-1);
-    
+
     r = exp(y(d));
     eta = y(2 * d);
 
@@ -382,13 +382,13 @@ function g = mvtcdf_fast_psi(y,cp,df,lb,ub)
 
     dfdx = -mu(d_seq) + (p.' * cp(:,d_seq)).';
     dfdm = mu - x + p;
-    
+
     lb(isinf(lb)) = 0;
     ub(isinf(ub)) = 0;
 
     dfdr = ((df - 1) / r) - eta + sum((ub .* pu) - (lb .* pl));
     dfde = eta - r + exp((-0.5 * eta^2) - logprobs(-Inf,eta)) / pd;
-    
+
     g = [dfdx; dfdm(d_seq); dfdr; dfde];
 
 end
@@ -418,9 +418,9 @@ function [r,pods] = validate_input(r,pods)
     if ((t < 5) || (n < 2))
         error('The value of ''r'' is invalid. Expected input to be a matrix with a minimum size of 5x2.');
     end
-    
+
     pods = pods(:);
-    
+
     if (numel(pods) ~= n)
         error(['The value of ''pods'' is invalid. Expected input to be an array of ' num2str(n) ' elements.']);
     end

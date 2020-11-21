@@ -47,7 +47,7 @@ function data = forward_roll_data_internal(data,dates,fr)
         indices = (indices_seq(i-1) + 1):indices_seq(i);
         data_fr(indices,:) = repmat(data_seq(i-1,:),numel(indices),1);
     end
-    
+
     data = data_fr;
 
 end
@@ -62,7 +62,7 @@ function [data,dates] = validate_input(data,dates)
             error(['The number of rows in the time series (' num2str(t) ') must be equal to the number of dates (' num2str(td) ').']);
         end
     end
-    
+
     dates = dates(:);
 
 end

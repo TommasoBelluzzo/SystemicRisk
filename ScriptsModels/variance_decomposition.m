@@ -23,7 +23,7 @@ function vd = variance_decomposition(varargin)
     end
 
     ip.parse(varargin{:});
-    
+
     ipr = ip.Results;
     data = validate_input(ipr.data);
     fevd = ipr.fevd;
@@ -43,8 +43,8 @@ function vd = variance_decomposition_internal(data,fevd,lags,h)
     k = t + d - lags;
 
     if (d > 0)
-        mu = ones(d,1) .* mean(data,1);
-        sigma = ones(d,1) .* std(data,1);
+        mu = repmat(mean(data,1),d,1);
+        sigma = repmat(std(data,1),d,1);
 
         c = corr(data);
         c(isnan(c)) = 0;
@@ -108,7 +108,7 @@ function vd = variance_decomposition_internal(data,fevd,lags,h)
         coefficients{i} = reshape(f(indices),n,n);
         ar_start = indices(end) + 1;
     end
-    
+
     g = zeros(n * lags,n * lags);
     g(1:n,:) = cell2mat(coefficients);
 
@@ -126,10 +126,10 @@ function vd = variance_decomposition_internal(data,fevd,lags,h)
             ma{i} = temp(1:n,1:n);
         end
     end
-    
+
     irf = zeros(h,n,n);
     vds = zeros(h,n,n);
-    
+
     if (strcmp(fevd,'G'))
         sigma = diag(c);
 
