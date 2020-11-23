@@ -50,10 +50,11 @@ function safe_plot_internal(handle)
             r = strsplit(r,new_line());
             r = cellfun(@(x)['  ' x],r,'UniformOutput',false);
             r = strjoin(r,new_line());
+            r = clear_text(r);
 
-            warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' new_line() new_line() r]);
+            warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' new_line() r]);
         catch
-            warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' new_line() new_line() e.message]);
+            warning('MATLAB:SystemicRisk',['The following exception occurred in the plotting function ''' name ''':' new_line() e.message]);
         end
     end
 

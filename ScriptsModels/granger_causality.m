@@ -15,7 +15,7 @@
 % lag_r = An integer [1,lag_max] representing the selected lag order of the restricted model.
 % lag_u = An integer [1,lag_max] representing the selected lag order of the unrestricted model.
 
-function [f,cv,h0,lag_r,lag_u] = granger_causality(varargin)
+function [h0,stat,cv,lag_r,lag_u] = granger_causality(varargin)
 
     persistent ip;
 
@@ -35,12 +35,16 @@ function [f,cv,h0,lag_r,lag_u] = granger_causality(varargin)
     lag_sel = ipr.lag_sel;
 
     nargoutchk(3,5);
+    
+    if (nargout == 4)
+        error('Both lag outputs must be either assigned or discarded.');
+    end
 
-    [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel);
+    [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel);
 
 end
 
-function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel)
+function [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel)
 
     up = isempty(getCurrentTask());
 
@@ -53,7 +57,7 @@ function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_s
     y_uni = numel(y);
 
     if ((x_uni < bt) || (y_uni < bt))
-        f = 1;
+        stat = 1;
         cv = 1;
         h0 = true;
         lag_r = 1;
@@ -258,11 +262,11 @@ function [f,cv,h0,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_s
     f_den = max(rss_u(lag_u,:) / df,0);
 
     if ((f_den > 0.0) && (df > 0)) 
-        f = f_num / f_den;
+        stat = f_num / f_den;
         cv = finv(1 - a,lag_u,df);
-        h0 = f <= cv;
+        h0 = stat <= cv;
     else
-        f = 1;
+        stat = 1;
         cv = 1;
         h0 = true;
     end

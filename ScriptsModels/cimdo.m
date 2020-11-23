@@ -422,7 +422,7 @@ function [r,pods] = validate_input(r,pods)
     pods = pods(:);
 
     if (numel(pods) ~= n)
-        error(['The value of ''pods'' is invalid. Expected input to be an array of ' num2str(n) ' elements.']);
+        error(['The value of ''pods'' is invalid. Expected input to be a vector containing at least ' num2str(n) ' elements.']);
     end
 
 end

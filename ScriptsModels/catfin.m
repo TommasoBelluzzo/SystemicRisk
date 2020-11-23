@@ -148,7 +148,7 @@ function r = validate_input(r)
     t = numel(r);
 
     if (t < 5)
-        error(['The value of ''r'' is invalid. Expected input to be an array of ' num2str(n) ' elements.']);
+        error('The value of ''r'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
 
 end

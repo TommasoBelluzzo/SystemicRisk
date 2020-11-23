@@ -122,9 +122,11 @@ function plot_crises(ds,id)
         cd = ds.CrisisDummies;
         k = size(cd,2);
 
-        co = get(gca,'ColorOrder');
+        co = get(gca(),'ColorOrder');
         cor = ceil(k / size(co,1));
         co = repmat(co,cor,1);
+        
+        p = gobjects(k,1);
 
         hold on;
             for i = k:-1:1
@@ -132,15 +134,15 @@ function plot_crises(ds,id)
                 cddn_max = max(cddn);
                 cddn_min = min(cddn);
 
-                p = patch('XData',[cddn_min cddn_max cddn_max cddn_min],'YData',[0 0 1 1],'EdgeAlpha',0.25,'FaceAlpha',0.40,'FaceColor',co(i,:));
-                set(p,'Tag',num2str(i));
+                p(i) = patch('XData',[cddn_min cddn_max cddn_max cddn_min],'YData',[0 0 1 1],'EdgeAlpha',0.25,'FaceAlpha',0.40,'FaceColor',co(i,:));
+                set(p(i),'Tag',num2str(i));
             end
         hold off;
 
         ax = gca();
 
         if (k <= 5)
-            legend(ax,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
+            legend(ax,p,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
 
             tooltips = [];
             tooltips_target = [];
@@ -150,6 +152,7 @@ function plot_crises(ds,id)
         end
     end
 
+    set(ax,'Box','on');
     set(ax,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(ax,'YLim',[0 1],'YTick',[]);
 
@@ -189,24 +192,29 @@ end
 
 function plot_index(ds,id)
 
-    index = ds.Index;
+    y = ds.Index;
 
-    index_obs = numel(index);
-    index_max = max(index);
-    index_min = min(index);
+    yv = y(~isnan(y));
+    y_obs = numel(yv);
+    y_max = max(yv);
+    y_min = min(yv);
+    y_avg = mean(yv);
+    y_med = median(yv);
+    y_std = std(yv);
+    y_ske = skewness(yv,0);
+    y_kur = kurtosis(yv,0);
 
-    index_avg = mean(index);
-    index_med = median(index);
-    index_std = std(index);
-    index_ske = skewness(index,0);
-    index_kur = kurtosis(index,0);
+    r = yv - y_avg;
+    [s_h,s_pval] = shapiro_test(r,0.05);
+    [lbq_h,lbq_pval] = lbqtest(r.^2,'Alpha',0.05);
+    [a_h,a_pval] = archtest(r,'Alpha',0.05);
 
     f = figure('Name','Dataset > Index','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
     sub_1 = subplot(2,1,1);
     plot(sub_1,ds.DatesNum,ds.Index);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-    set(sub_1,'YLim',[(index_min - 0.01) (index_max + 0.01)]);
+    set(sub_1,'YLim',[(y_min - 0.01) (y_max + 0.01)]);
     set(sub_1,'XGrid','on','YGrid','on');
     t1 = title(sub_1,'Log Returns');
     set(t1,'Units','normalized');
@@ -224,9 +232,10 @@ function plot_index(ds,id)
     edges = get(hist,'BinEdges');
     edges_max = max(edges);
     edges_min = min(edges);
-    [values,points] = ksdensity(ds.Index);
+    [hv,hp] = ksdensity(ds.Index);
+
     hold on;
-        plot(sub_2,points,values,'-b','LineWidth',1.5);
+        plot(sub_2,hp,hv,'-b','LineWidth',1.5);
     hold off;
     set(sub_2,'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
     t2 = title(sub_2,'P&L Distribution');
@@ -237,8 +246,34 @@ function plot_index(ds,id)
     t = figure_title(['Index (' ds.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
+    
+    txt_obs = sprintf('Observations: %d',y_obs);
+    txt_avg = sprintf('Mean: %.4f',y_avg);
+    txt_med = sprintf('Median: %.4f',y_med);
+    txt_std = sprintf('Standard Deviation: %.4f',y_std);
+    txt_ske = sprintf('Skewness: %.4f',y_ske);
+    txt_kur = sprintf('Kurtosis: %.4f',y_kur);
 
-    txt = {sprintf('Observations: %d',index_obs) sprintf('Mean: %.4f',index_avg) sprintf('Median: %.4f',index_med) sprintf('Standard Deviation: %.4f',index_std) sprintf('Skewness: %.4f',index_ske) sprintf('Kurtosis: %.4f',index_kur)};
+    if (s_h)
+        txt_s = sprintf('Shapiro Test: T (%.4f)',s_pval);
+    else
+        txt_s = sprintf('Shapiro Test: F (%.4f)',s_pval);
+    end
+    
+    if (lbq_h)
+        txt_lbq = sprintf('LBQ Test: T (%.4f)',lbq_pval);
+    else
+        txt_lbq = sprintf('LBQ Test: F (%.4f)',lbq_pval);
+    end
+    
+    if (a_h)
+        txt_a = sprintf('ARCH Test: T (%.4f)',a_pval);
+    else
+        txt_a = sprintf('ARCH Test: F (%.4f)',a_pval);
+    end
+
+    txt = {txt_obs '' txt_avg txt_med txt_std txt_ske txt_kur '' txt_s txt_lbq txt_a};
+        
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
     pause(0.01);
@@ -342,15 +377,20 @@ function plot_sequence_returns(ds,id)
         x = data{1};
         y = data{2};
 
-        y_obs = numel(y);
-        y_max = max(y,[],'omitnan');
-        y_min = min(y,[],'omitnan');
-
-        y_avg = mean(y,'omitnan');
-        y_med = median(y,'omitnan');
-        y_std = std(y,'omitnan');
-        y_ske = skewness(y,0);
-        y_kur = kurtosis(y,0);
+        yv = y(~isnan(y));
+        y_obs = numel(yv);
+        y_max = max(yv);
+        y_min = min(yv);
+        y_avg = mean(yv);
+        y_med = median(yv);
+        y_std = std(yv);
+        y_ske = skewness(yv,0);
+        y_kur = kurtosis(yv,0);
+        
+        r = yv - y_avg;
+        [s_h,s_pval] = shapiro_test(r,0.05);
+        [lbq_h,lbq_pval] = lbqtest(r.^2,'Alpha',0.05);
+        [a_h,a_pval] = archtest(r,'Alpha',0.05);
 
         d = find(isnan(y),1,'first');
 
@@ -375,14 +415,40 @@ function plot_sequence_returns(ds,id)
         edges = get(hist,'BinEdges');
         edges_max = max(edges);
         edges_min = min(edges);
-        [values,points] = ksdensity(y);
+        [dv,dp] = ksdensity(y);
 
         hold(subs(2),'on');
-            plot(subs(2),points,values,'-b','LineWidth',1.5);
+            plot(subs(2),dp,dv,'-b','LineWidth',1.5);
         hold(subs(2),'off');
         set(subs(2),'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
 
-        txt = {sprintf('Observations: %d',y_obs) sprintf('Mean: %.4f',y_avg) sprintf('Median: %.4f',y_med) sprintf('Standard Deviation: %.4f',y_std) sprintf('Skewness: %.4f',y_ske) sprintf('Kurtosis: %.4f',y_kur)};
+        txt_obs = sprintf('Observations: %d',y_obs);
+        txt_avg = sprintf('Mean: %.4f',y_avg);
+        txt_med = sprintf('Median: %.4f',y_med);
+        txt_std = sprintf('Standard Deviation: %.4f',y_std);
+        txt_ske = sprintf('Skewness: %.4f',y_ske);
+        txt_kur = sprintf('Kurtosis: %.4f',y_kur);
+
+        if (s_h)
+            txt_s = sprintf('Shapiro Test: T (%.4f)',s_pval);
+        else
+            txt_s = sprintf('Shapiro Test: F (%.4f)',s_pval);
+        end
+        
+        if (lbq_h)
+            txt_lbq = sprintf('LBQ Test: T (%.4f)',lbq_pval);
+        else
+            txt_lbq = sprintf('LBQ Test: F (%.4f)',lbq_pval);
+        end
+
+        if (a_h)
+            txt_a = sprintf('ARCH Test: T (%.4f)',a_pval);
+        else
+            txt_a = sprintf('ARCH Test: F (%.4f)',a_pval);
+        end
+
+        txt = {txt_obs '' txt_avg txt_med txt_std txt_ske txt_kur '' txt_s txt_lbq txt_a};
+        
         annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
     end

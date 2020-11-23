@@ -43,26 +43,26 @@ else
         try
             s = load(file_path);
         catch e
-            warning('MATLAB:SystemicRisk',['The result file ''' escape_path(file_path) ''' could not be loaded.' new_line() e.message]);
+            warning('MATLAB:SystemicRisk',['The result file ''' clear_text(file_path) ''' could not be loaded.' new_line() e.message]);
             continue;
         end
 
         if (~isstruct(s))
-            warning('MATLAB:SystemicRisk',['The content of the result file ''' escape_path(file_path) ''' is invalid: output is not a structure.']);
+            warning('MATLAB:SystemicRisk',['The content of the result file ''' clear_text(file_path) ''' is invalid: output is not a structure.']);
             continue;
         end
 
         s_fields = fieldnames(s);
 
         if (numel(s_fields) ~= 1)
-            warning('MATLAB:SystemicRisk',['The content of the result file ''' escape_path(file_path) ''' is invalid: structure fields not equal to 1.']);
+            warning('MATLAB:SystemicRisk',['The content of the result file ''' clear_text(file_path) ''' is invalid: structure fields not equal to 1.']);
             continue;
         end
 
         s_field = s_fields{1};
 
         if (isempty(regexpi(s_field,'^result_[a-z_]+$')))
-            warning('MATLAB:SystemicRisk',['The content of the result file ''' escape_path(file_path) ''' is invalid: wrong naming convention of the structure field.']);
+            warning('MATLAB:SystemicRisk',['The content of the result file ''' clear_text(file_path) ''' is invalid: wrong naming convention of the structure field.']);
             continue;
         end
 
@@ -71,7 +71,7 @@ else
         try
             s_value = validate_dataset(s_value);
         catch e
-            warning('MATLAB:SystemicRisk',['The content of the result file ''' escape_path(file_path) ''' is invalid: inner data is not as expected.']);
+            warning('MATLAB:SystemicRisk',['The content of the result file ''' clear_text(file_path) ''' is invalid: inner data is not as expected.']);
             continue;
         end
 
@@ -120,7 +120,7 @@ else
         try
             v_i.ResultAnalysis(v_i);
         catch e
-            warning('MATLAB:SystemicRisk',['The result file ''' escape_path(v{i,1}) ''' could not be analyzed.' new_line() e.message]);
+            warning('MATLAB:SystemicRisk',['The result file ''' clear_text(v{i,1}) ''' could not be analyzed.' new_line() e.message]);
             continue;
         end
     end

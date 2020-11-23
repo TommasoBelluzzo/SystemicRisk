@@ -384,12 +384,12 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
     parfor k = 1:mc_len
         md_k = mc{k,2};
 
-        [f,cv,h0,lag_r,lag_u] = granger_causality(md_k,gca,lag_max,lag_sel);
+        [h0,stat,cv,lag_r,lag_u] = granger_causality(md_k,gca,lag_max,lag_sel);
 
         data_k = struct();
-        data_k.F = f;
-        data_k.CV = cv;
         data_k.H0 = h0;
+        data_k.Stat = stat;
+        data_k.CV = cv;
         data_k.LagR = lag_r;
         data_k.LagU = lag_u;
 
@@ -833,7 +833,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
             tooltip = '';
         else
             vs = [data_labels{i} ' vs ' data_labels{j}];
-            tooltip = sprintf('%s\nF: %.4f | CV: %.4f\nRestricted Lag: %d\nUnrestricted Lag: %d',vs,data_ij.F,data_ij.CV,data_ij.LagR,data_ij.LagU);
+            tooltip = sprintf('%s\nF: %.4f | CV: %.4f\nRestricted Lag: %d\nUnrestricted Lag: %d',vs,data_ij.Stat,data_ij.CV,data_ij.LagR,data_ij.LagU);
         end
 
     end

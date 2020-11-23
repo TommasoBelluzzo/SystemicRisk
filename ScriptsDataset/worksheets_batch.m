@@ -92,19 +92,19 @@ function worksheets_batch_internal(file_path,sheets,names)
         wb.Save();
         wb.Close();
     catch e
-        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' escape_path(file_path) '''.' new_line() e.message]);
+        warning('MATLAB:SystemicRisk',['An error occurred while cleaning the file ''' clear_text(file_path) '''.' new_line() e.message]);
     end
 
     try
         excel.Quit();
         delete(excel);
     catch e1
-        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' escape_path(file_path) ''' (step 1).' new_line() e1.message]);
+        warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' clear_text(file_path) ''' (step 1).' new_line() e1.message]);
 
         try
             delete(excel);
         catch e2
-            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' escape_path(file_path) ''' (step 2).' new_line() e2.message]);
+            warning('MATLAB:SystemicRisk',['An error occurred while disposing the file ''' clear_text(file_path) ''' (step 2).' new_line() e2.message]);
         end
     end
 
