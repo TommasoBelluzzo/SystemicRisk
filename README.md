@@ -214,4 +214,4 @@ The `Datasets` folder includes many premade datasets. The main one (`Example_Lar
 
 ## Screenshots
 
-![Screenshots](https://i.imgur.com/yvze07B.gif)
+![Screenshots](https://i.imgur.com/83b0yB0.gif)
