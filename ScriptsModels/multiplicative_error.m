@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A float t-by-n matrix representing the model input, defined as follows:
+% data = A float t-by-n matrix {~} representing the model input, defined as follows:
 %   - for Baseline MEM and Spline MEM:
 %     * first column: endogenous variable [0,Inf), mandatory;
 %     * other columns: exogenous variables [0,Inf), optional;

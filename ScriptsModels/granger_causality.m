@@ -1,5 +1,6 @@
 % [INPUT]
-% data = A float t-by-2 matrix representing the model input; the performed test is aimed to assess whether the first observations are Granger-caused by the second ones.
+% x = A vector of floats (-Inf,Inf) of length t representing the first variable.
+% y = A vector of floats (-Inf,Inf) of length t representing the second variable.
 % a = A float [0.01,0.10] representing the probability level of the F test critical value.
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for both restricted and unrestricted models (optional, default=10).
 % lag_sel = A string representing the lag order selection criteria (optional, default='AIC'):
@@ -9,9 +10,9 @@
 %   - 'HQIC' for Hannan-Quinn Information Criterion.
 %
 % [OUTPUT]
-% f = A float (-Inf,Inf) representing the F test statistic.
+% h0 = A boolean representing the null hypothesis (the first variable is not Granger-caused by the second variable) rejection outcome.
+% stat = A float (-Inf,Inf) representing the F test statistic.
 % cv = A float (-Inf,Inf) representing the F test critical value.
-% h0 = A boolean representing the null hypothesis (the first observation is not Granger-caused by the second one) rejection outcome.
 % lag_r = An integer [1,lag_max] representing the selected lag order of the restricted model.
 % lag_u = An integer [1,lag_max] representing the selected lag order of the unrestricted model.
 
@@ -21,7 +22,8 @@ function [h0,stat,cv,lag_r,lag_u] = granger_causality(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('data',@(x)validateattributes(x,{'double'},{'real' 'finite' '2d' 'nonempty' 'size' [NaN 2]}));
+        ip.addRequired('x',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
+        ip.addRequired('y',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
         ip.addRequired('a',@(x)validateattributes(x,{'double'},{'real' 'finite' '>=' 0.01 '<=' 0.10 'scalar'}));
         ip.addOptional('lag_max',10,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 1 'scalar'}));
         ip.addOptional('lag_sel','AIC',@(x)any(validatestring(x,{'AIC' 'BIC' 'FPE' 'HQIC'})));
@@ -30,36 +32,35 @@ function [h0,stat,cv,lag_r,lag_u] = granger_causality(varargin)
     ip.parse(varargin{:});
 
     ipr = ip.Results;
-    [data,lag_max] = validate_input(ipr.data,ipr.lag_max);
+    [x,y,lag_max] = validate_input(ipr.x,ipr.y,ipr.lag_max);
     a = ipr.a;
     lag_sel = ipr.lag_sel;
 
     nargoutchk(3,5);
-    
+
     if (nargout == 4)
         error('Both lag outputs must be either assigned or discarded.');
     end
 
-    [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel);
+    [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(x,y,a,lag_max,lag_sel);
 
 end
 
-function [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,lag_sel)
+function [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(x,y,a,lag_max,lag_sel)
 
     up = isempty(getCurrentTask());
 
-    t = size(data,1);
-    x = data(:,1);
-    y = data(:,2);
+    tx = numel(x);
+    ty = numel(y);
+    t = min(tx,ty);
 
     bt = floor(((lag_max * 2) + 1) / 2);
-    x_uni = numel(x);
-    y_uni = numel(y);
 
-    if ((x_uni < bt) || (y_uni < bt))
+    if (t < bt)
         stat = 1;
         cv = 1;
         h0 = true;
+
         lag_r = 1;
         lag_u = 1;
 
@@ -273,17 +274,31 @@ function [h0,stat,cv,lag_r,lag_u] = granger_causality_internal(data,a,lag_max,la
 
 end
 
-function [data,lag_max] = validate_input(data,lag_max)
+function [x,y,lag_max] = validate_input(x,y,lag_max)
 
-    t = size(data,1);
-    b = (lag_max * 2) + 1;
-
-    if (t < 5)
-        error('The value of ''data'' is invalid. Expected input to be a matrix with at least 5 rows.');
+    x = x(:);
+    tx = numel(x);
+    
+    if (tx < 5)
+        error('The value of ''x'' is invalid. Expected input to be a vector containing at least 5 elements.');
+    end
+    
+    y = y(:);
+    ty = numel(y);
+    
+    if (ty < 5)
+        error('The value of ''y'' is invalid. Expected input to be a vector containing at least 5 elements.');
+    end
+    
+    if (tx ~= ty)
+        error('The value of ''x'' and ''y'' are invalid. Expected inputs to contain the same number of elements.');
     end
 
+    t = min(tx,ty);
+    b = (lag_max * 2) + 1;
+
     if (b >= (t - b))
-        error('The number of observations is too low for the specified maximum lag order.');
+        error('The value of ''x'' and ''y'' are invalid. Expected inputs to contain enough observations for the specified maximum lag order.');
     end
 
 end

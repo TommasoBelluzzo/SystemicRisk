@@ -5,7 +5,7 @@
 % lbr = A vector of floats [0,Inf) of length t representing the forward-rolled liabilities of the firm.
 % sv = A float t-by-k matrix (-Inf,Inf) representing the state variables.
 % a = A float [0.01,0.10] representing the target quantile.
-% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
+% d = A float [0.1,0.6] representing the crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK (optional, default=0.08).
 %
 % [OUTPUT]

@@ -22,6 +22,8 @@ end
 
 delete(gcp('nocreate'));
 
+rng('default');
+
 %% PARALLEL COMPUTING
 
 if (up)
@@ -94,7 +96,7 @@ addpath(paths_base);
 %% ENVIRONMENT VARIABLES
 
 ds_dir = 'Datasets';
-ds_version = 'v3.5';
+ds_version = 'v3.6';
 
 try
     sn = ['INIT-' upper(char(java.util.UUID.randomUUID()))];

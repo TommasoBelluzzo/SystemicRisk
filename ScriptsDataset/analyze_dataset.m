@@ -125,7 +125,7 @@ function plot_crises(ds,id)
         co = get(gca(),'ColorOrder');
         cor = ceil(k / size(co,1));
         co = repmat(co,cor,1);
-        
+
         p = gobjects(k,1);
 
         hold on;
@@ -246,7 +246,7 @@ function plot_index(ds,id)
     t = figure_title(['Index (' ds.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
-    
+
     txt_obs = sprintf('Observations: %d',y_obs);
     txt_avg = sprintf('Mean: %.4f',y_avg);
     txt_med = sprintf('Median: %.4f',y_med);
@@ -259,13 +259,13 @@ function plot_index(ds,id)
     else
         txt_s = sprintf('Shapiro Test: F (%.4f)',s_pval);
     end
-    
+
     if (lbq_h)
         txt_lbq = sprintf('LBQ Test: T (%.4f)',lbq_pval);
     else
         txt_lbq = sprintf('LBQ Test: F (%.4f)',lbq_pval);
     end
-    
+
     if (a_h)
         txt_a = sprintf('ARCH Test: T (%.4f)',a_pval);
     else
@@ -273,7 +273,7 @@ function plot_index(ds,id)
     end
 
     txt = {txt_obs '' txt_avg txt_med txt_std txt_ske txt_kur '' txt_s txt_lbq txt_a};
-        
+
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
     pause(0.01);
@@ -386,7 +386,7 @@ function plot_sequence_returns(ds,id)
         y_std = std(yv);
         y_ske = skewness(yv,0);
         y_kur = kurtosis(yv,0);
-        
+
         r = yv - y_avg;
         [s_h,s_pval] = shapiro_test(r,0.05);
         [lbq_h,lbq_pval] = lbqtest(r.^2,'Alpha',0.05);
@@ -434,7 +434,7 @@ function plot_sequence_returns(ds,id)
         else
             txt_s = sprintf('Shapiro Test: F (%.4f)',s_pval);
         end
-        
+
         if (lbq_h)
             txt_lbq = sprintf('LBQ Test: T (%.4f)',lbq_pval);
         else
@@ -448,7 +448,7 @@ function plot_sequence_returns(ds,id)
         end
 
         txt = {txt_obs '' txt_avg txt_med txt_std txt_ske txt_kur '' txt_s txt_lbq txt_a};
-        
+
         annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
     end

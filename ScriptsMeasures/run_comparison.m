@@ -384,7 +384,7 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
     parfor k = 1:mc_len
         md_k = mc{k,2};
 
-        [h0,stat,cv,lag_r,lag_u] = granger_causality(md_k,gca,lag_max,lag_sel);
+        [h0,stat,cv,lag_r,lag_u] = granger_causality(md_k(:,1),md_k(:,2),gca,lag_max,lag_sel);
 
         data_k = struct();
         data_k.H0 = h0;
@@ -401,9 +401,9 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
     scores = zeros(1,mn);
 
     for k = 1:mc_len
-        mo_k = mc{k,1};
-        i = mo_k(1);
-        j = mo_k(2);
+        mc_k = mc{k,1};
+        i = mc_k(1);
+        j = mc_k(2);
 
         data_k = mc_results{k};
         h0_k = data_k.H0;

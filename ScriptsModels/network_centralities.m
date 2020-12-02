@@ -1,5 +1,5 @@
 % [INPUT]
-% am = A binary n-by-n matrix representing the adjcency matrix.
+% am = A binary n-by-n matrix {0;1} representing the adjcency matrix.
 %
 % [OUTPUT]
 % bc = A row vector of floats [0,Inf) of length n representing the betweenness centrality values.

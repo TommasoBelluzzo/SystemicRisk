@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A float t-by-2 matrix representing the model input.
+% data = A float t-by-2 matrix (-Inf,Inf) representing the model input.
 % type = A string representing the type of metric to calculate:
 %   - 'GG' for Gonzalo-Granger Component Metric.
 %   - 'H' for Hasbrouck Information Metric.

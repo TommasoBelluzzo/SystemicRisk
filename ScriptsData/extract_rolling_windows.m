@@ -26,9 +26,9 @@ function windows = extract_rolling_windows(varargin)
     data = ipr.data;
     bw = ipr.bw;
     truncate = ipr.truncate;
-    
+
     nargoutchk(1,1);
-    
+
     windows = extract_rolling_windows_internal(data,bw,truncate);
 
 end
@@ -36,13 +36,13 @@ end
 function windows = extract_rolling_windows_internal(data,bw,truncate)
 
     t = size(data,1);
-    
+
     if (bw >= t)
         windows = cell(1,1);
         windows{1} = data;
         return;
     end
-    
+
     limit = t - bw + 1;
 
     if (truncate)
@@ -53,13 +53,13 @@ function windows = extract_rolling_windows_internal(data,bw,truncate)
         end
     else
         windows = cell(t,1);
-        
+
         k = max(round(nthroot(bw,1.81),0),5);
 
         for i = 1:(bw - 1)
             windows{i} = data(1:max(i,k),:);
         end
-        
+
         for i = 1:limit
             windows{i+bw-1} = data(i:bw+i-1,:);
         end

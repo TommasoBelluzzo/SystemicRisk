@@ -403,6 +403,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.SupportsLiquidity = supports_liquidity;
     ds.SupportsRegimeSwitching = true;
     ds.SupportsSpillover = true;
+    ds.SupportsTailDependence = true;
     ds.SupportsComparison = supports_comparison;
 
 end
@@ -446,7 +447,7 @@ function tab = ensure_field_consistency(file_name,name,tab,index,output_type,tar
     switch (target_type)
 
         case 'char'
-            
+
             try
             if (strcmp(output_type,'cell'))
                 field = vertcat(tab{:,index});
@@ -492,7 +493,7 @@ function tab = ensure_field_consistency(file_name,name,tab,index,output_type,tar
                 if (iscell(tab{1,index}))
                     field = cellfun(@(x)x{:},tab{:,index},'UniformOutput',false);
                 end
-                
+
                 field_first = field{1};
 
                 if (~isa(field_first,'double') || ~isscalar(field_first))

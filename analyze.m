@@ -104,14 +104,14 @@ else
         v = v(u_indices,:);
         warning('MATLAB:SystemicRisk','Multiple result files belonging to the same category have been found: only the most recent result file for each category will be analyzed.');
     end
-    
+
     comparison_indices = strcmp(v(:,3),'Comparison');
-    
+
     if (any(comparison_indices) && (numel(unique(v(:,5))) > 1))
         v(comparison_indices,:) = [];
         warning('MATLAB:SystemicRisk','Multiple result sets have been found: comparison will not be displayed.');
     end
-    
+
     v_len = size(v,1);
 
     for i = 1:v_len

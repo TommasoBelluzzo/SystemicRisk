@@ -1,24 +1,24 @@
 % [INPUT]
 % dep = A vector of floats of length t representing the dependent variable.
-% indep_s = A float t-by-cs matrix representing the switching independent variables, without intercept because it is internally handled by the model (optional, default=[]).
-% indep_ns = A float t-by-cns matrix representing the non-switching independent variables (optional, default=[]).
+% indep_s = A float t-by-cs matrix (-Inf,Inf) representing the switching independent variables, without intercept because it is internally handled by the model (optional, default=[]).
+% indep_ns = A float t-by-cns matrix (-Inf,Inf) representing the non-switching independent variables (optional, default=[]).
 % k = An integer [2,4] representing the number of states of the model (optional, default=2).
 % vs = A boolean that indicates whether the variance is allowed to switch (optional, default=true).
 % finit = A function handle representing a hook for generating a customized minimization problem (optional, by default a standard minimization problem is generated).
 %   The function handle must accept the following input arguments (in the same order):
 %     - x0: A column vector of floats of length cx representing the initial parameters.
 %     - dep, indep_s, indep_s, k, vs, tmm: See the description above.
-%     - p0 = A float k-by-k matrix representing the initial stochastic row-wise transition matrix.
+%     - p0 = A float k-by-k matrix [0,1] representing the initial stochastic row-wise transition matrix.
 %     - options = A structure representing the optimization options structure.
 %   The function handle must return the following output arguments (in the same order):
 %     - x0 = A column vector of floats of length cx = (vs ? k : 1) + (cs * k) + cns representing the initial parameters for variance and independent variables (mandatory).
-%     - ai = A float ci-by-cx matrix representing the "A" element of linear inequality constraints (optional, defaultable to []).
+%     - ai = A float ci-by-cx matrix (-Inf,Inf) representing the "A" element of linear inequality constraints (optional, defaultable to []).
 %     - bi = A column vector of floats of length ci representing the "b" element of linear inequality constraints (optional, defaultable to []).
-%     - ae = A float ce-by-cx matrix representing the "Aeq" element of linear equality constraints (optional, defaultable to []).
+%     - ae = A float ce-by-cx matrix (-Inf,Inf) representing the "Aeq" element of linear equality constraints (optional, defaultable to []).
 %     - ce = A column vector of floats of length ce representing the "beq" element of linear equality constraints (optional, defaultable to []).
 %     - lb = A column vector of floats of length cx representing the lower bounds (mandatory).
 %     - ub = A column vector of floats of length cx representing the upper bounds (mandatory).
-% tmm = A float k-by-k matrix representing the mask of the stochastic row-wise transition matrix, in which NaNs represent the elements to be computed (optional, by default all the elements are computed).
+% tmm = A float k-by-k matrix [0,1] representing the mask of the stochastic row-wise transition matrix, in which NaNs represent the elements to be computed (optional, by default all the elements are computed).
 % fnlcon = A function handle representing a hook for applying non-linear constraints (optional, by default no non-linear constraints are applied).
 %   The function handle must accept the following input arguments (in the same order):
 %     - x: A column vector of floats representing the current parameters.
@@ -32,8 +32,8 @@
 % indep_s_params = A cs-by-1 cell array of row vectors of floats containing the parameters of switching independent variables.
 % indep_ns_params = A row vector of floats of length cns representing the parameters of non-switching independent variables.
 % s2_params = A row vector of floats of length k representing the variance parameters.
-% p = A float k-by-k matrix representing the stochastic row-wise transition matrix.
-% sprob = A float t-by-k matrix representing the smoothed probabilities of each state.
+% p = A float k-by-k matrix [0,1] representing the stochastic row-wise transition matrix.
+% sprob = A float t-by-k matrix [0,1] representing the smoothed probabilities of each state.
 % dur = A row vector of floats of length 4 representing the duration of each state.
 % cmu = A column vector of floats of length t representing the conditional means.
 % cs2 = A column vector of floats of length t representing the conditional variances.

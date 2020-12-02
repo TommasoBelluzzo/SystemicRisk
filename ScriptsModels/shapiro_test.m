@@ -91,14 +91,14 @@ function [pval,stat] = shapiro_wilks(x)
 
     if (n >= 6)
         off = 3:n-3+1;
-        
+
         w(n-1) = polyval(pc_2,u);
         w(2) = -w(n-1);
 
         phi = ((m.' * m) - (2 * m(n)^2) - (2 * m(n-1)^2)) /  (1 - (2 * w(n)^2) - (2 * w(n-1)^2));
     else
         off = 2:n-2+1;
-        
+
         if (n == 3)
             w(1) = 1 / sqrt(2);
             w(n) = -w(1);

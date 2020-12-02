@@ -29,7 +29,7 @@ chunk_out = [out_dir filesep() out_name];
 
 ds_process = false;
 
-file = fullfile(path_base,[ds_dir filesep() 'Example_Large.xlsx']);
+file = fullfile(path_base,[ds_dir filesep() 'Example_Small_3.xlsx']);
 [file_path,file_name,~] = fileparts(file);
 
 if (exist(file,'file') == 0)
@@ -90,6 +90,7 @@ measures_setup = {
     'Liquidity'          true     true     true     @(temp,out,analyze)run_liquidity(ds,sn,temp,out,bw,21,5,'B',500,0.01,0.0004,analyze);
     'RegimeSwitching'    true     true     true     @(temp,out,analyze)run_regime_switching(ds,sn,temp,out,true,true,true,analyze);
     'Spillover'          true     true     true     @(temp,out,analyze)run_spillover(ds,sn,temp,out,bw,10,'G',2,4,analyze);
+    'TailDependence'     true     true     true     @(temp,out,analyze)run_tail_dependence(ds,sn,temp,out,bw,0.10,0.5,0.05,100,analyze);
 };
 
 enabled_all = [measures_setup{:,2}];
@@ -153,23 +154,27 @@ end
 ml(moff:end) = [];
 md(:,moff:end) = [];
 
-if (numel(ml) <= 1)
-    compare_all = [measures_setup{:,4}];
-
-    if (any(enabled_all) && any(compare_all(enabled_all)))
-        warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
-    end
+if (~ds.SupportsComparison)
+    warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the dataset does not support it.');
 else
-    pause(2);
+    if (numel(ml) <= 1)
+        compare_all = [measures_setup{:,4}];
 
-    temp = fullfile(path_base,[chunk_temp 'Comparison.xlsx']);
-    out = fullfile(path_base,[chunk_out 'Comparison.xlsx']);
+        if (any(enabled_all) && any(compare_all(enabled_all)))
+            warning('MATLAB:SystemicRisk','The comparison of systemic risk measures cannot be performed because the sample is empty or contains only one indicator.');
+        end
+    else
+        pause(2);
 
-    [result_comparison,stopped] = run_comparison(ds,sn,temp,out,ml,md,comparison_co,[],21,'AIC',0.01,false,4,'GG',comparison_analyze);
+        temp = fullfile(path_base,[chunk_temp 'Comparison.xlsx']);
+        out = fullfile(path_base,[chunk_out 'Comparison.xlsx']);
 
-    if (~stopped)
-        mat = fullfile(path_base,[chunk_out 'Comparison.mat']);
-        save(mat,'result_comparison');
+        [result_comparison,stopped] = run_comparison(ds,sn,temp,out,ml,md,comparison_co,[],21,'AIC',0.01,false,4,'GG',comparison_analyze);
+
+        if (~stopped)
+            mat = fullfile(path_base,[chunk_out 'Comparison.mat']);
+            save(mat,'result_comparison');
+        end
     end
 end
 

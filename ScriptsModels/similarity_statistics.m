@@ -1,5 +1,5 @@
 % [INPUT]
-% data = A float t-by-2 matrix representing the model input.
+% data = A float t-by-2 matrix (-Inf,Inf) representing the model input.
 % e = A float (0,2] representing the exponent of the euclidean distance used to calculate the Distance Correlation (optional, default=1).
 %
 % [OUTPUT]

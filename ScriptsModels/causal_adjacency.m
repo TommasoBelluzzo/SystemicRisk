@@ -4,7 +4,7 @@
 % rp = A boolean indicating whether to use robust p-values for the linear Granger-causality test (optional, default=false).
 %
 % [OUTPUT]
-% am = A binary n-by-n matrix representing the adjcency matrix.
+% am = A binary n-by-n matrix {0;1} representing the adjcency matrix.
 
 function am = causal_adjacency(varargin)
 

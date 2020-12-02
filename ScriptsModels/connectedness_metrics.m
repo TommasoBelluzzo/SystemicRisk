@@ -1,5 +1,5 @@
 % [INPUT]
-% am = A binary n-by-n matrix representing the adjcency matrix.
+% am = A binary n-by-n matrix {0;1} representing the adjcency matrix.
 % gd = A vector of integers [1,Inf) of length k representing the group delimiters (optional, default=[]).
 %
 % [OUTPUT]

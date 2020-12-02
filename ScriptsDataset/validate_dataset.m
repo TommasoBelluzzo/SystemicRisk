@@ -12,7 +12,7 @@ function ds = validate_dataset(varargin)
     if (isempty(categories))
         categories = {
             'Comparison' 'Component' 'Connectedness' 'CrossEntropy' 'CrossQuantilogram' ...
-            'CrossSectional' 'Default' 'Liquidity' 'RegimeSwitching' 'Spillover'
+            'CrossSectional' 'Default' 'Liquidity' 'RegimeSwitching' 'Spillover' 'TailDependence'
         };
     end
 
@@ -156,27 +156,34 @@ function ds = validate_dataset_internal(ds,category,categories)
     validate_field(ds,'SupportsLiquidity',{'logical'},{'scalar'});
     validate_field(ds,'SupportsRegimeSwitching',{'logical'},{'scalar'});
     validate_field(ds,'SupportsSpillover',{'logical'},{'scalar'});
+    validate_field(ds,'SupportsTailDependence',{'logical'},{'scalar'});
     validate_field(ds,'SupportsComparison',{'logical'},{'scalar'});
 
-    if (~isempty(category) && ~strcmp(category,'Comparison'))
-        supports = ['Supports' category];
-
-        if (~ds.(supports))
-            category_e = category;
-            indices = find(isstrprop(category,'upper'));
-
-            for i = 1:numel(indices)
-                index = indices(i);
-
-                if (index == 1)
-                    category_e(i) = lower(category(index));
-                else
-                    category_e = [category_e(1:index-1) '-' lower(category_e(index)) category_e(index+1:end)];
-                    indices(i+1:end) = indices(i+1:end) + 1;
-                end
+    if (~isempty(category))
+        if (strcmp(category,'Comparison'))
+            if (~ds.SupportsComparison)
+                error('The dataset cannot be used to compare systemic risk measures.');
             end
+        else
+            supports = ['Supports' category];
 
-            error(['The dataset cannot be used for calculating ''' category_e ''' measures.']);
+            if (~ds.(supports))
+                category_e = category;
+                indices = find(isstrprop(category,'upper'));
+
+                for i = 1:numel(indices)
+                    index = indices(i);
+
+                    if (index == 1)
+                        category_e(i) = lower(category(index));
+                    else
+                        category_e = [category_e(1:index-1) '-' lower(category_e(index)) category_e(index+1:end)];
+                        indices(i+1:end) = indices(i+1:end) + 1;
+                    end
+                end
+
+                error(['The dataset cannot be used to calculate ''' category_e ''' measures.']);
+            end
         end
     end
 

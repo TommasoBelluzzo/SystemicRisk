@@ -541,8 +541,7 @@ end
 
 function plot_dip(ds,id)
 
-    dip = ds.Indicators(:,5);
-    y = smooth_data(dip);
+    y = smooth_data(ds.Indicators(:,5));
 
     f = figure('Name','Default Measures > Distress Insurance Premium','Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
@@ -550,7 +549,7 @@ function plot_dip(ds,id)
     plot(sub_1,ds.DatesNum,y,'Color',[0.000 0.447 0.741]);
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
-    title(sub_1,['DIP (LGD=' num2str(ds.LGD * 100) '%, F=' num2str(ds.F) ', L=' num2str(ds.L * 100) '%)']);
+    title(sub_1,ds.LabelsIndicators(5));
 
     if (ds.MonthlyTicks)
         date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
@@ -644,7 +643,7 @@ function plot_scca(ds,id)
 
     sub_3 = subplot(2,2,4);
     plot(sub_3,ds.DatesNum,smooth_data(jes),'Color',[0.000 0.447 0.741]);
-    title(sub_3,['Joint ES (K=' sprintf('%.1f%%',(ds.K * 100)) ')']);
+    title(sub_3,['Joint ES (K=' num2str(ds.K * 100) '%)']);
 
     set([sub_1 sub_2 sub_3],'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set([sub_2 sub_3],'XGrid','on','YGrid','on');

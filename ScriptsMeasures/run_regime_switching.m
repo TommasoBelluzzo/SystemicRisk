@@ -240,10 +240,10 @@ function ds = finalize(ds)
 
     if (ds.RS2)
         sprob = cell2mat(ds.SmoothedProbabilities(index,:));
-        
+
         sprob_hv = sprob(:,1:2:n*2);
         ds.AverageProbabilities(:,index) = mean(sprob_hv,2,'omitnan');
-        
+
         sprob_hv(isnan(sprob_hv)) = 1;
         ds.JointProbabilities(:,index) = prod(sprob_hv,2);
 
@@ -252,10 +252,10 @@ function ds = finalize(ds)
 
     if (ds.RS3)
         sprob = cell2mat(ds.SmoothedProbabilities(index,:));
-        
+
         sprob_hv = sprob(:,1:3:n*3);
         ds.AverageProbabilities(:,index) = mean(sprob_hv,2,'omitnan');
-        
+
         sprob_hv(isnan(sprob_hv)) = 1;
         ds.JointProbabilities(:,index) = prod(sprob_hv,2);
 
@@ -264,10 +264,10 @@ function ds = finalize(ds)
 
     if (ds.RS4)
         sprob = cell2mat(ds.SmoothedProbabilities(index,:));
-        
+
         sprob_hv = sprob(:,1:4:n*4) + sprob(:,2:4:n*4);
         ds.AverageProbabilities(:,index) = mean(sprob_hv,2,'omitnan');
-        
+
         sprob_hv(isnan(sprob_hv)) = 1;
         ds.JointProbabilities(:,index) = prod(sprob_hv,2);
     end
@@ -562,6 +562,7 @@ function plot_indicators(ds,target,id)
     else
         sub_1 = subplot(2,1,1);
         plot(ds.DatesNum,ap);
+        set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)]);
         set(sub_1,'YLim',[0 1]);
         set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
         set(sub_1,'XGrid','on','YGrid','on');

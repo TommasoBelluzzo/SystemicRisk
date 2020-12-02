@@ -38,7 +38,7 @@ function [ar,cs,ti] = component_metrics_internal(r,fc)
 
     c = cov(r);
     c_size = size(c);
-    
+
     bm = zeros(c_size);
     bm(logical(eye(size(c)))) = diag(c);
 

@@ -4,7 +4,7 @@
 % temp = A string representing the full path to the Excel spreadsheet used as template for the result file.
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % k = A float [0.90,0.99] representing the confidence level (optional, default=0.95).
-% d = A float [0.1,0.6] representing the six-month crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
+% d = A float [0.1,0.6] representing the crisis threshold for the market index decline used to calculate the LRMES (optional, default=0.4).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate SES and SRISK (optional, default=0.08).
 % sf = A float [0,1] representing the fraction of separate accounts, if available, to include in liabilities and used to calculate SES and SRISK (optional, default=0.40).
 % fr = An integer [0,6] representing the number of months of forward-rolling used to calculate the SRISK, simulating the difficulty of renegotiating debt in case of financial distress (optional, default=3).
@@ -308,17 +308,17 @@ end
 
 function analyze_result(ds)
 
-    safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
     safe_plot(@(id)plot_sequence_other(ds,'Beta',id));
     safe_plot(@(id)plot_sequence_other(ds,'VaR',id));
     safe_plot(@(id)plot_sequence_other(ds,'ES',id));
-    safe_plot(@(id)plot_systemic_averages(ds,id));
     safe_plot(@(id)plot_sequence_caviar(ds,id));
     safe_plot(@(id)plot_sequence_other(ds,'CoVaR',id));
     safe_plot(@(id)plot_sequence_other(ds,'Delta CoVaR',id));
     safe_plot(@(id)plot_sequence_other(ds,'MES',id));
     safe_plot(@(id)plot_sequence_other(ds,'SES',id));
     safe_plot(@(id)plot_sequence_other(ds,'SRISK',id));
+    safe_plot(@(id)plot_idiosyncratic_averages(ds,id));
+    safe_plot(@(id)plot_systemic_averages(ds,id));
     safe_plot(@(id)plot_correlations(ds,id));
     safe_plot(@(id)plot_rankings(ds,id));
 
