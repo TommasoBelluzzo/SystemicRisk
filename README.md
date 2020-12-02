@@ -55,6 +55,10 @@ This framework calculates, analyses and compares the following systemic risk mea
   * `Spillovers From & To`
   * `Net Spillovers`
   * *References*: [Diebold & Yilmaz (2008)](https://doi.org/10.1111/j.1468-0297.2008.02208.x), [Diebold & Yilmaz (2012)](https://doi.org/10.1016/j.ijforecast.2011.02.006), [Diebold & Yilmaz (2014)](https://doi.org/10.1016/j.jeconom.2014.04.012)
+* **TAIL DEPENDENCE MEASURES**
+  * `ACHI (Average Chi)` by [Balla et al. (2014)](https://doi.org/10.1016/j.jfs.2014.10.002)
+  * `ADR (Asymptotic Dependence Rate)` by [Balla et al. (2014)](https://doi.org/10.1016/j.jfs.2014.10.002)
+  * `FRM (Financial Risk Meter)` by [Mihoci et al. (2020)](https://doi.org/10.1108/S0731-905320200000042016)
 
 Some of the aforementioned models have been improved or extended according to the methodologies described in the [V-Lab Documentation](https://vlab.stern.nyu.edu/docs), which represents a great source of systemic risk measurement.
 
@@ -153,6 +157,9 @@ Datasets must be built following the structure of default ones included in every
   * **Spillover Measures:**
     * *Required:* shares (any).
     * *Optional:* none.
+  * **Tail Dependence Measures:**
+    * *Required:* shares (any).
+    * *Optional:* state variables.
   
 * Firms whose time series value is constantly equal to `0` in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `defaulted`. Firms whose `Equity` value is constantly negative in the tail, for a span that includes a customizable percentage of total observations (by default `5%`), are considered to be `insolvent`. This allows the scripts to exclude them from computations starting from a certain point in time onward; defaulted firms are excluded by all the measures, insolvent firms are excluded only by `SCCA` default measures.
 
