@@ -185,10 +185,10 @@ function [data,bw] = validate_input(data,bw)
     if (any(nan_counts > nan_threshold))
         error(['The value of ''data'' is invalid. Expected input to contain no more than 70% of NaN values (' num2str(nan_threshold) ') for each time series.']);
     end
-    
+
     for i = 2:ceil(t / bw)
         bw_i = bw * i;
-        
+
         if ((bw_i / t) >= 0.3)
             bw = bw_i;
             break;

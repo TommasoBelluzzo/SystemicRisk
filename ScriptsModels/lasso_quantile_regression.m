@@ -51,14 +51,14 @@ function [beta,lambda] = lasso_quantile_regression_internal(y,x,a,ms)
     [q,r,nu0,nu,lambda0,idx_v,idx_e,idx_l,idx_r] = initialize(y,x,a);
 
     fit = zeros(ms+1,t);
-    
+
     beta = zeros(ms+1,n);
     beta0 = [q; zeros(ms,1)];
-    
+
     o = ones(1,t) .* q;
     fit(1,:) = o;
     gacv = [(gacv_fit(o,y,a) / t); zeros(ms,1)];
-    
+
     lambda = [lambda0; zeros(ms,1)];
 
     k = 0;
@@ -69,7 +69,7 @@ function [beta,lambda] = lasso_quantile_regression_internal(y,x,a,ms)
 
         exc_t = idx_t(~ismember(idx_t,idx_e));
         gamma = nu0 + (x(exc_t,idx_v) * nu);
-        
+
         delta1 = r(exc_t) ./ gamma;
 
         if (all(delta1 <= 0))
@@ -199,7 +199,7 @@ function [beta,lambda] = lasso_quantile_regression_internal(y,x,a,ms)
 
             [~,idx] = min(lambda_obs);
             i_star = tmp_e(idx);
-            
+
             idx_e = tmp_e;
             idx_e(idx) = [];
 
@@ -240,7 +240,7 @@ function [var,nu_var,lambda_var] = calculate_vars(x,a,exc,tmp,idx_v,idx_e,idx_l,
     else
         f = @(tmp,j_star,s)[tmp [s * 1; x(idx_e,j_star)]];
     end
-    
+
     b = [1; zeros(numel(idx_v) + 1,1)];
 
     var = numel(b);
@@ -332,17 +332,17 @@ function [y,x] = validate_input(y,x)
     if (ty < 5)
         error('The value of ''y'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
-    
+
     if (isvector(x))
         x = x(:);
         tx = numel(x);
-        
+
         if (tx ~= ty)
             error(['The value of ''x'' is invalid. Expected input to be a vector containing ' num2str(ty) ' elements.']);
         end
     else
         tx = size(x,1);
-        
+
         if (tx ~= ty)
             error(['The value of ''x'' is invalid. Expected input to be a matrix containing ' num2str(ty) ' rows.']);
         end

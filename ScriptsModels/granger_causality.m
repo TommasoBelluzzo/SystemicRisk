@@ -278,18 +278,18 @@ function [x,y,lag_max] = validate_input(x,y,lag_max)
 
     x = x(:);
     tx = numel(x);
-    
+
     if (tx < 5)
         error('The value of ''x'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
-    
+
     y = y(:);
     ty = numel(y);
-    
+
     if (ty < 5)
         error('The value of ''y'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
-    
+
     if (tx ~= ty)
         error('The value of ''x'' and ''y'' are invalid. Expected inputs to contain the same number of elements.');
     end

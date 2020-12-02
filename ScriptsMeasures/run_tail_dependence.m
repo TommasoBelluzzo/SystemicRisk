@@ -322,9 +322,9 @@ function plot_asymptotic_indicators(ds,id)
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_2,'XGrid','on','YGrid','on');
     title(sub_2,ds.LabelsIndicators(2));
-    
+
     set([sub_1 sub_2],'YLim',[0 1]);
-    
+
     if (ds.MonthlyTicks)
         date_ticks([sub_1 sub_2],'x','mm/yyyy','KeepLimits','KeepTicks');
     else
