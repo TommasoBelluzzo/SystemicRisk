@@ -165,12 +165,13 @@ Datasets must be built following the structure of default ones included in every
 
 * Once a dataset has been parsed, the script stores its output in the form of a `.mat` file; therefore, the parsing process is executed only during the first run. The file last modification date is taken into account by the script and the dataset is parsed once again if the `Excel` spreadsheet is modified.
 
-* Depending on `OS` (version, bitness, regional settings), `Excel` (version, bitness, regional settings) and/or `MATLAB`, the dataset parsing process might present issues. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
-  * A bitness mismatch between the `OS` and `Excel` may cause errors that are extremely difficult to detect. Using the same bitness for both is recommended.
-  * An `Excel` locale other than `English` may produce wrong outputs related to date formats, string labels and numerical values with decimals and/or thousands separators. A locale switch is recommended.
+* The dataset parsing process might present issues related to version, bitness and regional settings of the `OS`, `Excel` and/or `MATLAB`. Due to the high number of users asking for help, **support is no more guaranteed**; the guidelines below can help solving the majority of problems:
+  * A bitness mismatch between the `OS` and `Excel` may cause errors that are difficult to track. Using the same bitness for both is recommended.
+  * An `Excel` locale other than `English` may produce wrong outputs related to date formats, text values and numerical values with decimals and/or thousands separators. A locale switch is recommended.
   * Both `Excel 2019` and `Excel 365` may present compatibility issues with `MATLAB` versions prior to `R2019b`. In later versions, the built-in function `readtable` may still not handle some `Excel` spreadsheets properly. A downgrade to `Excel 2016` is recommended.
+  * Some `Excel` spreadsheets might contain empty but defined cells in columns or rows located far away from the area in which data is stored. Those cells extend the range being read by the parser, producing false positives when checking for missing values.
+  * The  dataset parsing process takes place inside the `ScriptsDataset\parse_dataset.m` function. It is important to check the correctness of the arguments being passed to the function call. Error messages thrown by the aforementioned function are pretty straightforward and a debugging session should be enough to find the underlying causes and fix datasets and/or internal functions accordingly.
   * If the  dataset parsing process is too slow, the best way to speed it up is to provide a standard `Excel` spreadsheet (`.xlsx`) with no filters and styles, or a binary `Excel` spreadsheet (`.xlsb`).
-  * The  dataset parsing process takes place inside the `ScriptsDataset\parse_dataset.m` function. Error messages thrown by the aforementioned function are pretty straightforward and a debugging session should be enough to find the underlying causes and fix datasets and/or internal functions accordingly. 99.9% of the effort has already been made here, undertaking the remaining 0.01% should not be dramatic.
 
 * Some scripts may take very long time to finish in presence of huge datasets and/or extreme parametrizations. The performance of calculations may vary depending on the CPU processing speed and the number of CPU cores available for parallel computing.
 
