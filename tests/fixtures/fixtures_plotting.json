@@ -1,0 +1,24 @@
+{
+  "plot_graph_data": {
+    "seed": 7331,
+    "maximum_size": 6,
+    "runs": 25
+  },
+  "plot_eigenvalues_data": {
+    "seed": 7331,
+    "maximum_size": 6,
+    "runs": 25
+  },
+  "plot_redistributions_data": {
+    "seed": 7331,
+    "maximum_size": 6,
+    "maximum_distributions": 20,
+    "runs": 25
+  },
+  "plot_walk_data": {
+    "seed": 7331,
+    "maximum_size": 6,
+    "maximum_simulations": 20,
+    "runs": 25
+  }
+}
