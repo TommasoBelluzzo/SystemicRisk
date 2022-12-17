@@ -93,7 +93,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
         end
     end
 
-    dates_num = datenum(tab_shares{:,1});
+    dates_num = datenum(tab_shares{:,1}); %#ok<DATNM> 
     tab_shares.Date = [];
 
     if (using_prices)
@@ -213,12 +213,12 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
                 if (strcmp(crises_type,'E'))
                     [tab_crises,crises_dummy] = parse_table_crises_dates(file,file_name,tab_index,tab_name,date_format_base,dates_num);
                     crises = height(tab_crises);
-                    crisis_dates = datenum(tab_crises{:,1});
+                    crisis_dates = datenum(tab_crises{:,1}); %#ok<DATNM> 
                     crisis_names = tab_crises{:,2};
                 else
                     [tab_crises,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file_name,tab_index,tab_name,date_format_base,dates_num);
                     crises = height(tab_crises);
-                    crisis_dates = [datenum(tab_crises{:,2}) datenum(tab_crises{:,3})];
+                    crisis_dates = [datenum(tab_crises{:,2}) datenum(tab_crises{:,3})]; %#ok<DATNM> 
                     crisis_names = tab_crises{:,1};
                 end
 
@@ -342,7 +342,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
 
     ds.File = file;
     ds.Version = version;
-    ds.CreationDate = now();
+    ds.CreationDate = now(); %#ok<TNOW1> 
 
     ds.Result = [];
     ds.ResultDate = [];
@@ -355,7 +355,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.T = t;
 
     ds.DatesNum = dates_num;
-    ds.DatesStr = cellstr(datestr(datetime(dates_num,'ConvertFrom','datenum'),date_format_base));
+    ds.DatesStr = cellstr(datestr(datetime(dates_num,'ConvertFrom','datenum'),date_format_base)); %#ok<DATST> 
     ds.MonthlyTicks = numel(unique(dates_year)) <= 3;
 
     ds.IndexName = index_name;
@@ -413,7 +413,7 @@ end
 function date_format = validate_date_format(date_format,base)
 
     try
-        datestr(now(),date_format);
+        datestr(now(),date_format); %#ok<DATST,TNOW1> 
     catch e
         error(['The date format ''' date_format ''' is invalid.' new_line() strtrim(regexprep(e.message,'Format.+$',''))]);
     end
@@ -448,7 +448,6 @@ function tab = ensure_field_consistency(file_name,name,tab,index,output_type,tar
 
         case 'char'
 
-            try
             if (strcmp(output_type,'cell'))
                 field = vertcat(tab{:,index});
 
@@ -461,9 +460,6 @@ function tab = ensure_field_consistency(file_name,name,tab,index,output_type,tar
                 tab.(tab.Properties.VariableNames{index}) = cellstr(tab{:,index});
             else
                 error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains invalid column types.']);
-            end
-            catch e
-               z = 1; 
             end
 
         case 'datetime'
@@ -531,7 +527,7 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
     end
 
     t_current = height(tab_partial);
-    dates_num_current = datenum(tab_partial.Date);
+    dates_num_current = datenum(tab_partial.Date); %#ok<DATNM> 
     tab_partial.Date = [];
 
     if (t_current ~= numel(unique(dates_num_current)))
@@ -542,7 +538,7 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains unsorted observation dates.']);
     end
 
-    if (t_current ~= numel(unique(cellstr(datestr(dates_num,date_format)))))
+    if (t_current ~= numel(unique(cellstr(datestr(dates_num,date_format))))) %#ok<DATST> 
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains an invalid number of observation dates.']);
     end
 
@@ -550,8 +546,8 @@ function tab = parse_table_balance(file,file_name,index,name,date_format,dates_n
         error(['Error in dataset ''' file_name ''': the firm names between the ''Shares'' sheet and the ''' name ''' sheet are mismatching.']);
     end
 
-    dates_from = cellstr(datestr(dates_num_current,date_format)).';
-    dates_to = cellstr(datestr(dates_num,date_format)).';
+    dates_from = cellstr(datestr(dates_num_current,date_format)).'; %#ok<DATST> 
+    dates_to = cellstr(datestr(dates_num,date_format)).'; %#ok<DATST> 
 
     if (any(~ismember(dates_to,dates_from)))
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet observation dates do not cover all the ''Shares'' sheet observation dates.']);
@@ -581,17 +577,17 @@ function [tab,crises_dummy] = parse_table_crises_dates(file,file_name,index,name
     dates_num_min = min(dates_num);
     dates_num_max = max(dates_num);
 
-    dates_num_current = datenum(tab.Date);
+    dates_num_current = datenum(tab.Date); %#ok<DATNM> 
 
     if (any(dates_num_current < dates_num_min) || any(dates_num_current > dates_num_max))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crisis events outside the scope of the dataset (' datestr(dates_num_min,date_format) ' - ' datestr(dates_num_max,date_format) ').']);
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crisis events outside the scope of the dataset (' datestr(dates_num_min,date_format) ' - ' datestr(dates_num_max,date_format) ').']); %#ok<DATST> 
     end
 
     n = height(tab);
     crises_dummy = zeros(numel(dates_num),1);
 
     for i = 1:n
-        [check,index] = ismember(datenum(tab.Date(i)),dates_num);
+        [check,index] = ismember(datenum(tab.Date(i)),dates_num); %#ok<DATNM> 
 
         if (~check)
             error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crisis events outside the scope of the dataset.']);
@@ -622,11 +618,11 @@ function [tab,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file
     dates_num_min = min(dates_num);
     dates_num_max = max(dates_num);
 
-    dates_num_start = datenum(tab.StartDate);
-    dates_num_end = datenum(tab.EndDate);
+    dates_num_start = datenum(tab.StartDate); %#ok<DATNM> 
+    dates_num_end = datenum(tab.EndDate); %#ok<DATNM> 
 
     if (any(dates_num_start > dates_num_max) || any(dates_num_end < dates_num_min))
-        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crises outside the scope of the dataset (' datestr(dates_num_min,date_format) ' - ' datestr(dates_num_max,date_format) ').']);
+        error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains crises outside the scope of the dataset (' datestr(dates_num_min,date_format) ' - ' datestr(dates_num_max,date_format) ').']); %#ok<DATST> 
     end
 
     if (any(dates_num_start > dates_num_end))
@@ -637,7 +633,7 @@ function [tab,crisis_dummies,crises_dummy] = parse_table_crises_ranges(file,file
     crisis_dummies = zeros(numel(dates_num),n);
 
     for i = 1:n
-        seq = datenum(tab.StartDate(i):tab.EndDate(i)).';
+        seq = datenum(tab.StartDate(i):tab.EndDate(i)).'; %#ok<DATNM> 
         crisis_dummies(ismember(dates_num,seq),i) = 1;
     end
 
@@ -712,7 +708,7 @@ function tab = parse_table_standard(file,file_name,index,name,date_format,dates_
     end
 
     t_current = height(tab);
-    dates_num_current = datenum(tab.Date);
+    dates_num_current = datenum(tab.Date); %#ok<DATNM> 
 
     if (t_current ~= numel(unique(dates_num_current)))
         error(['Error in dataset ''' file_name ''': the ''' name ''' sheet contains duplicate observation dates.']);

@@ -343,7 +343,7 @@ function ds = initialize(ds,sn,bw,sel,rr,pw,md)
     end
 
     ds.Result = 'CrossEntropy';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -625,7 +625,7 @@ function plot_portfolios_coverage(ds,id)
     figure_title('Reduced Portfolios Coverage');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -670,7 +670,7 @@ function plot_indicators(ds,id)
     figure_title(['Indicators (RR=' num2str(ds.RR * 100) '%, ' ds.PW ', ' ds.MD ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -735,7 +735,7 @@ function plot_dide(ds,id)
     figure_title('Average Distress Dependency');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

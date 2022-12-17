@@ -190,7 +190,7 @@ function ds = initialize(ds,sn,bw,f,pt,a,ms)
     t = ds.T;
 
     ds.Result = 'TailDependence';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -334,7 +334,7 @@ function plot_asymptotic_indicators(ds,id)
     figure_title('Asymptotic Dependence Indicators');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -438,7 +438,7 @@ function plot_frm(ds,id)
     figure_title('Financial Risk Meter');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

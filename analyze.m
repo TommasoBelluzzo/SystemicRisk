@@ -61,7 +61,7 @@ else
 
         s_field = s_fields{1};
 
-        if (isempty(regexpi(s_field,'^result_[a-z_]+$')))
+        if (isempty(regexpi(s_field,'^result_[a-z_]+$','once')))
             warning('MATLAB:SystemicRisk',['The content of the result file ''' clear_text(file_path) ''' is invalid: wrong naming convention of the structure field.']);
             continue;
         end

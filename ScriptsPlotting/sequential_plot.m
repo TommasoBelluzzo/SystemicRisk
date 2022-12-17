@@ -157,7 +157,7 @@ function sequential_plot_internal(core,id)
     setappdata(f,'Subs',subs);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

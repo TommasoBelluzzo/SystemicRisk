@@ -35,7 +35,7 @@ function data = forward_roll_data_internal(data,dates,fr)
         return;
     end
 
-    [~,a] = unique(cellstr(datestr(dates,'mm/yyyy')),'stable');
+    [~,a] = unique(cellstr(datestr(dates,'mm/yyyy')),'stable'); %#ok<DATST> 
     data_monthly = data(a,:);
 
     indices_seq = [a(1:fr:numel(a)) - 1; numel(dates)];

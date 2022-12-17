@@ -167,7 +167,7 @@ function ds = initialize(ds,sn,bw,k,g,u,f,q)
     rp = sum(r .* repmat(rw,1,n),2,'omitnan');
 
     ds.Result = 'Component';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -384,7 +384,7 @@ function plot_catfin(ds,id)
     figure_title('CATFIN');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -471,7 +471,7 @@ function plot_indicators_other(ds,id)
     figure_title('Other Indicators');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -545,7 +545,7 @@ function plot_pca(ds,id)
     figure_title('Principal Component Analysis');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

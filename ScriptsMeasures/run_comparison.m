@@ -183,7 +183,7 @@ function ds = initialize(ds,sn,ml,md,co,sc,lag_max,lag_sel,gca,lma,ppsk,pdt)
     end
 
     ds.Result = 'Comparison';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -305,11 +305,11 @@ function write_results(ds,temp,out)
     labels = [{'Firms'} ds.MLabels.'];
 
     if (ispc())
-        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],1);
-        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],2);
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],1); %#ok<XLSWT> 
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],2); %#ok<XLSWT> 
     else
-        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],ds.LabelsSheetsSimple{1});
-        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],ds.LabelsSheetsSimple{2});
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.DistanceCorrelation)],ds.LabelsSheetsSimple{1}); %#ok<XLSWT> 
+        xlswrite(out,[labels; ds.MLabels num2cell(ds.RMSSimilarity)],ds.LabelsSheetsSimple{2}); %#ok<XLSWT> 
     end
 
     sm = ds.SM;
@@ -371,7 +371,7 @@ function ds = check_similarity(ds)
 
 end
 
-function ds = perform_comparison_gc(ds) %#ok<DEFNU>
+function ds = perform_comparison_gc(ds)
 
     lag_max = ds.LagMax;
     lag_sel = ds.LagSel;
@@ -427,7 +427,7 @@ function ds = perform_comparison_gc(ds) %#ok<DEFNU>
 
 end
 
-function ds = perform_comparison_lm(ds) %#ok<DEFNU>
+function ds = perform_comparison_lm(ds)
 
     m = ds.MData;
     [mt,mn] = size(m);
@@ -485,7 +485,7 @@ function ds = perform_comparison_lm(ds) %#ok<DEFNU>
 
 end
 
-function ds = perform_comparison_pps(ds) %#ok<DEFNU>
+function ds = perform_comparison_pps(ds)
 
     m = ds.MData;
     mn = size(m,2);
@@ -553,7 +553,7 @@ function ds = perform_comparison_pps(ds) %#ok<DEFNU>
 
 end
 
-function ds = perform_comparison_pd(ds) %#ok<DEFNU>
+function ds = perform_comparison_pd(ds)
 
     lag_max = ds.LagMax;
     lag_sel = ds.LagSel;
@@ -761,12 +761,12 @@ function plot_similarity(ds,target,id)
     figure_title(target);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
 
-function plot_scores_gc(ds,id) %#ok<DEFNU>
+function plot_scores_gc(ds,id)
 
     mn = ds.MN;
     seq = 1:mn;
@@ -808,7 +808,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
     figure_title(['Granger-causality (A=' num2str(ds.GCA * 100) '%, LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
     drawnow();
@@ -840,7 +840,7 @@ function plot_scores_gc(ds,id) %#ok<DEFNU>
 
 end
 
-function plot_scores_lm(ds,id) %#ok<DEFNU>
+function plot_scores_lm(ds,id)
 
     mn = ds.MN;
     seq = 1:mn;
@@ -870,7 +870,7 @@ function plot_scores_lm(ds,id) %#ok<DEFNU>
     figure_title(['Logistic Model (ADJ=' lma_label ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
     drawnow();
@@ -888,7 +888,7 @@ function plot_scores_lm(ds,id) %#ok<DEFNU>
 
 end
 
-function plot_scores_pps(ds,id) %#ok<DEFNU>
+function plot_scores_pps(ds,id)
 
     mn = ds.MN;
     seq = 1:mn;
@@ -912,7 +912,7 @@ function plot_scores_pps(ds,id) %#ok<DEFNU>
     figure_title(['Predictive Power Score Model (K=' num2str(ds.PPSK) ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
     drawnow();
@@ -930,7 +930,7 @@ function plot_scores_pps(ds,id) %#ok<DEFNU>
 
 end
 
-function plot_scores_pd(ds,id) %#ok<DEFNU>
+function plot_scores_pd(ds,id)
 
     mn = ds.MN;
     seq = 1:mn;
@@ -972,7 +972,7 @@ function plot_scores_pd(ds,id) %#ok<DEFNU>
     figure_title(['Price Discovery (' ds.PDT ', LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
     drawnow();
@@ -1019,7 +1019,7 @@ function plot_scores_overall(ds,id)
 
     for i = 1:sm_len
         ctitles{i} = [ds.SM{i} '=' num2str(ds.SC(i))];
-        eval(['sm_scores(i,:) = ds.' ds.SM{i} 'Scores;']);
+        eval(['sm_scores(i,:) = ds.' ds.SM{i} 'Scores;']); %#ok<EVLDOT> 
     end
 
     sm_scores = sm_scores(:,order);
@@ -1051,7 +1051,7 @@ function plot_scores_overall(ds,id)
     figure_title('Overall Scores');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
     drawnow();

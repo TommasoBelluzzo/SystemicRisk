@@ -40,10 +40,10 @@ function ds = validate_dataset_internal(ds,category,categories)
 
     validate_field(ds,'File',{'char'},{'nonempty' 'size' [1 NaN]});
     validate_field(ds,'Version',{'char'},{'nonempty' 'size' [1 NaN]});
-    creation_date = validate_field(ds,'CreationDate',{'double'},{'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
+    creation_date = validate_field(ds,'CreationDate',{'double'},{'real' 'finite' '>=' datenum(2014,1,1) 'scalar'}); %#ok<DATNM> 
 
     result = validate_field(ds,'Result',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
-    result_date = validate_field(ds,'ResultDate',{'double'},{'optional' 'real' 'finite' '>=' datenum(2014,1,1) 'scalar'});
+    result_date = validate_field(ds,'ResultDate',{'double'},{'optional' 'real' 'finite' '>=' datenum(2014,1,1) 'scalar'}); %#ok<DATNM> 
     result_analysis = validate_field(ds,'ResultAnalysis',{'function_handle'},{'optional' 'scalar'});
     result_serial = validate_field(ds,'ResultSerial',{'char'},{'optional' 'nonempty' 'size' [1 NaN]});
 
@@ -65,7 +65,7 @@ function ds = validate_dataset_internal(ds,category,categories)
         end
 
         if (isempty(result_date) || (result_date < creation_date))
-            error(['The dataset field ''ResultDate'' is invalid.' new_line() 'Expected value to be a numeric date greater than or equal to ' datestr(creation_date,'dd/mm/yyyy') '.']);
+            error(['The dataset field ''ResultDate'' is invalid.' new_line() 'Expected value to be a numeric date greater than or equal to ' datestr(creation_date,'dd/mm/yyyy') '.']); %#ok<DATST> 
         end
 
         if (isempty(result_analysis))

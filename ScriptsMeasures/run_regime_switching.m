@@ -189,7 +189,7 @@ function ds = initialize(ds,sn,rs2,rs3,rs4)
     m = sum(rs);
 
     ds.Result = 'RegimeSwitching';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -611,7 +611,7 @@ function plot_indicators(ds,target,id)
     figure_title(['Indicators ' model]);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

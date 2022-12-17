@@ -153,7 +153,7 @@ function ds = initialize(ds,sn,bw,sst,rp,k)
     t = ds.T;
 
     ds.Result = 'Connectedness';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyse_result(ds);
     ds.ResultSerial = sn;
 
@@ -384,7 +384,7 @@ function plot_indicators(ds,id)
     figure_title('Indicators');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -476,7 +476,7 @@ function plot_network(ds,id)
     figure_title('Network Graph');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -503,7 +503,7 @@ function plot_adjacency_matrix(ds,id)
     figure_title('Average Adjacency Matrix');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -563,7 +563,7 @@ function plot_centralities(ds,id)
     figure_title('Average Centrality Measures');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

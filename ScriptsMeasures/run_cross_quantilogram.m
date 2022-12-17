@@ -184,7 +184,7 @@ function ds = initialize(ds,sn,bw,a,lags,cim,cis,cip)
     n = ds.N;
 
     ds.Result = 'CrossQuantilogram';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 

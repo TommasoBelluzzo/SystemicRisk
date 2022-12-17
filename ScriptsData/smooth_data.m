@@ -78,7 +78,7 @@ function [data,s] = validate_input(data,s)
 
     [t,n] = size(data);
 
-    if ((any([t,n]) == 1) && (n > t))
+    if ((any([t,n] == 1)) && (n > t))
         error('The value of ''data'' is invalid. Expected input to be a column vector when a single time series is defined.');
     end
 

@@ -257,7 +257,7 @@ function ds = initialize(ds,sn,bw,op,lst,car,f,lgd,l,c,it,k)
     t = ds.T;
 
     ds.Result = 'Default';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -534,7 +534,7 @@ function plot_distances(ds,id)
     figure_title('Distances');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -566,7 +566,7 @@ function plot_dip(ds,id)
     figure_title('Distress Insurance Premium');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -612,7 +612,7 @@ function plot_rankings(ds,id)
     figure_title('Rankings (Kendall''s W)');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -657,7 +657,7 @@ function plot_scca(ds,id)
     figure_title(['Systemic CCA (' ds.OP ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

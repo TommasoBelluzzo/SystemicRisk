@@ -195,7 +195,7 @@ function ds = initialize(ds,sn,bwl,bwm,bws,mem,w,c,s2)
     t = ds.T;
 
     ds.Result = 'Liquidity';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -413,7 +413,7 @@ function plot_averages(ds,id)
     figure_title('Averages');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end

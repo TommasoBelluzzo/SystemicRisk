@@ -44,7 +44,7 @@ if (~strcmpi(path_base(end),filesep()))
     path_base = [path_base filesep()];
 end
 
-if (~isempty(regexpi(path_base,'Editor')))
+if (~isempty(regexpi(path_base,'Editor','once')))
     path_base_fs = dir(path_base);
     is_live = ~all(cellfun(@isempty,regexpi({path_base_fs.name},'LiveEditorEvaluationHelper')));
 
@@ -85,7 +85,7 @@ paths_base = strsplit(paths_base,';');
 for i = numel(paths_base):-1:1
     path_current = paths_base{i};
 
-    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'])))
+    if (~strcmp(path_current,path_base) && isempty(regexpi(path_current,[filesep() 'Scripts'],'once')))
         paths_base(i) = [];
     end
 end

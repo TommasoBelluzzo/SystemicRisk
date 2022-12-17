@@ -163,7 +163,7 @@ function ds = initialize(ds,sn,bw,bws,indices,fevd,lags,h)
     t = ds.T;
 
     ds.Result = 'Spillover';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -351,7 +351,7 @@ function plot_index(ds,id)
     figure_title('Spillover Index');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -403,7 +403,7 @@ function plot_spillovers(ds,id)
     figure_title(['Spillovers (' ds.FEVD ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')']);
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
