@@ -1,7 +1,7 @@
 % [INPUT]
 % data = A float t-by-n matrix (-Inf,Inf) representing the model input.
 % fevd = A string representing the FEVD type:
-%   - 'G' for generalized FEVD.
+%   - 'G' for generalized FEVD;
 %   - 'O' for orthogonal FEVD.
 % lags = An integer [1,3] representing the number of lags of the VAR model (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon (optional, default=4).

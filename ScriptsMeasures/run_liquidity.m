@@ -7,9 +7,9 @@
 % bwm = An integer [21,90) representing the dimension of the medium bandwidth (optional, default=21).
 % bws = An integer [5,21) representing the dimension of the short bandwidth (optional, default=5).
 % mem = A string representing the MEM type used to calculate the ILLIQ (optional, default='B'):
-%   - 'B' for Baseline MEM.
-%   - 'A' for Asymmetric MEM.
-%   - 'P' for Asymmetric Power MEM.
+%   - 'B' for Baseline MEM;
+%   - 'A' for Asymmetric MEM;
+%   - 'P' for Asymmetric Power MEM;
 %   - 'S' for Spline MEM.
 % w = An integer [500,Inf) representing the number of sweeps used to calculate the RIS (optional, default=500).
 % c = A float (0,Inf) representing the starting coefficient value used to calculate the RIS (optional, default=0.01).
@@ -516,7 +516,7 @@ function plot_sequence_illiq(ds,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
@@ -532,7 +532,7 @@ function plot_sequence_illiq(ds,id)
             hold(subs(2),'on');
                 plot(subs(2),x,delta,'Color',[0.494 0.184 0.556]);
                 if (~isempty(xd))
-                    plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1 0.4 0.4]);
+                    plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1.000 0.400 0.400]);
                 end
             hold(subs(2),'off');
         end
@@ -610,7 +610,7 @@ function plot_sequence_other(ds,target,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 

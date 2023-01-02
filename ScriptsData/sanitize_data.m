@@ -172,7 +172,7 @@ function [x,w,m] = validate_input(data,x,w,m)
         end
 
         if (floor(w) ~= w)
-            error('The value of ''w'' is invalid. Expected input to be integer-valued.');
+            error('The value of ''w'' is invalid. Expected input to be an integer.');
         end
 
         if ((w < 5) || (w > 21))
@@ -196,7 +196,7 @@ function [x,w,m] = validate_input(data,x,w,m)
         end
 
         if (any(floor(m) ~= m))
-            error('The value of ''m'' is invalid. Expected input to contain integer-valued elements.');
+            error('The value of ''m'' is invalid. Expected input to contain integer elements.');
         end
 
         if (m(1) >= m(2))

@@ -1,5 +1,7 @@
 % [INPUT]
-% r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which the first column represents the market returns and the second column represents the firm returns.
+% r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which:
+%   - the first column represents the market returns;
+%   - the second column represents the firm returns.
 % cp = A vector of floats [0,Inf) of length t representing the market capitalization of the firm.
 % lb = A vector of floats [0,Inf) of length t representing the liabilities of the firm.
 % lbr = A vector of floats [0,Inf) of length t representing the forward-rolled liabilities of the firm.

@@ -4,9 +4,9 @@
 % a = A float [0.01,0.10] representing the probability level of the F test critical value.
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for both restricted and unrestricted models (optional, default=10).
 % lag_sel = A string representing the lag order selection criteria (optional, default='AIC'):
-%   - 'AIC' for Akaike's Information Criterion.
-%   - 'BIC' for Bayesian Information Criterion.
-%   - 'FPE' for Final Prediction Error.
+%   - 'AIC' for Akaike's Information Criterion;
+%   - 'BIC' for Bayesian Information Criterion;
+%   - 'FPE' for Final Prediction Error;
 %   - 'HQIC' for Hannan-Quinn Information Criterion.
 %
 % [OUTPUT]

@@ -550,28 +550,17 @@ function plot_indicators(ds,target,id)
 
     f = figure('Name',['Regime-Switching Measures > Indicators ' model],'Units','normalized','Position',[100 100 0.85 0.85],'Tag',id);
 
-    if (all(ap == 0))
-        sub_1 = subplot(2,1,1);
-        area(ds.DatesNum,ones(ds.T,1),'EdgeColor','none','FaceColor',[0.8 0.8 0.8]);
-        hold on;
-            plot([ds.DatesNum(1) ds.DatesNum(end)],[0 1],'Color',[0 0 0],'LineWidth',1.5);
-            plot([ds.DatesNum(1) ds.DatesNum(end)],[1 0],'Color',[0 0 0],'LineWidth',1.5);
-        hold off;
-        set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
-        set(sub_1,'YLim',[0 1],'YTick',[]);
-    else
-        sub_1 = subplot(2,1,1);
-        plot(ds.DatesNum,ap);
-        set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)]);
-        set(sub_1,'YLim',[0 1]);
-        set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
-        set(sub_1,'XGrid','on','YGrid','on');
+    sub_1 = subplot(2,1,1);
+    plot(ds.DatesNum,ap);
+    set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)]);
+    set(sub_1,'YLim',[0 1]);
+    set(sub_1,'YTick',0:0.1:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(0:0.1:1) .* 100,'UniformOutput',false));
+    set(sub_1,'XGrid','on','YGrid','on');
 
-        if (ds.MonthlyTicks)
-            date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
-        else
-            date_ticks(sub_1,'x','yyyy','KeepLimits');
-        end
+    if (ds.MonthlyTicks)
+        date_ticks(sub_1,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(sub_1,'x','yyyy','KeepLimits');
     end
 
     t1 = title(sub_1,'Average Probability of High Variance');
@@ -579,28 +568,17 @@ function plot_indicators(ds,target,id)
     t1_position = get(t1,'Position');
     set(t1,'Position',[0.4783 t1_position(2) t1_position(3)]);
 
-    if (all(jp == 0))
-        sub_2 = subplot(2,1,2);
-        area(ds.DatesNum,ones(ds.T,1),'EdgeColor','none','FaceColor',[0.8 0.8 0.8]);
-        hold on;
-            plot([ds.DatesNum(1) ds.DatesNum(end)],[0 1],'Color',[0 0 0],'LineWidth',1.5);
-            plot([ds.DatesNum(1) ds.DatesNum(end)],[1 0],'Color',[0 0 0],'LineWidth',1.5);
-        hold off;
-        set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTick',[]);
-        set(sub_2,'YLim',[0 1],'YTick',[]);
-    else
-        sub_2 = subplot(2,1,2);
-        plot(ds.DatesNum,jp);
-        set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
-        set(sub_2,'YLim',plot_limits(jp,0,0));
-        set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick') .* 100,'UniformOutput',false));
-        set(sub_2,'XGrid','on','YGrid','on');
+    sub_2 = subplot(2,1,2);
+    plot(ds.DatesNum,jp);
+    set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
+    set(sub_2,'YLim',plot_limits(jp,0,0));
+    set(sub_2,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),get(sub_2,'YTick') .* 100,'UniformOutput',false));
+    set(sub_2,'XGrid','on','YGrid','on');
 
-        if (ds.MonthlyTicks)
-            date_ticks(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
-        else
-            date_ticks(sub_2,'x','yyyy','KeepLimits');
-        end
+    if (ds.MonthlyTicks)
+        date_ticks(sub_2,'x','mm/yyyy','KeepLimits','KeepTicks');
+    else
+        date_ticks(sub_2,'x','yyyy','KeepLimits');
     end
 
     t2 = title(sub_2,'Joint Probability of High Variance');
@@ -660,7 +638,9 @@ function plot_sequence(ds,target,id)
         data_r{i} = r_i;
     end
 
-    data_cs2 = mat2cell(smooth_data(cell2mat(ds.ConditionalVariances(offset,:))),t,ones(1,n));
+    cs2_sd = smooth_data(cell2mat(ds.ConditionalVariances(offset,:)));
+    cs2_sd(1:4) = cs2_sd(5);
+    data_cs2 = mat2cell(cs2_sd,t,ones(1,n));
 
     data_tm = ds.TransitionMatrices(offset,:);
 
@@ -793,7 +773,7 @@ function plot_sequence(ds,target,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
@@ -808,7 +788,7 @@ function plot_sequence(ds,target,id)
 
         if (~isempty(xd))
             hold(subs(3),'on');
-                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(3),'off');
         end
 

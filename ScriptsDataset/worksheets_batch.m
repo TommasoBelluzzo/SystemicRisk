@@ -85,7 +85,13 @@ function worksheets_batch_internal(file_path,sheets,names)
             end
 
             for i = 1:numel(sheets)
-                wb.Sheets.Item(sheets{i}).Name = names{i};
+                name = names{i};
+
+                if (length(name) > 31)
+                    continue;
+                end
+
+                wb.Sheets.Item(sheets{i}).Name = name;
             end
         end
 
@@ -121,8 +127,12 @@ function [sheets,names] = validate_input(sheets,names)
             error('The ''sheets'' parameter and the ''names'' parameter must contain the same number of elements.');
         end
 
-        if (any(cellfun(@(x)~ischar(x)||isempty(x)||(length(x) > 31),names)))
+        if (any(cellfun(@(x)~ischar(x)||isempty(x),names)))
             error('The ''names'' parameter contains invalid elements.');
+        end
+
+        if (any(cellfun(@length,names) > 31))
+            warning('MATLAB:SystemicRisk','One or more sheets will not be renamed because the name exceeds 31 characters.');
         end
     end
 

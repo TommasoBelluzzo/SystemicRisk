@@ -1,12 +1,20 @@
 % [INPUT]
-% r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which the first column represents the market returns and the second column represents the firm returns.
+% r = A float t-by-2 matrix (-Inf,Inf) representing the logarithmic returns, in which:
+%   - the first column represents the market returns;
+%   - the second column represents the firm returns.
 % a = A float [0.01,0.10] representing the target quantile.
 %
 % [OUTPUT]
 % caviar = A column vector of floats [0,Inf) of length t representing the Conditional Autoregressive Value at Risk.
 % beta = A column vector of floats (-Inf,Inf) of length 10 representing the model coefficients.
-% ir_fm = A float t-by-3 matrix (-Inf,Inf) representing the impulse response of the firm against a shock of the market, where the second column is the lower bound and the third column is the upper bound.
-% ir_mf = A float t-by-3 matrix (-Inf,Inf) representing the impulse response of the market against a shock of the firm, where the second column is the lower bound and the third column is the upper bound.
+% ir_fm = A float t-by-3 matrix (-Inf,Inf) representing the reaction of the firm to a shock of the market, in which:
+%   - the first column represents the impulse response;
+%   - the second column represents the lower bound;
+%   - the third column represents the upper bound.
+% ir_mf = A float t-by-3 matrix (-Inf,Inf) representing the reaction of the market against to shock of the firm, in which:
+%   - the first column represents the impulse response;
+%   - the second column represents the lower bound;
+%   - the third column represents the upper bound.
 % se = A column vector of floats [0,Inf) of length 10 representing model standard errors.
 % stats = A row vector of floats [0,Inf) of length 2 representing model error statistics, where the first element is the critical value and the second element is the p-value.
 

@@ -4,9 +4,9 @@
 % sv = A float t-by-k matrix (-Inf,Inf) representing the state variables.
 % bw = An integer [21,252] representing the dimension of each rolling window.
 % mem = A string representing the MEM type:
-%   - 'B' for Baseline MEM.
-%   - 'A' for Asymmetric MEM.
-%   - 'P' for Asymmetric Power MEM.
+%   - 'B' for Baseline MEM;
+%   - 'A' for Asymmetric MEM;
+%   - 'P' for Asymmetric Power MEM;
 %   - 'S' for Spline MEM.
 % mag = An integer [1,Inf) obtained as 10^x representing the magnitude of logarithmic returns and trading volumes (optional, default=[]).
 %

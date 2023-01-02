@@ -16,13 +16,13 @@ delete(allchild(0));
 
 clearvars('-except','up');
 
+rng('default');
+
 if (exist('up','var') == 0)
     up = true;
 end
 
 delete(gcp('nocreate'));
-
-rng('default');
 
 %% PARALLEL COMPUTING
 
@@ -96,7 +96,7 @@ addpath(paths_base);
 %% ENVIRONMENT VARIABLES
 
 ds_dir = 'Datasets';
-ds_version = 'v3.6';
+ds_version = 'v3.7';
 
 try
     sn = ['INIT-' upper(char(java.util.UUID.randomUUID()))];

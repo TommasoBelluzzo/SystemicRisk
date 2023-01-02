@@ -350,7 +350,7 @@ function plot_indicators(ds,id)
     sub_1 = subplot(2,1,1);
     p1 = plot(sub_1,ds.DatesNum,dci);
     hold on;
-        p2 = plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1 0.4 0.4]);
+        p2 = plot(sub_1,ds.DatesNum,repmat(ds.K,[ds.T 1]),'Color',[1.000 0.400 0.400]);
     hold off;
     set(sub_1,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_1,'XGrid','on','YGrid','on');
@@ -358,7 +358,7 @@ function plot_indicators(ds,id)
     title(sub_1,['DCI' label]);
 
     sub_2 = subplot(2,1,2);
-    a1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1 0.4 0.4]);
+    a1 = area(sub_2,ds.DatesNum,threshold,'EdgeColor','none','FaceColor',[1.000 0.400 0.400]);
     hold on;
         a2 = area(sub_2,ds.DatesNum,cio,'EdgeColor','none','FaceColor','b');
         if (ds.Groups == 0)

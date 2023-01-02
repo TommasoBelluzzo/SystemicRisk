@@ -5,14 +5,14 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % sel = A string representing the time series selection method (optional, default='F'):
-%   - 'F' for firms.
+%   - 'F' for firms;
 %   - 'G' for groups.
 % rr = A float [0,1] representing the recovery rate in case of default (optional, default=0.4).
 % pw = A string representing the probabilities of default weighting method (optional, default='W'):
-%   - 'A' for plain average.
+%   - 'A' for plain average;
 %   - 'W' for progressive average.
 % md = A string representing the multivariate distribution used by the CIMDO model (optional, default='N'):
-%   - 'N' for normal distribution.
+%   - 'N' for normal distribution;
 %   - 'T' for Student's T distribution.
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -26,7 +26,7 @@
 %   1) top 3 and bottom 3 entities by CDS spreads;
 %   2) top 3 and bottom 3 entities by variance of returns;
 %   3) top 3 and bottom 3 entities by market capitalization (if data is available);
-%   4) top 3 and bottom 3 entities by liabilities (if data is available);
+%   4) top 3 and bottom 3 entities by liabilities (if data is available).
 
 function [result,stopped] = run_cross_entropy(varargin)
 
@@ -811,7 +811,7 @@ function plot_sequence_dide(ds,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
@@ -819,7 +819,7 @@ function plot_sequence_dide(ds,id)
 
         if (~isempty(xd))
             hold(subs(2),'on');
-                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(2),'off');
         end
 
@@ -896,7 +896,7 @@ function plot_sequence_cojpods(ds,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 

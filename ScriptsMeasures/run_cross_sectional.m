@@ -188,7 +188,7 @@ function ds = initialize(ds,sn,k,d,car,sf,fr)
     t = ds.T;
 
     ds.Result = 'CrossSectional';
-    ds.ResultDate = now();
+    ds.ResultDate = now(); %#ok<TNOW1> 
     ds.ResultAnalysis = @(ds)analyze_result(ds);
     ds.ResultSerial = sn;
 
@@ -466,7 +466,7 @@ function plot_idiosyncratic_averages(ds,id)
     figure_title('Idiosyncratic Averages');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -516,7 +516,7 @@ function plot_systemic_averages(ds,id)
     figure_title('Systemic Averages');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -531,7 +531,8 @@ function plot_correlations(ds,id)
 
     z = bsxfun(@minus,ds.Averages,mu);
     z = bsxfun(@rdivide,z,sigma);
-    z_limits = [nanmin(z(:)) nanmax(z(:))];
+    z = z(:);
+    z_limits = [min(z,[],'omitnan') max(z,[],'omitnan')];
 
     n = numel(ds.LabelsMeasures);
 
@@ -547,7 +548,7 @@ function plot_correlations(ds,id)
     x_labels_grey_indices = ismember(x_labels_grey,ds.LabelsMeasuresSimple(1:3));
     y_labels_grey = cellfun(@(x)x.String,y_labels,'UniformOutput',false);
     y_labels_grey_indices = ismember(y_labels_grey,ds.LabelsMeasuresSimple(1:3));
-    set([x_labels{x_labels_grey_indices}; y_labels{y_labels_grey_indices}],'Color',[0.5 0.5 0.5]);
+    set([x_labels{x_labels_grey_indices}; y_labels{y_labels_grey_indices}],'Color',[0.500 0.500 0.500]);
 
     for i = 1:n
         for j = 1:n
@@ -580,7 +581,7 @@ function plot_correlations(ds,id)
     annotation('TextBox',[0 0 1 1],'String','Correlation Matrix','EdgeColor','none','FontName','Helvetica','FontSize',14,'HorizontalAlignment','center');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -675,7 +676,7 @@ function plot_rankings(ds,id)
     figure_title('Rankings (Kendall''s W)');
 
     pause(0.01);
-    frame = get(f,'JavaFrame');
+    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
     set(frame,'Maximized',true);
 
 end
@@ -752,20 +753,20 @@ function plot_sequence_caviar(ds,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
         plot(subs(2),x_ir,ir_fm(:,1),'Color',[0.000 0.447 0.741]);
         hold(subs(2),'on');
-            plot(subs(2),x_ir,ir_fm(:,2),'Color',[1 0.4 0.4],'LineStyle','--');
-            plot(subs(2),x_ir,ir_fm(:,3),'Color',[1 0.4 0.4],'LineStyle','--');
+            plot(subs(2),x_ir,ir_fm(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
+            plot(subs(2),x_ir,ir_fm(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
         hold(subs(2),'off');
 
         plot(subs(3),x_ir,ir_mf(:,1),'Color',[0.000 0.447 0.741]);
         hold(subs(3),'on');
-            plot(subs(3),x_ir,ir_mf(:,2),'Color',[1 0.4 0.4],'LineStyle','--');
-            plot(subs(3),x_ir,ir_mf(:,3),'Color',[1 0.4 0.4],'LineStyle','--');
+            plot(subs(3),x_ir,ir_mf(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
+            plot(subs(3),x_ir,ir_mf(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
         hold(subs(3),'off');
 
     end
@@ -837,7 +838,7 @@ function plot_sequence_other(ds,target,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 

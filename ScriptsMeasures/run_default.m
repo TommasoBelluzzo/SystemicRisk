@@ -5,7 +5,7 @@
 % out = A string representing the full path to the Excel spreadsheet to which the results are written, eventually replacing the previous ones.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % op = A string representing the option pricing model (optional, default='BSM'):
-%   - 'BSM' for Black-Scholes-Merton.
+%   - 'BSM' for Black-Scholes-Merton;
 %   - 'GC' for Gram-Charlier.
 % lst = A float or a vector of floats (0,Inf) representing the long-term to short-term liabilities ratio(s) used to calculate D2C and D2D (optional, default=3).
 % car = A float [0.03,0.20] representing the capital adequacy ratio used to calculate the D2C (optional, default=0.08).
@@ -491,28 +491,28 @@ function plot_distances(ds,id)
     sub_1 = subplot(2,2,1);
     plot(sub_1,ds.DatesNum,smooth_data(distances(:,1)),'Color',[0.000 0.447 0.741]);
     hold on;
-        p = plot(sub_1,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
+        p = plot(sub_1,ds.DatesNum,zeros(ds.T,1),'Color',[1.000 0.400 0.400]);
     hold off;
     title(sub_1,['Average D2D' op_label]);
 
     sub_2 = subplot(2,2,2);
     plot(sub_2,ds.DatesNum,smooth_data(distances(:,3)),'Color',[0.000 0.447 0.741]);
     hold on;
-        plot(sub_2,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
+        plot(sub_2,ds.DatesNum,zeros(ds.T,1),'Color',[1.000 0.400 0.400]);
     hold off;
     title(sub_2,['Average D2C' d2c_label]);
 
     sub_3 = subplot(2,2,3);
     plot(sub_3,ds.DatesNum,smooth_data(distances(:,2)),'Color',[0.000 0.447 0.741]);
     hold on;
-        plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
+        plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1.000 0.400 0.400]);
     hold off;
     title(sub_3,['Portfolio D2D' op_label]);
 
     sub_4 = subplot(2,2,4);
     plot(sub_4,ds.DatesNum,smooth_data(distances(:,4)),'Color',[0.000 0.447 0.741]);
     hold on;
-        plot(sub_4,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
+        plot(sub_4,ds.DatesNum,zeros(ds.T,1),'Color',[1.000 0.400 0.400]);
     hold off;
     title(sub_4,['Portfolio D2C' d2c_label]);
 
@@ -734,13 +734,13 @@ function plot_sequence(ds,target,id)
 
         if (is_distance)
             hold(subs(1),'on');
-                plot(subs(1),x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
+                plot(subs(1),x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 

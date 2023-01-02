@@ -358,7 +358,7 @@ function plot_catfin(ds,id)
         sub = subplot(2,4,i + 4);
         plot(sub,ds.DatesNum,r,'Color',[0.000 0.447 0.741]);
         hold on;
-            plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaRs(:,i),5),'Color',[1 0.4 0.4],'LineWidth',1.5);
+            plot(sub,ds.DatesNum,smooth_data(ds.CATFINVaRs(:,i),5),'Color',[1.000 0.400 0.400],'LineWidth',1.5);
         hold off;
         set(sub,'YLim',y_limits);
 
@@ -437,7 +437,7 @@ function plot_indicators_other(ds,id)
     p2.Color(4) = 0.35;
     hold on;
         p21 = plot(sub_2,ds.DatesNum,ti_ma,'Color',[0.000 0.447 0.741],'LineWidth',1);
-        p22 = plot(sub_2,ds.DatesNum,ti_math,'Color',[1 0.4 0.4],'LineWidth',1);
+        p22 = plot(sub_2,ds.DatesNum,ti_math,'Color',[1.000 0.400 0.400],'LineWidth',1);
     hold off;
     set(sub_2,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     l = legend(sub_2,[p21 p22],'EWMA','Threshold Exceeded','Location','best','Orientation','horizontal');
@@ -454,7 +454,7 @@ function plot_indicators_other(ds,id)
     p3.Color(4) = 0.35;
     hold on;
         plot(sub_3,ds.DatesNum,cs_ma,'Color',[0.000 0.447 0.741],'LineWidth',1);
-        plot(sub_3,ds.DatesNum,cs_math,'Color',[1 0.4 0.4],'LineWidth',1);
+        plot(sub_3,ds.DatesNum,cs_math,'Color',[1.000 0.400 0.400],'LineWidth',1);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     t3 = title(sub_3,['Correlation Surprise (Q=' num2str(ds.Q) ')']);
@@ -513,7 +513,7 @@ function plot_pca(ds,id)
     hold on;
         line(x_area(2:3,:),y_area(2:3,:),z_area(2:3,:),'Color',[0 0 1],'LineStyle','none','Marker','.');
         line(x_points,y_points,z_points,'Color',[1 0 0],'LineStyle','none','Marker','.');
-        line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color',[0 0 0]);
+        line([limits_low limits_high NaN 0 0 NaN 0 0],[0 0 NaN limits_low limits_high NaN 0 0],[0 0 NaN 0 0 NaN limits_low limits_high],'Color',[0.000 0.000 0.000]);
     hold off;
     view(sub_1,coefficients_columns);
     axis('tight');

@@ -6,7 +6,7 @@
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % bws = An integer [1,10] representing the number of steps between each rolling window (optional, default=10).
 % fevd = A string representing the FEVD type used by the variance decomposition (optional, default='G'):
-%   - 'G' for generalized FEVD.
+%   - 'G' for generalized FEVD;
 %   - 'O' for orthogonal FEVD.
 % lags = An integer [1,3] representing the number of lags of the VAR model used by the variance decomposition (optional, default=2).
 % h = An integer [1,10] representing the prediction horizon used by the variance decomposition (optional, default=4).
@@ -387,7 +387,7 @@ function plot_spillovers(ds,id)
     fill(sub_3,[ds.DatesNum; flipud(ds.DatesNum)],[net(:,1); fliplr(net(:,2))],[0.65 0.65 0.65],'EdgeColor','none','FaceAlpha',0.35);
     hold on;
         plot(sub_3,ds.DatesNum,mean(net,2),'Color',[0.000 0.447 0.741]);
-        plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1 0.4 0.4]);
+        plot(sub_3,ds.DatesNum,zeros(ds.T,1),'Color',[1.000 0.400 0.400]);
     hold off;
     set(sub_3,'XLim',[ds.DatesNum(1) ds.DatesNum(end)],'XTickLabelRotation',45);
     set(sub_3,'YLim',[-1 1],'YTick',-1:0.2:1,'YTickLabels',arrayfun(@(x)sprintf('%.f%%',x),(-1:0.2:1) .* 100,'UniformOutput',false));
@@ -485,23 +485,23 @@ function plot_sequence(ds,id)
         plot(subs(1),x,from,'Color',[0.000 0.447 0.741]);
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
         plot(subs(2),x,to,'Color',[0.000 0.447 0.741]);
         hold(subs(2),'on');
-            plot(subs(2),x,ones(numel(x),1),'Color',[1 0.4 0.4]);
+            plot(subs(2),x,ones(numel(x),1),'Color',[1.000 0.400 0.400]);
             if (~isempty(xd))
-                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1.000 0.400 0.400]);
             end
         hold(subs(2),'off');
 
         plot(subs(3),x,net,'Color',[0.000 0.447 0.741]);
         hold(subs(3),'on');
-            plot(subs(3),x,zeros(numel(x),1),'Color',[1 0.4 0.4]);
+            plot(subs(3),x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
             if (~isempty(xd))
-                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1.000 0.400 0.400]);
             end
         hold(subs(3),'off');
 

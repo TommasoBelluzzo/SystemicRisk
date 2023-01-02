@@ -1,7 +1,7 @@
 %% INITIALIZATION
 
 up = false;
-initialize;
+initialize();
 
 ev = {'ds_dir' 'ds_version' 'out_dir' 'out_name' 'path_base' 'sn' 'temp_dir' 'temp_name'};
 ev_len = numel(ev);

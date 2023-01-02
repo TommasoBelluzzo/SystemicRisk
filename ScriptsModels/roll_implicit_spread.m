@@ -1,5 +1,5 @@
 % [INPUT]
-% p = A vector of floats (-Inf,Inf) of length t representing the prices.
+% p = A vector of floats [0,Inf) of length t representing the prices.
 % bw = An integer [21,252] representing the dimension of each rolling window.
 % w = An integer [500,Inf) representing the number of sweeps (optional, default=1000).
 % c = A float (0,Inf) representing the starting coefficient value (optional, default=0.01).
@@ -14,7 +14,7 @@ function ris = roll_implicit_spread(varargin)
 
     if (isempty(ip))
         ip = inputParser();
-        ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real' 'finite' 'vector' 'nonempty'}));
+        ip.addRequired('p',@(x)validateattributes(x,{'double'},{'real' 'finite' 'nonnegative' 'vector' 'nonempty'}));
         ip.addRequired('bw',@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 21 '<=' 252 'scalar'}));
         ip.addOptional('w',1000,@(x)validateattributes(x,{'double'},{'real' 'finite' 'integer' '>=' 500}));
         ip.addOptional('c',0.01,@(x)validateattributes(x,{'double'},{'real' 'finite' 'positive'}));

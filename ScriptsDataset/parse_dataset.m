@@ -4,10 +4,10 @@
 % date_format_base = A string representing the base date format used in the Excel spreadsheet for all elements except balance sheet ones (optional, default='dd/mm/yyyy').
 % date_format_balance = A string representing the date format used in the Excel spreadsheet for balance sheet elements (optional, default='QQ yyyy').
 % shares_type = A string representing the type of data included in the Shares sheet (optional, default='P'):
-%   - 'P' for prices.
+%   - 'P' for prices;
 %   - 'R' for returns.
 % crises_type = A string representing the type of data included in the Crises sheet (optional, default='R'):
-%   - 'E' for events.
+%   - 'E' for events;
 %   - 'R' for time ranges.
 % distress_threshold = A float [0.05,0.75] representing the threshold at which distress statuses are detected (optional, default=0.05).
 %
@@ -263,24 +263,16 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     defaults_cnt = sum(~isnan(defaults));
     insolvencies_cnt = sum(~isnan(insolvencies));
 
-    if (any(defaults == 1))
-        error(['Error in dataset ''' file_name ''': it contains firms defaulted since the beginning of the observations period that must be removed.']);
-    end
-
-    if (sum(isnan(defaults)) < 3)
-        error(['Error in dataset ''' file_name ''': it contains less than 3 non-defaulted firms.']);
+    if (any(defaults < 63))
+        error(['Error in dataset ''' file_name ''': it contains firms that defaulted too early and must be removed.']);
     end
 
     if (defaults_cnt > dd_limit)
         error(['Error in dataset ''' file_name ''': it contains too many defaulted firms (' num2str(defaults_cnt) ' out of a maximum of ' num2str(dd_limit) ').']);
     end
 
-    if (any(insolvencies == 1))
-        error(['Error in dataset ''' file_name ''': it contains firms being insolvent since the beginning of the observation period that must be removed.']);
-    end
-
-    if (sum(isnan(insolvencies)) < 3)
-        error(['Error in dataset ''' file_name ''': it contains less than 3 non-insolvent firms.']);
+    if (any(insolvencies < 63))
+        error(['Error in dataset ''' file_name ''': it contains firms that became insolvent too early and must be removed.']);
     end
 
     if (insolvencies_cnt > dd_limit)
@@ -292,6 +284,13 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     includes_cds = ismember({'CDS'},file_sheets_other);
     includes_balance_sheet = sum(ismember({'Assets' 'Equity'},file_sheets_other)) == 2;
     includes_crises = ~isempty(crises_dummy);
+
+    if (using_prices && includes_capitalizations)
+        supports_bubbles_detection = true;
+    else
+        supports_bubbles_detection = false;
+        warning('MATLAB:SystemicRisk',['The dataset ''' file_name ''' does not meet all the requirements for the computation of bubbles detection measures (''Shares'' must be expressed as prices, the ''Capitalizations'' sheet must be included).']);
+    end
 
     if (includes_cds)
         supports_cross_entropy = true;
@@ -394,6 +393,7 @@ function ds = parse_dataset_internal(file,file_sheets,version,date_format_base,d
     ds.Defaults = defaults;
     ds.Insolvencies = insolvencies;
 
+    ds.SupportsBubblesDetection = supports_bubbles_detection;
     ds.SupportsComponent = true;
     ds.SupportsConnectedness = true;
     ds.SupportsCrossEntropy = supports_cross_entropy;

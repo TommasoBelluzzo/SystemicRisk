@@ -6,11 +6,11 @@
 %   - for Asymmetric MEM and Asymmetric Power MEM:
 %     * first column: endogenous variable [0,Inf), mandatory;
 %     * second column: logarithmic returns (-Inf,Inf), mandatory;
-%     * other columns: exogenous variables [0,Inf), optional;
+%     * other columns: exogenous variables [0,Inf), optional.
 % type = A string representing the model type:
-%   - 'B' for Baseline MEM.
-%   - 'A' for Asymmetric MEM.
-%   - 'P' for Asymmetric Power MEM.
+%   - 'B' for Baseline MEM;
+%   - 'A' for Asymmetric MEM;
+%   - 'P' for Asymmetric Power MEM;
 %   - 'S' for Spline MEM.
 % q = An integer [1,Inf) representing the first order of the model (optional, default=1).
 % p = An integer [1,Inf) representing the second order of the model (optional, default=1).

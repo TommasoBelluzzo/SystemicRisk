@@ -144,8 +144,8 @@ function y = validate_input(y)
     y = y(:);
     t = numel(y);
 
-    if (t < 3)
-        error('The value of ''y'' is invalid. Expected input to be a vector containing at least 3 elements.');
+    if (t < 5)
+        error('The value of ''y'' is invalid. Expected input to be a vector containing at least 5 elements.');
     end
 
 end

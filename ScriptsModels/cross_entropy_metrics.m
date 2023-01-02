@@ -1,6 +1,6 @@
 % [INPUT]
 % pods = A vector of floats [0,1] of length n representing the probabilities of default.
-% g = A n^2-by-n matrix of numeric booleans representing the posterior density orthants.
+% g = A boolean n^2-by-n matrix representing the posterior density orthants.
 % p = A vector of floats [0,1] of length n^2 representing the posterior density probabilities.
 %
 % [OUTPUT]

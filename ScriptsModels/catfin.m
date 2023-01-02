@@ -44,7 +44,7 @@ function [var_np,var_gpd,var_gev,var_sged] = catfin_internal(r,a,g,u)
         options = optimset(optimset(@fsolve),'Diagnostics','off','Display','off');
     end
 
-    t = size(r,1);
+    t = numel(r);
 
     w = fliplr(((1 - g) / (1 - g^t)) .* (g .^ (0:1:t-1))).';  
     h = sortrows([r w],1);

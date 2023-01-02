@@ -4,7 +4,7 @@
 % r = A float or a vector of floats (-Inf,Inf) of length k representing the annualized risk-free interest rate.
 % t = A float or a vector of floats (0,Inf) of length k representing the time to maturity of default barrier.
 % op = A string representing the option pricing model used by the Systemic CCA framework (optional, default='BSM'):
-%   - 'BSM' for Black-Scholes-Merton.
+%   - 'BSM' for Black-Scholes-Merton;
 %   - 'GC' for Gram-Charlier.
 %
 % [OUTPUT]

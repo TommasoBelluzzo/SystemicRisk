@@ -7,18 +7,18 @@
 % md = A float t-by-n matrix containing the measures time series.
 % co = An integer representing the comparison cut-off, a limit before which all the observations are discarded (optional, default=1).
 % sc = Optional argument specified as a vector of floats [0,Inf) of length 4 representing the score coefficient of each comparison model (Granger-causality, Logistic, Predictive Power Score, Price Discovery).
-%      When defined, comparison models with a coefficient equal to 0 are not computed. When left undefined, all the comparison models are computed and their scores are equally weighted.  
+%   When defined, comparison models with a coefficient equal to 0 are not computed. When left undefined, all the comparison models are computed and their scores are equally weighted.  
 % lag_max = An integer [2,Inf) representing the maximum lag order to be evaluated for Granger-causality and Price Discovery models (optional, default=10).
 % lag_sel = A string representing the lag order selection criteria for Granger-causality and Price Discovery models (optional, default='AIC'):
-%   - 'AIC' for Akaike's Information Criterion.
-%   - 'BIC' for Bayesian Information Criterion.
-%   - 'FPE' for Final Prediction Error.
+%   - 'AIC' for Akaike's Information Criterion;
+%   - 'BIC' for Bayesian Information Criterion;
+%   - 'FPE' for Final Prediction Error;
 %   - 'HQIC' for Hannan-Quinn Information Criterion.
 % gca = A float [0.01,0.10] representing the probability level of the F test critical value used in the Granger-causality model (optional, default=0.01).
 % lma = A boolean that indicates whether to use the adjusted McFadden R2 for the Logistic model (optional, default=false).
 % ppsk = An integer [2,10] representing the number of cross-validation folds used in the Predictive Power Score model (optional, default=4).
 % pdt = A string representing the type of metric to calculate for the Price Discovery model (optional, default='GG'):
-%   - 'GG' for Gonzalo-Granger Component Metric.
+%   - 'GG' for Gonzalo-Granger Component Metric;
 %   - 'H' for Hasbrouck Information Metric.
 % analyze = A boolean that indicates whether to analyse the results and display plots (optional, default=false).
 %
@@ -707,7 +707,7 @@ function plot_measures(ds,id)
 
                 hold(subs(1),'on');
                     for i = 1:numel(c1)
-                        line(subs(1),ones(2,1) .* c1(i),[c2(1) c2(2)],'Color',[1 0.4 0.4]);
+                        line(subs(1),ones(2,1) .* c1(i),[c2(1) c2(2)],'Color',[1.000 0.400 0.400]);
                     end
                 hold(subs(1),'off');
             else

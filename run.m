@@ -1,7 +1,7 @@
 %% INITIALIZATION
 
 up = true;
-initialize;
+initialize();
 
 ev = {'ds_dir' 'ds_version' 'out_dir' 'out_name' 'path_base' 'sn' 'temp_dir' 'temp_name'};
 ev_len = numel(ev);
@@ -81,16 +81,17 @@ comparison_analyze = true;
 
 measures_setup = {
 %   NAME                 ENABLED  ANALYZE  COMPARE  FUNCTION
-    'Component'          true     true     true     @(temp,out,analyze)run_component(ds,sn,temp,out,bw,0.99,0.98,0.05,0.2,0.75,analyze);
-    'Connectedness'      true     true     true     @(temp,out,analyze)run_connectedness(ds,sn,temp,out,bw,0.05,false,0.06,analyze);
-    'CrossEntropy'       true     true     true     @(temp,out,analyze)run_cross_entropy(ds,sn,temp,out,bw,'G',0.4,'W','N',analyze);
-    'CrossQuantilogram'  true     true     true     @(temp,out,analyze)run_cross_quantilogram(ds,sn,temp,out,bw,0.05,60,'SB',0.05,100,analyze);
-    'CrossSectional'     true     true     true     @(temp,out,analyze)run_cross_sectional(ds,sn,temp,out,0.95,0.40,0.08,0.40,3,analyze);
-    'Default'            true     true     true     @(temp,out,analyze)run_default(ds,sn,temp,out,bw,'BSM',3,0.08,2,0.55,0.10,100,5,0.95,analyze);
-    'Liquidity'          true     true     true     @(temp,out,analyze)run_liquidity(ds,sn,temp,out,bw,21,5,'B',500,0.01,0.0004,analyze);
-    'RegimeSwitching'    true     true     true     @(temp,out,analyze)run_regime_switching(ds,sn,temp,out,true,true,true,analyze);
-    'Spillover'          true     true     true     @(temp,out,analyze)run_spillover(ds,sn,temp,out,bw,10,'G',2,4,analyze);
-    'TailDependence'     true     true     true     @(temp,out,analyze)run_tail_dependence(ds,sn,temp,out,bw,0.10,0.5,0.05,100,analyze);
+    'BubblesDetection'   true     true     true     @(temp,out,analyze)run_bubbles_detection(ds,sn,temp,out,'WB',0.95,0,'FIX',NaN,analyze);
+    'Component'          false    true     true     @(temp,out,analyze)run_component(ds,sn,temp,out,bw,0.99,0.98,0.05,0.2,0.75,analyze);
+    'Connectedness'      false    true     true     @(temp,out,analyze)run_connectedness(ds,sn,temp,out,bw,0.05,false,0.06,analyze);
+    'CrossEntropy'       false    true     true     @(temp,out,analyze)run_cross_entropy(ds,sn,temp,out,bw,'G',0.4,'W','N',analyze);
+    'CrossQuantilogram'  false    true     true     @(temp,out,analyze)run_cross_quantilogram(ds,sn,temp,out,bw,0.05,60,'SB',0.05,100,analyze);
+    'CrossSectional'     false    true     true     @(temp,out,analyze)run_cross_sectional(ds,sn,temp,out,0.95,0.40,0.08,0.40,3,analyze);
+    'Default'            false    true     true     @(temp,out,analyze)run_default(ds,sn,temp,out,bw,'BSM',3,0.08,2,0.55,0.10,100,5,0.95,analyze);
+    'Liquidity'          false    true     true     @(temp,out,analyze)run_liquidity(ds,sn,temp,out,bw,21,5,'B',500,0.01,0.0004,analyze);
+    'RegimeSwitching'    false    true     true     @(temp,out,analyze)run_regime_switching(ds,sn,temp,out,true,true,true,analyze);
+    'Spillover'          false    true     true     @(temp,out,analyze)run_spillover(ds,sn,temp,out,bw,10,'G',2,4,analyze);
+    'TailDependence'     false    true     true     @(temp,out,analyze)run_tail_dependence(ds,sn,temp,out,bw,0.10,0.5,0.05,100,analyze);
 };
 
 enabled_all = [measures_setup{:,2}];

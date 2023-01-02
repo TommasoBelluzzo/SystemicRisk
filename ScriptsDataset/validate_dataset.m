@@ -11,7 +11,7 @@ function ds = validate_dataset(varargin)
 
     if (isempty(categories))
         categories = {
-            'Comparison' 'Component' 'Connectedness' 'CrossEntropy' 'CrossQuantilogram' ...
+            'BubblesDetection' 'Comparison' 'Component' 'Connectedness' 'CrossEntropy' 'CrossQuantilogram' ...
             'CrossSectional' 'Default' 'Liquidity' 'RegimeSwitching' 'Spillover' 'TailDependence'
         };
     end

@@ -109,7 +109,7 @@ function plot_crises(ds,id)
 
         hold on;
             for i = cddn_len:-1:1
-                l = line(ones(2,1) .* cddn(i),[0 1],'Color',[1 0.4 0.4]);
+                l = line(ones(2,1) .* cddn(i),[0 1],'Color',[1.000 0.400 0.400]);
                 set(l,'Tag',num2str(i));
             end
         hold off;
@@ -407,7 +407,7 @@ function plot_sequence_returns(ds,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 
@@ -517,7 +517,7 @@ function plot_sequence_other(ds,target,id)
 
         if (~isempty(xd))
             hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1 0.4 0.4]);
+                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
             hold(subs(1),'off');
         end
 

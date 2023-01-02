@@ -1,7 +1,7 @@
 % [INPUT]
 % file = A string representing the full path to the Excel spreadsheet.
 % type = A string representing the type of Excel spreadsheet:
-%   - 'D' for dataset.
+%   - 'D' for dataset;
 %   - 'T' for template.
 %
 % [OUTPUT]

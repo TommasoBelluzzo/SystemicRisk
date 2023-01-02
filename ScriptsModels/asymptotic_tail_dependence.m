@@ -1,7 +1,7 @@
 % [INPUT]
 % data = A float t-by-n matrix (-Inf,Inf) representing the model input.
 % tail = A string representing the target tail:
-%   - 'L' for lower tail.
+%   - 'L' for lower tail;
 %   - 'U' for upper tail.
 % bw = An integer [21,252] representing the dimension of each rolling window (optional, default=252).
 % f = A float [0.05,0.20] representing the percentage of observations to be included in tails (optional, default=0.10).

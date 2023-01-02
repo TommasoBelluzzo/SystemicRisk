@@ -2,11 +2,11 @@
 % r = A float t-by-n matrix (-Inf,Inf) representing the logarithmic returns.
 % pods = A vector of floats [0,1] of length n representing the probabilities of default.
 % md = A string representing the multivariate distribution used by the model:
-%   - 'N' for normal distribution.
+%   - 'N' for normal distribution;
 %   - 'T' for Student's T distribution.
 %
 % [OUTPUT]
-% g = An n^2-by-n matrix of numeric booleans representing the posterior density orthants.
+% g = A boolean n^2-by-n matrix representing the posterior density orthants.
 % p = A column vector of floats [0,1] of length n^2 representing the posterior density probabilities.
 
 function [g,p] = cimdo(varargin)

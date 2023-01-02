@@ -51,12 +51,13 @@ function [cq,ci] = cross_quantilograms_sn_internal(x,a,k,civ,cif)
         for i = len:t
             x_i = x(1:i,:);
             x_t = size(x_i,1);
+            x_t_mk = x_t - k;
 
             q_sn = (x_i <= repmat(gumbel_quantile(x_i,a),x_t,1)) - (ones(x_t,n) .* a);
 
-            d_sn = zeros(x_t-k,n);
+            d_sn = zeros(x_t_mk,n);
             d_sn(:,1) = q_sn(k+1:x_t,1);
-            d_sn(:,2:n) = q_sn(1:x_t-k,2:n);
+            d_sn(:,2:n) = q_sn(1:x_t_mk,2:n);
 
             h_sn = d_sn.' * d_sn;
 
@@ -72,12 +73,13 @@ function [cq,ci] = cross_quantilograms_sn_internal(x,a,k,civ,cif)
         for i = len:t
             x_i = x(1:i,:);
             x_t = size(x_i,1);
+            x_t_mk = x_t - k;
 
             q_sn = (x_i <= repmat(gumbel_quantile(x_i,a),x_t,1)) - (ones(x_t,n) .* a);
 
-            d_sn = zeros(x_t-k,n);
+            d_sn = zeros(x_t_mk,n);
             d_sn(:,1) = q_sn(k+1:x_t,1);
-            d_sn(:,2:n) = q_sn(1:x_t-k,2:n);
+            d_sn(:,2:n) = q_sn(1:x_t_mk,2:n);
 
             h_sn = d_sn.' * d_sn;
 
