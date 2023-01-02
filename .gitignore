@@ -21,3 +21,6 @@ octave-workspace
 # Packaged Files
 *.mlappinstall
 *.mltbx
+
+# Results Folder
+Results/
