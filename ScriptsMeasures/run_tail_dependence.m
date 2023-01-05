@@ -331,11 +331,9 @@ function plot_asymptotic_indicators(ds,id)
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
 
-    figure_title('Asymptotic Dependence Indicators');
+    figure_title(f,'Asymptotic Dependence Indicators');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+	maximize_figure(f);
 
 end
 
@@ -398,13 +396,14 @@ function plot_frm_lambdas(ds,id)
         else
             xd = x(d) - 1;
         end
-
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end
@@ -435,11 +434,9 @@ function plot_frm(ds,id)
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
 
-    figure_title('Financial Risk Meter');
+    figure_title(f,'Financial Risk Meter');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 

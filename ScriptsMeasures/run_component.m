@@ -381,11 +381,9 @@ function plot_catfin(ds,id)
         date_ticks(subs,'x','yyyy','KeepLimits');
     end
 
-    figure_title('CATFIN');
+    figure_title(f,'CATFIN');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -468,11 +466,9 @@ function plot_indicators_other(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title('Other Indicators');
+    figure_title(f,'Other Indicators');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -542,11 +538,9 @@ function plot_pca(ds,id)
         date_ticks(sub_2,'x','yyyy','KeepLimits');
     end
 
-    figure_title('Principal Component Analysis');
+    figure_title(f,'Principal Component Analysis');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 

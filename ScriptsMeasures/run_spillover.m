@@ -348,11 +348,9 @@ function plot_index(ds,id)
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
 
-    figure_title('Spillover Index');
+    figure_title(f,'Spillover Index');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -400,11 +398,9 @@ function plot_spillovers(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Spillovers (' ds.FEVD ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')']);
+    figure_title(f,['Spillovers (' ds.FEVD ', H=' num2str(ds.H) ', LAGS=' num2str(ds.Lags) ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -482,28 +478,31 @@ function plot_sequence(ds,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,from,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,from,'Color',[0.000 0.447 0.741]);
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
-        plot(subs(2),x,to,'Color',[0.000 0.447 0.741]);
-        hold(subs(2),'on');
-            plot(subs(2),x,ones(numel(x),1),'Color',[1.000 0.400 0.400]);
+		sub_2 = subs(2);
+        plot(sub_2,x,to,'Color',[0.000 0.447 0.741]);
+        hold(sub_2,'on');
+            plot(sub_2,x,ones(numel(x),1),'Color',[1.000 0.400 0.400]);
             if (~isempty(xd))
-                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1.000 0.400 0.400]);
+                plot(sub_2,[xd xd],get(sub_2,'YLim'),'Color',[1.000 0.400 0.400]);
             end
-        hold(subs(2),'off');
+        hold(sub_2,'off');
 
-        plot(subs(3),x,net,'Color',[0.000 0.447 0.741]);
-        hold(subs(3),'on');
-            plot(subs(3),x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
+		sub_3 = subs(3);
+        plot(sub_3,x,net,'Color',[0.000 0.447 0.741]);
+        hold(sub_3,'on');
+            plot(sub_3,x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
             if (~isempty(xd))
-                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1.000 0.400 0.400]);
+                plot(sub_3,[xd xd],get(sub_3,'YLim'),'Color',[1.000 0.400 0.400]);
             end
-        hold(subs(3),'off');
+        hold(sub_3,'off');
 
     end
 

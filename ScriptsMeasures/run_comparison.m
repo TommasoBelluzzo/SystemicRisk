@@ -698,24 +698,26 @@ function plot_measures(ds,id)
 
         x = data{1};
         y = data{2};
+		
+		sub_1 = subs(1);
 
         if (isempty(ct))
-            plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+            plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
         else
             if (strcmp(ct,'E'))
-                plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+                plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
-                hold(subs(1),'on');
+                hold(sub_1,'on');
                     for i = 1:numel(c1)
-                        line(subs(1),ones(2,1) .* c1(i),[c2(1) c2(2)],'Color',[1.000 0.400 0.400]);
+                        line(sub_1,ones(2,1) .* c1(i),[c2(1) c2(2)],'Color',[1.000 0.400 0.400]);
                     end
-                hold(subs(1),'off');
+                hold(sub_1,'off');
             else
-                area(subs(1),x,c1,c2,'EdgeColor','none','FaceAlpha',0.4,'FaceColor',[0.850 0.325 0.098]);
+                area(sub_1,x,c1,c2,'EdgeColor','none','FaceAlpha',0.4,'FaceColor',[0.850 0.325 0.098]);
 
-                hold(subs(1),'on');
-                    plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
-                hold(subs(1),'off');
+                hold(sub_1,'on');
+                    plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
+                hold(sub_1,'off');
             end
         end
 
@@ -758,11 +760,9 @@ function plot_similarity(ds,target,id)
     set(ax,'XAxisLocation','bottom','XTick',off,'XTickLabels',labels,'XTickLabelRotation',45);
     set(ax,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
 
-    figure_title(target);
+    figure_title(f,target);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -805,13 +805,9 @@ function plot_scores_gc(ds,id)
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
 
-    figure_title(['Granger-causality (A=' num2str(ds.GCA * 100) '%, LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
+    figure_title(f,['Granger-causality (A=' num2str(ds.GCA * 100) '%, LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
-
-    drawnow();
+    maximize_figure(f);
 
     dcm = datacursormode(f);
     set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,s,data_labels,data));
@@ -867,13 +863,9 @@ function plot_scores_lm(ds,id)
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
 
-    figure_title(['Logistic Model (ADJ=' lma_label ')']);
+    figure_title(f,['Logistic Model (ADJ=' lma_label ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
-
-    drawnow();
+    maximize_figure(f);
 
     dcm = datacursormode(f);
     set(dcm,'Enable','on','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,mfr2));
@@ -909,13 +901,9 @@ function plot_scores_pps(ds,id)
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
 
-    figure_title(['Predictive Power Score Model (K=' num2str(ds.PPSK) ')']);
+    figure_title(f,['Predictive Power Score Model (K=' num2str(ds.PPSK) ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
-
-    drawnow();
+    maximize_figure(f);
 
     dcm = datacursormode(f);
     set(dcm,'Enable','on','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,pps));
@@ -969,13 +957,9 @@ function plot_scores_pd(ds,id)
     set(sub_2,'Box','on','XGrid','on','YGrid','on');
     title('Data Browser');
 
-    figure_title(['Price Discovery (' ds.PDT ', LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
+    figure_title(f,['Price Discovery (' ds.PDT ', LM=' num2str(ds.LagMax) ', LS=' ds.LagSel ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
-
-    drawnow();
+    maximize_figure(f);
 
     dcm = datacursormode(f);
     set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,s,data_labels,data));
@@ -1048,13 +1032,9 @@ function plot_scores_overall(ds,id)
     set(ax,'XLim',[0 (mn + 1)],'XTick',seq,'XTickLabel',labels,'XTickLabelRotation',45);
     set(ax,'YGrid','on','YLim',[0 100]);
 
-    figure_title('Overall Scores');
+    figure_title(f,'Overall Scores');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
-
-    drawnow();
+    maximize_figure(f);
 
     dcm = datacursormode(f);
     set(dcm,'Enable','on','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,ctooltips));

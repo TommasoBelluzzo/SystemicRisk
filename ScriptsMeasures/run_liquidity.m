@@ -410,11 +410,9 @@ function plot_averages(ds,id)
         end
     end
 
-    figure_title('Averages');
+    figure_title(f,'Averages');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -512,12 +510,13 @@ function plot_sequence_illiq(ds,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y1,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y1,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
         if (k == 2)
@@ -606,12 +605,13 @@ function plot_sequence_other(ds,target,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end

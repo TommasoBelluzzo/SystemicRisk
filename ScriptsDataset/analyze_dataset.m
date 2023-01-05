@@ -88,11 +88,9 @@ function plot_boxes(ds,target,id)
     set(ax,'XTick',1:n,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
     set(ax,'YLim',[y_low y_high]);
 
-    figure_title(target);
+    figure_title(f,target);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -163,18 +161,14 @@ function plot_crises(ds,id)
     end
 
     if (strcmp(ds.CrisesType,'E'))
-        figure_title('Crises (Events)');
+        figure_title(f,'Crises (Events)');
     else
-        figure_title('Crises (Ranges)');
+        figure_title(f,'Crises (Ranges)');
     end
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
     if (~isempty(tooltips))
-        drawnow();
-
         dcm = datacursormode(f);
         set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,tooltips));
         createDatatip(dcm,tooltips_target,[1 1]);
@@ -243,7 +237,7 @@ function plot_index(ds,id)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    t = figure_title(['Index (' ds.IndexName ')']);
+    t = figure_title(f,['Index (' ds.IndexName ')']);
     t_position = get(t,'Position');
     set(t,'Position',[t_position(1) -0.0157 t_position(3)]);
 
@@ -276,9 +270,7 @@ function plot_index(ds,id)
 
     annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -319,11 +311,9 @@ function plot_risk_free_rate(ds,id)
         date_ticks([sub_1 sub_2],'x','yyyy','KeepLimits');
     end
 
-    figure_title('Risk-Free Rate');
+    figure_title(f,'Risk-Free Rate');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -402,25 +392,27 @@ function plot_sequence_returns(ds,id)
 
         delete(findall(gcf,'type','annotation'));
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
-        set(subs(1),'YLim',[(y_min - 0.01) (y_max + 0.01)]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
+        set(sub_1,'YLim',[(y_min - 0.01) (y_max + 0.01)]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
-        hist = histogram(subs(2),y,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
+		sub_2 = subs(2);
+        hist = histogram(sub_2,y,50,'FaceColor',[0.749 0.862 0.933],'Normalization','pdf');
         edges = get(hist,'BinEdges');
         edges_max = max(edges);
         edges_min = min(edges);
         [dv,dp] = ksdensity(y);
 
-        hold(subs(2),'on');
-            plot(subs(2),dp,dv,'-b','LineWidth',1.5);
-        hold(subs(2),'off');
-        set(subs(2),'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
+        hold(sub_2,'on');
+            plot(sub_2,dp,dv,'-b','LineWidth',1.5);
+        hold(sub_2,'off');
+        set(sub_2,'XLim',[(edges_min - (edges_min * 0.1)) (edges_max - (edges_max * 0.1))]);
 
         txt_obs = sprintf('Observations: %d',y_obs);
         txt_avg = sprintf('Mean: %.4f',y_avg);
@@ -449,7 +441,7 @@ function plot_sequence_returns(ds,id)
 
         txt = {txt_obs '' txt_avg txt_med txt_std txt_ske txt_kur '' txt_s txt_lbq txt_a};
 
-        annotation('TextBox',(get(subs(2),'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
+        annotation('TextBox',(get(sub_2,'Position') + [0.01 -0.025 0 0]),'String',txt,'EdgeColor','none','FitBoxToText','on','FontSize',8);
 
     end
 
@@ -513,12 +505,13 @@ function plot_sequence_other(ds,target,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end

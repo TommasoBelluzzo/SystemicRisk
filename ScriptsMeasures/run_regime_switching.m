@@ -586,11 +586,9 @@ function plot_indicators(ds,target,id)
     t2_position = get(t2,'Position');
     set(t2,'Position',[0.4783 t2_position(2) t2_position(3)]);
 
-    figure_title(['Indicators ' model]);
+    figure_title(f,['Indicators ' model]);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -769,30 +767,34 @@ function plot_sequence(ds,target,id)
             tm_cmap = [0.65 0.65 0.65; 1 1 1; 0.749 0.862 0.933];
         end
 
-        plot(subs(1),x,cs2,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,cs2,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
-        pcolor(subs(2),padarray(tmn,[1 1],'post'));
-        colormap(subs(2),tm_cmap);
-        text(subs(2),tm_x,tm_y,tm_txt,'FontSize',9 + 4 - k,'HorizontalAlignment','center');
+		sub_2 = subs(2);
+        pcolor(sub_2,padarray(tmn,[1 1],'post'));
+        colormap(sub_2,tm_cmap);
+        text(sub_2,tm_x,tm_y,tm_txt,'FontSize',9 + 4 - k,'HorizontalAlignment','center');
 
-        plot(subs(3),x,r,'Color',[0.65 0.65 0.65])
-        hold(subs(3),'on');
-            area(subs(3),x,sprob_hv,'EdgeColor',[0.000 0.447 0.741],'FaceAlpha',0.5,'FaceColor',[0.749 0.862 0.933]);
-        hold(subs(3),'off');
+		sub_3 = subs(3);
+        plot(sub_3,x,r,'Color',[0.650 0.650 0.650])
+        hold(sub_3,'on');
+            area(sub_3,x,sprob_hv,'EdgeColor',[0.000 0.447 0.741],'FaceAlpha',0.5,'FaceColor',[0.749 0.862 0.933]);
+        hold(sub_3,'off');
 
         if (~isempty(xd))
-            hold(subs(3),'on');
-                plot(subs(3),[xd xd],get(subs(3),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(3),'off');
+            hold(sub_3,'on');
+                plot(sub_3,[xd xd],get(sub_3,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_3,'off');
         end
 
-        bar(subs(4),1:k,dur,'FaceColor',[0.749 0.862 0.933]);
+		sub_4 = subs(4);
+        bar(sub_4,1:k,dur,'FaceColor',[0.749 0.862 0.933]);
 
     end
 

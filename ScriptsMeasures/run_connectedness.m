@@ -381,11 +381,9 @@ function plot_indicators(ds,id)
     sub_2_position = get(sub_2,'Position');
     set(sub_1,'Position',[sub_2_position(1) sub_1_position(2) sub_2_position(3) sub_2_position(4)]);
 
-    figure_title('Indicators');
+    figure_title(f,'Indicators');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -473,11 +471,9 @@ function plot_network(ds,id)
     labels = text((xy(:,1) .* 1.075), (xy(:,2) .* 1.075),ds.FirmNames,'FontSize',10);
     set(labels,{'Rotation'},num2cell(theta * (180 / pi())));
 
-    figure_title('Network Graph');
+    figure_title(f,'Network Graph');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -500,11 +496,9 @@ function plot_adjacency_matrix(ds,id)
     set(ax,'XAxisLocation','top','XTick',1.5:off,'XTickLabels',ds.FirmNames,'XTickLabelRotation',45);
     set(ax,'YDir','reverse','YTick',1.5:off,'YTickLabels',ds.FirmNames,'YTickLabelRotation',45);
 
-    figure_title('Average Adjacency Matrix');
+    figure_title(f,'Average Adjacency Matrix');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -560,11 +554,9 @@ function plot_centralities(ds,id)
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'XLim',[0 (ds.N + 1)],'XTick',seq,'XTickLabelRotation',90);
     set([sub_1 sub_2 sub_3 sub_4 sub_5 sub_6],'YGrid','on');
 
-    figure_title('Average Centrality Measures');
+    figure_title(f,'Average Centrality Measures');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 

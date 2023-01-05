@@ -448,17 +448,19 @@ function plot_sequence(ds,target,id)
         cq_to_cl = data{6};
         cq_to_ch = data{7};
 
-        bar(subs(1),x,cq_from,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
-        hold(subs(1),'on');
-            plot(subs(1),x,cq_from_cl,'Color',[1.000 0.400 0.400],'LineWidth',1);
-            plot(subs(1),x,cq_from_ch,'Color',[1.000 0.400 0.400],'LineWidth',1);
-        hold(subs(1),'off');
+		sub_1 = subs(1);
+        bar(sub_1,x,cq_from,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
+        hold(sub_1,'on');
+            plot(sub_1,x,cq_from_cl,'Color',[1.000 0.400 0.400],'LineWidth',1);
+            plot(sub_1,x,cq_from_ch,'Color',[1.000 0.400 0.400],'LineWidth',1);
+        hold(sub_1,'off');
 
-        bar(subs(2),x,cq_to,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
-        hold(subs(2),'on');
-            plot(subs(2),x,cq_to_cl,'Color',[1.000 0.400 0.400],'LineWidth',1);
-            plot(subs(2),x,cq_to_ch,'Color',[1.000 0.400 0.400],'LineWidth',1);
-        hold(subs(2),'off');
+		sub_2 = subs(2);
+        bar(sub_2,x,cq_to,0.6,'EdgeColor','none','FaceColor',[0.749 0.862 0.933]);
+        hold(sub_2,'on');
+            plot(sub_2,x,cq_to_cl,'Color',[1.000 0.400 0.400],'LineWidth',1);
+            plot(sub_2,x,cq_to_ch,'Color',[1.000 0.400 0.400],'LineWidth',1);
+        hold(sub_2,'off');
 
     end
 

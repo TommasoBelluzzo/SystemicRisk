@@ -463,11 +463,9 @@ function plot_idiosyncratic_averages(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title('Idiosyncratic Averages');
+    figure_title(f,'Idiosyncratic Averages');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -513,11 +511,9 @@ function plot_systemic_averages(ds,id)
     y_tick_labels = arrayfun(@(x)sprintf('%.0f',x),y_ticks,'UniformOutput',false);
     set(subs(5:6),'YTick',y_ticks,'YTickLabel',y_tick_labels);
 
-    figure_title('Systemic Averages');
+    figure_title(f,'Systemic Averages');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -580,9 +576,7 @@ function plot_correlations(ds,id)
 
     annotation('TextBox',[0 0 1 1],'String','Correlation Matrix','EdgeColor','none','FontName','Helvetica','FontSize',14,'HorizontalAlignment','center');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -673,11 +667,9 @@ function plot_rankings(ds,id)
         set(sub_2,'YTickLabel',tl_new);
     end
 
-    figure_title('Rankings (Kendall''s W)');
+    figure_title(f,'Rankings (Kendall''s W)');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -749,25 +741,28 @@ function plot_sequence_caviar(ds,id)
             xd = x_caviar(d) - 1;
         end
 
-        plot(subs(1),x_caviar,caviar,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x_caviar,caviar,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
-        plot(subs(2),x_ir,ir_fm(:,1),'Color',[0.000 0.447 0.741]);
-        hold(subs(2),'on');
-            plot(subs(2),x_ir,ir_fm(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
-            plot(subs(2),x_ir,ir_fm(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
-        hold(subs(2),'off');
+		sub_2 = subs(2);
+        plot(sub_2,x_ir,ir_fm(:,1),'Color',[0.000 0.447 0.741]);
+        hold(sub_2,'on');
+            plot(sub_2,x_ir,ir_fm(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
+            plot(sub_2,x_ir,ir_fm(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
+        hold(sub_2,'off');
 
-        plot(subs(3),x_ir,ir_mf(:,1),'Color',[0.000 0.447 0.741]);
-        hold(subs(3),'on');
-            plot(subs(3),x_ir,ir_mf(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
-            plot(subs(3),x_ir,ir_mf(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
-        hold(subs(3),'off');
+		sub_3 = subs(3);
+        plot(sub_3,x_ir,ir_mf(:,1),'Color',[0.000 0.447 0.741]);
+        hold(sub_3,'on');
+            plot(sub_3,x_ir,ir_mf(:,2),'Color',[1.000 0.400 0.400],'LineStyle','--');
+            plot(sub_3,x_ir,ir_mf(:,3),'Color',[1.000 0.400 0.400],'LineStyle','--');
+        hold(sub_3,'off');
 
     end
 
@@ -834,12 +829,13 @@ function plot_sequence_other(ds,target,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end

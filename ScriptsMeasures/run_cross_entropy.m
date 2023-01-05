@@ -622,11 +622,9 @@ function plot_portfolios_coverage(ds,id)
 
     set(subs,'YGrid','on');
 
-    figure_title('Reduced Portfolios Coverage');
+    figure_title(f,'Reduced Portfolios Coverage');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -667,11 +665,9 @@ function plot_indicators(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Indicators (RR=' num2str(ds.RR * 100) '%, ' ds.PW ', ' ds.MD ')']);
+    figure_title(f,['Indicators (RR=' num2str(ds.RR * 100) '%, ' ds.PW ', ' ds.MD ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -732,17 +728,16 @@ function plot_dide(ds,id)
     set(ax,'XAxisLocation','top','XTick',1.5:(nc + 0.5),'XTickLabels',ds.PortfolioComponents,'XTickLabelRotation',45);
     set(ax,'YDir','reverse','YTick',1.5:(nc + 0.5),'YTickLabels',ds.PortfolioComponents,'YTickLabelRotation',45);
 
-    figure_title('Average Distress Dependency');
+    figure_title(f,'Average Distress Dependency');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
 function plot_sequence_dide(ds,id)
 
     nc = numel(ds.PortfolioComponents);
+	nc_ones = ones(1,nc);
 
     t = ds.T;
     dn = ds.DatesNum;
@@ -751,7 +746,7 @@ function plot_sequence_dide(ds,id)
     ts_si = ds.SI;
     ts_sv = ds.SV;
 
-    data = [repmat({dn},1,nc); mat2cell(ts_si,t,ones(1,nc)); mat2cell(ts_sv,t,ones(1,nc))];
+    data = [repmat({dn},1,nc); mat2cell(ts_si,t,nc_ones); mat2cell(ts_sv,t,nc_ones)];
 
     sequence_titles = ds.PortfolioComponents;
 
@@ -807,20 +802,22 @@ function plot_sequence_dide(ds,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,si,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,si,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
-        plot(subs(2),x,sv,'Color',[0.000 0.447 0.741]);
+		sub_2 = subs(2);
+        plot(sub_2,x,sv,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(2),'on');
-                plot(subs(2),[xd xd],get(subs(2),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(2),'off');
+            hold(sub_2,'on');
+                plot(sub_2,[xd xd],get(sub_2,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_2,'off');
         end
 
     end
@@ -892,12 +889,13 @@ function plot_sequence_cojpods(ds,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end

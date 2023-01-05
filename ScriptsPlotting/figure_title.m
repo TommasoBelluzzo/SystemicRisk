@@ -1,4 +1,5 @@
 % [INPUT]
+% f = A valid figure instance.
 % t = A string representing the figure title.
 %
 % [OUTPUT]
@@ -10,25 +11,28 @@ function t = figure_title(varargin)
 
     if (isempty(ip))
         ip = inputParser();
+		ip.addRequired('f',@(x)validateattributes(x,{'matlab.ui.Figure'},{'scalar'}));
         ip.addRequired('s',@(x)validateattributes(x,{'char'},{'nonempty' 'size' [1 NaN]}));
     end
 
     ip.parse(varargin{:});
+
     ipr = ip.Results;
+    f = ipr.f;
+    s = ipr.s;
 
     nargoutchk(0,1);
 
     if (nargout == 0)
-        figure_title_internal(ipr.s);
+        figure_title_internal(f,s);
     else
-        t = figure_title_internal(ipr.s);
+        t = figure_title_internal(f,s);
     end
 
 end
 
-function t = figure_title_internal(s)
+function t = figure_title_internal(f,s)
 
-    f = gcf();
     f_font_size = get(f,'DefaultAxesFontSize') + 4;
     f_units = get(f,'Units');
 

@@ -531,11 +531,9 @@ function plot_distances(ds,id)
     l_position = get(l,'Position');
     set(l,'Position',[0.4683 0.4799 l_position(3) l_position(4)]);
 
-    figure_title('Distances');
+    figure_title(f,'Distances');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -563,11 +561,9 @@ function plot_dip(ds,id)
     set(findobj(f,'-regexp','Tag','\w*Whisker'),'LineStyle','-');
     set(sub_2,'TickLength',[0 0],'XTick',[],'XTickLabels',[]);
 
-    figure_title('Distress Insurance Premium');
+    figure_title(f,'Distress Insurance Premium');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -609,11 +605,9 @@ function plot_rankings(ds,id)
     set(sub_2,'YDir','reverse','YTick',off,'YTickLabels',labels,'YTickLabelRotation',45);
     title(sub_2,'Ranking Concordance');
 
-    figure_title('Rankings (Kendall''s W)');
+    figure_title(f,'Rankings (Kendall''s W)');
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -654,11 +648,9 @@ function plot_scca(ds,id)
         date_ticks([sub_1 sub_2 sub_3],'x','yyyy','KeepLimits');
     end
 
-    figure_title(['Systemic CCA (' ds.OP ')']);
+    figure_title(f,['Systemic CCA (' ds.OP ')']);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    maximize_figure(f);
 
 end
 
@@ -730,18 +722,19 @@ function plot_sequence(ds,target,id)
             xd = x(d) - 1;
         end
 
-        plot(subs(1),x,y,'Color',[0.000 0.447 0.741]);
+		sub_1 = subs(1);
+        plot(sub_1,x,y,'Color',[0.000 0.447 0.741]);
 
         if (is_distance)
-            hold(subs(1),'on');
-                plot(subs(1),x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,x,zeros(numel(x),1),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
         if (~isempty(xd))
-            hold(subs(1),'on');
-                plot(subs(1),[xd xd],get(subs(1),'YLim'),'Color',[1.000 0.400 0.400]);
-            hold(subs(1),'off');
+            hold(sub_1,'on');
+                plot(sub_1,[xd xd],get(sub_1,'YLim'),'Color',[1.000 0.400 0.400]);
+            hold(sub_1,'off');
         end
 
     end

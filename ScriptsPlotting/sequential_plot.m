@@ -143,9 +143,7 @@ function sequential_plot_internal(core,id)
             set(t,'Position',[0.4783 t_position(2) t_position(3)]);
         end
     end
-
-    figure_title([core.InnerTitle ' - ' core.SequenceTitles{1}]);
-
+	
     setappdata(f,'N',core.N);
     setappdata(f,'Data',core.Data);
     setappdata(f,'Function',core.Function);
@@ -156,9 +154,9 @@ function sequential_plot_internal(core,id)
     setappdata(f,'Offset',1);
     setappdata(f,'Subs',subs);
 
-    pause(0.01);
-    frame = get(f,'JavaFrame'); %#ok<JAVFM> 
-    set(frame,'Maximized',true);
+    figure_title(f,[core.InnerTitle ' - ' core.SequenceTitles{1}]);
+
+    maximize_figure(f);
 
 end
 
@@ -211,6 +209,7 @@ function plots_adjustable = validate_plots_structure(plots_allocation,plots_span
     plots_rows = plots_allocation(1);
     plots_columns = plots_allocation(2);
     plots_grid = repmat(1:plots_columns,plots_rows,1) + repmat(plots_columns .* (0:plots_rows-1),plots_columns,1).';
+    plot_cells_count = false(size(plots_grid));
 
     plots_adjustable = false(plots,1);
     plots_slots = cell(plots,1);
@@ -218,75 +217,41 @@ function plots_adjustable = validate_plots_structure(plots_allocation,plots_span
     for i = 1:plots
         plot_span = plots_span{i};
 
-        if (isscalar(plot_span))
-            [check,indices] = ismember(plot_span,plots_grid);
+        [check,indices] = ismember(plot_span,plots_grid);
 
-            if (~check)
-                error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define valid grid cells.']);
-            end
-
-            plot_cells = false(size(plots_grid));
-            plot_cells(indices) = true;
-
-            rc = 1;
-        else
-            if ((numel(plot_span) == 2) && (plot_span(1) ~= (plot_span(2) - 1)))
-                [r1,c1] = find(plots_grid == plot_span(1),1,'first');
-
-                if (isempty(r1) || isempty(c1))
-                    error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define valid grid cells.']);
-                end
-
-                [r2,c2] = find(plots_grid == plot_span(2),1,'first');
-
-                if (isempty(r2) || isempty(c2))
-                    error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define valid grid cells.']);
-                end
-
-                plot_cells = (plots_grid == plot_span(1)) + (plots_grid == plot_span(2));
-                plot_cells(r1:r2,c1:c2) = 1;
-                plot_cells = logical(plot_cells);
-
-                rc = sum(plot_cells,2);
-            else
-                [check,indices] = ismember(plot_span,plots_grid);
-
-                if (~all(check))
-                    error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define valid grid cells.']);
-                end
-
-                if (~all(diff(plot_span) == 1))
-                    error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define contiguous grid cells.']);
-                end
-
-                plot_cells = false(size(plots_grid));
-                plot_cells(indices) = true;
-
-                rc = sum(plot_cells,2);
-                rc(rc == 0) = [];
-
-                if (~isscalar(rc))
-                    [~,indices_a,indices_b] = intersect(plot_cells,plot_cells,'rows');
-
-                    if (~isscalar(indices_a) || ~isscalar(indices_b) || (indices_a ~= indices_b) || ~all(diff(rc) == 0))
-                        error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define a valid subplot area.']);
-                    end
-                end
-            end
+        if (~all(check))
+            error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define valid grid cells.']);
         end
 
-        if (any(rc == plots_columns))
+        plot_cells = false(size(plots_grid));
+        plot_cells(indices) = true;
+
+        chunks = arrayfun(@(s)plot_cells(s.SubarrayIdx{:}),regionprops(bwconncomp(plot_cells,4),'SubarrayIdx'),'UniformOutput',false);
+
+        if (numel(chunks) ~= 1)
+            error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define a single subset of grid cells.']);
+        end
+
+        plot_cells_isolated = chunks{1};
+
+        if (any(any(plot_cells_isolated == 0)))
+            error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected content ' num2str(i) ' to define a contiguous subset of grid cells.']);
+        end
+        
+        rc = unique(sum(plot_cells_isolated,2));
+
+        if (rc == plots_columns)
             plots_adjustable(i) = true;
         end
 
         plot_slots = plots_grid(plot_cells);
-        plots_slots{i} = plot_slots(:);
+        plots_slots{i} = sort(plot_slots(:));
+
+        plot_cells_count = plot_cells_count + plot_cells;
     end
 
-    plots_slots = cell2mat(plots_slots);
-
-    if (numel(unique(plots_slots)) ~= numel(plots_slots))
-        error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected contents to define a non-overlapping subplot areas.']);
+    if (any(any(plot_cells_count > 1)))
+        error(['The structure field ''PlotsSpan'' is invalid.' new_line() 'Expected contents to define non-overlapping subplot areas.']);
     end
 
 end
@@ -420,11 +385,13 @@ function draw_time_series(f,offset)
         end
     end
 
-    figure_title([inner_title ' - ' sequence_titles{offset}]);
+    figure_title(f,[inner_title ' - ' sequence_titles{offset}]);
 
 end
 
 function switch_time_series(obj,~)
+
+    set(obj,'Enable','off');
 
     f = get(obj,'Parent');
 
@@ -439,10 +406,7 @@ function switch_time_series(obj,~)
         set(obj_other,'Enable','on');
 
         n = getappdata(f,'N');
-
-        if (offset == n)
-            set(obj,'Enable','off');
-        end
+        obj_enable = offset < n;
     else
         offset = offset - 1;
         setappdata(f,'Offset',offset);
@@ -450,11 +414,14 @@ function switch_time_series(obj,~)
         obj_other = findobj(f,'String','Next');
         set(obj_other,'Enable','on');
 
-        if (offset == 1)
-            set(obj,'Enable','off');
-        end
+        obj_enable = offset > 1;
     end
 
     draw_time_series(f,offset);
+
+    if (obj_enable)
+        set(obj,'Enable','on');
+        uicontrol(obj);
+    end
 
 end
