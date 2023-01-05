@@ -2,6 +2,13 @@
 
 This framework calculates, analyses and compares the following systemic risk measures:
 
+* **BUBBLES DETECTION MEASURES**
+  * `BUB (Bubbles Flag)`
+  * `BMPH (Boom Phases Flag)`
+  * `BRPH (Burst Phases Flag)`
+  * `BC (Bubbling Capitalization)`
+  * `BCP (Bubbling Capitalization Percentage)`
+  * *References*: [Phillips et al. (2015)](https://doi.org/10.1111/iere.12132), [Phillips & Shi (2018)](https://doi.org/10.1016/bs.host.2018.12.002), [Phillips & Shi (2019)](https://doi.org/10.1111/obes.12307), [Brunnermeier et al. (2020)](https://doi.org/10.1093/rfs/hhaa011)
 * **COMPONENT MEASURES**
   * `AR (Absorption Ratio)` by [Kritzman et al. (2010)](https://doi.org/10.2139/ssrn.1633027)
   * `CATFIN` by [Allen et al. (2012)](https://doi.org/10.1093/rfs/hhs094)
@@ -130,6 +137,9 @@ Datasets must be built following the structure of default ones included in every
 
 * It is not mandatory to include financial time series used by unwanted measures. Optional financial time series used by included measures can be omitted, as long as their contribution isn't necessary. Below a list of required and optional time series for each category of measures:
 
+  * **Bubbles Detection Measures:**
+    * *Required:* shares (prices).
+    * *Optional:* none.
   * **Component Measures:**
     * *Required:* shares (any).
     * *Optional:* none.

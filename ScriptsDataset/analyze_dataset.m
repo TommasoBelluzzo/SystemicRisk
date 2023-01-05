@@ -139,7 +139,7 @@ function plot_crises(ds,id)
 
         ax = gca();
 
-        if (k <= 5)
+        if (k <= 10)
             legend(ax,p,ds.CrisisNames,'Location','southoutside','Orientation','horizontal');
 
             tooltips = [];
@@ -171,7 +171,14 @@ function plot_crises(ds,id)
     if (~isempty(tooltips))
         dcm = datacursormode(f);
         set(dcm,'Enable','on','SnapToDataVertex','off','UpdateFcn',@(targ,evtd)create_tooltip(targ,evtd,tooltips));
-        createDatatip(dcm,tooltips_target,[1 1]);
+
+        if (verLessThan('MATLAB','9.7'))
+            createDatatip(dcm,tooltips_target,[1 1]);
+        else
+            for i = 1:numel(tooltips_target)
+                createDatatip(dcm,tooltips_target(i),[1 1]);
+            end
+        end
     end
 
     function tooltip = create_tooltip(~,evtd,tooltips)

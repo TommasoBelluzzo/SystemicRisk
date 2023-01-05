@@ -18,13 +18,13 @@ clearvars('-except','up');
 
 rng('default');
 
-if (exist('up','var') == 0)
-    up = true;
-end
+%% PARALLEL COMPUTING
 
 delete(gcp('nocreate'));
 
-%% PARALLEL COMPUTING
+if (exist('up','var') == 0)
+    up = true;
+end
 
 if (up)
     pdprofile = parallel.defaultClusterProfile;
